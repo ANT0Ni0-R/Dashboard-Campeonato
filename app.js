@@ -720,11 +720,6 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   box.className = "confronto-box";
   box.innerHTML = `<div class="confronto-title">${title}</div>`;
 
-  const vsBadge = document.createElement("div");
-  vsBadge.className = "confronto-vs";
-  vsBadge.textContent = "VS";
-  box.appendChild(vsBadge);
-
   if (!c1 && !c2) {
     // Placeholder quando a fase anterior não terminou
     const emptyCard = document.createElement("div");
@@ -756,15 +751,20 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   const phaseIsOver = nowMs > phaseEndMs;
 
   const card1 = createCloserCard(comp1, g1,
-    isC1Leader && !phaseIsOver,   // isLiveLeader: dourado, fase aberta
-    isC1Leader && phaseIsOver     // isQualified: verde, fase encerrada
+    isC1Leader && !phaseIsOver,
+    isC1Leader && phaseIsOver
   );
   const card2 = createCloserCard(comp2, g2,
     isC2Leader && !phaseIsOver,
     isC2Leader && phaseIsOver
   );
 
+  const vsBadge = document.createElement("div");
+  vsBadge.className = "confronto-vs";
+  vsBadge.textContent = "VS";
+
   box.appendChild(card1);
+  box.appendChild(vsBadge);
   box.appendChild(card2);
   return box;
 }
