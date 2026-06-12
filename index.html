@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Copa de Vendas — Grupo Primo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header do Dashboard -->
+    <header>
+      <div class="header-title-section">
+        <span class="logo-copa">🏆</span>
+        <div>
+          <h1>Copa de Vendas</h1>
+          <span class="product-tag" id="product-name">Produto</span>
+        </div>
+      </div>
+
+      <div class="header-meta-section">
+        <!-- Status de Conexão com o Supabase -->
+        <div class="status-indicator">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-label">Conectando...</span>
+        </div>
+
+        <!-- Cronômetro da Janela Ativa -->
+        <div class="cronometro-section">
+          <span class="cronometro-icon">⏱️</span>
+          <span class="cronometro-tempo" id="cronometro-tempo">00:00:00</span>
+        </div>
+
+        <!-- Informações da Fase Atual -->
+        <div class="fase-info">
+          <span class="fase-label">Fase Ativa</span>
+          <span class="fase-nome" id="fase-nome">Carregando...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Corpo Principal do Dashboard (Renderizado via JS) -->
+    <main class="main-content" id="dashboard-body">
+      <!-- O Bracket ou Leaderboard do Brasil será injetado aqui -->
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

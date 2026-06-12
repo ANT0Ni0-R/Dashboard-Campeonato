@@ -1,0 +1,792 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --font-title: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+
+  /* Color Palette - Premium Copa Theme */
+  --bg-main: #060913;
+  --bg-gradient: radial-gradient(circle at center, #0e162d 0%, #060913 100%);
+  --bg-card: rgba(15, 23, 42, 0.65);
+  --bg-card-hover: rgba(30, 41, 59, 0.8);
+  
+  --border-color: rgba(51, 65, 85, 0.5);
+  --border-glow-active: rgba(234, 179, 8, 0.6);
+  --border-glow-success: rgba(34, 197, 94, 0.6);
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --accent-gold: #fbbf24;
+  --accent-green: #22c55e;
+  --accent-blue: #3b82f6;
+  --accent-red: #ef4444;
+  
+  --card-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.5);
+  --glow-shadow: 0 0 15px 2px rgba(234, 179, 8, 0.3);
+  --green-glow-shadow: 0 0 15px 2px rgba(34, 197, 94, 0.3);
+  
+  --transition-speed: 0.4s;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-main);
+  background-image: var(--bg-gradient);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Kiosk Mode & Layout Calibrado 16:9 */
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 2rem;
+  overflow: hidden;
+}
+
+/* Header Dashboard */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  padding: 0.8rem 2rem;
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--card-shadow);
+}
+
+.header-title-section {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.logo-copa {
+  font-size: 1.8rem;
+  animation: float 4s ease-in-out infinite;
+}
+
+h1 {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #fff 30%, var(--accent-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.product-tag {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.header-meta-section {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.fase-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.fase-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.fase-nome {
+  font-family: var(--font-title);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.cronometro-section {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.cronometro-icon {
+  color: var(--accent-gold);
+  font-size: 1.1rem;
+}
+
+.cronometro-tempo {
+  font-family: monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent-green);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-green);
+  transition: all 0.3s;
+}
+
+.status-dot.loading {
+  background-color: var(--accent-gold);
+  box-shadow: 0 0 8px var(--accent-gold);
+  animation: pulse 1s infinite alternate;
+}
+
+.status-dot.error {
+  background-color: var(--accent-red);
+  box-shadow: 0 0 8px var(--accent-red);
+}
+
+/* Área de Conteúdo Principal */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Bracket Container - Chaveamento Vertical Completo */
+.bracket-wrapper {
+  flex: 1;
+  display: grid;
+  grid-template-rows: repeat(5, 1fr); /* 5 linhas: Grupos -> QF -> Semis -> Final -> Campeão */
+  gap: 0.8rem;
+  height: 100%;
+  transition: all var(--transition-speed) ease-in-out;
+}
+
+/* Linha da Fase */
+.phase-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  padding: 0.4rem 0.8rem;
+  background: rgba(15, 23, 42, 0.1);
+  transition: all var(--transition-speed) ease-in-out;
+  position: relative;
+}
+
+/* Fase Ativa: Zoom e Destaque */
+.phase-row.active {
+  background: rgba(30, 41, 59, 0.25);
+  border-color: rgba(234, 179, 8, 0.25);
+  transform: scale(1.02);
+  z-index: 10;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+/* Fases não ativas: Esmaecimento e redução */
+.phase-row:not(.active) {
+  opacity: 0.45;
+  filter: blur(0.5px);
+}
+
+.phase-row:not(.active):hover {
+  opacity: 0.7;
+  filter: none;
+}
+
+/* Label Lateral da Fase */
+.phase-side-label {
+  position: absolute;
+  left: 0.5rem;
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  font-weight: 700;
+  height: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 2px solid var(--border-color);
+  padding-left: 0.25rem;
+}
+
+.phase-row.active .phase-side-label {
+  color: var(--accent-gold);
+  border-color: var(--accent-gold);
+}
+
+/* Grid de cards dentro da fase */
+.phase-grid {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Layout específico dos grupos */
+.grupos-container {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.grupo-box {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 210px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.phase-row.active .grupo-box {
+  border-color: rgba(234, 179, 8, 0.15);
+}
+
+.grupo-title {
+  font-family: var(--font-title);
+  background: rgba(30, 41, 59, 0.4);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--accent-gold);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.grupo-members {
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Card Vendedor (Card Compacto) */
+.closer-card {
+  display: flex;
+  align-items: center;
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  gap: 0.5rem;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.closer-card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+/* Vendedor Eliminado: Esmaecido em cinza */
+.closer-card.eliminated {
+  opacity: 0.3;
+  filter: grayscale(100%);
+  border-color: rgba(71, 85, 105, 0.3);
+}
+
+/* Vendedor Líder ao Vivo */
+.closer-card.live-leader {
+  border-color: var(--accent-gold);
+  box-shadow: var(--glow-shadow);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+/* Vendedor Avançado/Classificado na fase correspondente */
+.closer-card.qualified {
+  border-color: var(--accent-green);
+  box-shadow: var(--green-glow-shadow);
+  background: rgba(34, 197, 150, 0.08);
+}
+
+.avatar-wrapper {
+  width: 38px;
+  height: 38px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1.5px solid var(--text-muted);
+}
+
+.closer-card.live-leader .avatar-img {
+  border-color: var(--accent-gold);
+}
+
+.closer-card.qualified .avatar-img {
+  border-color: var(--accent-green);
+}
+
+.flag-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.flag-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.closer-details {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.closer-identity {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.2rem;
+}
+
+.closer-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.closer-code {
+  font-family: monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.closer-gmv {
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+}
+
+.closer-card.eliminated .closer-gmv {
+  color: var(--text-muted);
+}
+
+.closer-card.qualified .closer-gmv {
+  color: var(--accent-green);
+}
+
+.repescagem-container {
+  display: flex;
+  flex-direction: column;
+  width: 190px;
+  margin-left: 2rem;
+  position: relative;
+}
+
+.repescagem-container::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 10%;
+  height: 80%;
+  border-left: 1px dashed var(--border-color);
+}
+
+/* Layout Mata-Mata (Quartas, Semis, Final) */
+.confrontos-container {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.confronto-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 0.4rem;
+  box-shadow: var(--card-shadow);
+  position: relative;
+}
+
+.phase-row.active .confronto-box {
+  border-color: rgba(234, 179, 8, 0.2);
+}
+
+.confronto-vs {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.55rem;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.confronto-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+/* Campeão / Pódio da Competição */
+.campeao-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
+  border: 2px solid var(--accent-gold);
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.25);
+  border-radius: 16px;
+  padding: 0.8rem 2rem;
+  text-align: center;
+  width: 260px;
+  animation: pulse-glow 2s infinite alternate;
+}
+
+.trofeu-icon {
+  font-size: 2rem;
+  color: var(--accent-gold);
+  margin-bottom: 0.3rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+.campeao-label {
+  font-family: var(--font-title);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  letter-spacing: 1.5px;
+}
+
+/* Tela Especial: Jogo do Brasil (Ranking Brasileirão) */
+.brasil-ranking-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  height: 100%;
+}
+
+.brasil-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+  padding-bottom: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.brasil-header-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brasil-icon-pulse {
+  font-size: 2.2rem;
+  animation: pulse 1.5s infinite alternate;
+}
+
+.brasil-header-text h2 {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  background: linear-gradient(90deg, var(--accent-gold) 0%, var(--accent-green) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brasil-header-text p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.brasil-total-acumulado {
+  text-align: right;
+}
+
+.brasil-total-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.brasil-total-valor {
+  font-family: monospace;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent-green);
+}
+
+/* Tabela de Classificação */
+.ranking-table-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.ranking-table th {
+  padding: 0.6rem 1rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ranking-table td {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.2);
+  vertical-align: middle;
+}
+
+.ranking-row {
+  transition: all 0.3s;
+}
+
+.ranking-row:hover {
+  background: rgba(30, 41, 59, 0.35);
+}
+
+/* Posição no Pódio */
+.ranking-pos {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 1.1rem;
+  width: 45px;
+  text-align: center;
+}
+
+.ranking-row.pos-1 td.ranking-pos { color: #facc15; text-shadow: 0 0 10px rgba(250, 204, 21, 0.4); } /* Ouro */
+.ranking-row.pos-2 td.ranking-pos { color: #cbd5e1; text-shadow: 0 0 10px rgba(203, 213, 225, 0.3); } /* Prata */
+.ranking-row.pos-3 td.ranking-pos { color: #b45309; text-shadow: 0 0 10px rgba(180, 83, 9, 0.3); }   /* Bronze */
+.ranking-row.pos-normal td.ranking-pos { color: var(--text-secondary); }
+
+/* Highlight de fundo para o pódio */
+.ranking-row.pos-1 {
+  background: rgba(250, 204, 21, 0.06);
+  border-left: 3px solid #facc15;
+}
+.ranking-row.pos-2 {
+  background: rgba(203, 213, 225, 0.04);
+  border-left: 3px solid #cbd5e1;
+}
+.ranking-row.pos-3 {
+  background: rgba(180, 83, 9, 0.05);
+  border-left: 3px solid #b45309;
+}
+.ranking-row.pos-normal {
+  border-left: 3px solid transparent;
+}
+
+/* GMV colorido por posição na tabela */
+.ranking-row.pos-1 .ranking-gmv-cell { color: var(--accent-green); }
+.ranking-row.pos-2 .ranking-gmv-cell { color: #e2e8f0; }
+.ranking-row.pos-3 .ranking-gmv-cell { color: #f59e0b; }
+
+/* Detalhes do Vendedor na Tabela */
+.ranking-closer-cell {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ranking-avatar-wrapper {
+  width: 42px;
+  height: 42px;
+  position: relative;
+}
+
+.ranking-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1.5px solid var(--border-color);
+}
+
+.pos-1 .ranking-avatar { border-color: #facc15; }
+.pos-2 .ranking-avatar { border-color: #cbd5e1; }
+.pos-3 .ranking-avatar { border-color: #b45309; }
+
+.ranking-flag {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 18px;
+  height: 13px;
+  border-radius: 2px;
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+}
+
+.ranking-closer-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ranking-closer-name {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.ranking-closer-pmp {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.ranking-selection-name {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ranking-gmv-cell {
+  font-family: monospace;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  text-align: right;
+}
+
+.pos-1 .ranking-gmv-cell {
+  color: var(--accent-green);
+}
+
+/* Animações e Efeitos */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.15); }
+  100% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.35); }
+}
+
+/* Responsividade e Ajustes Finos de Fontes para Monitores Menores */
+@media (max-height: 800px) {
+  .app-container {
+    padding: 0.8rem 1.2rem;
+  }
+  header {
+    padding: 0.5rem 1.2rem;
+    margin-bottom: 0.8rem;
+  }
+  h1 { font-size: 1.3rem; }
+  .fase-nome { font-size: 1.1rem; }
+  .bracket-wrapper { gap: 0.4rem; }
+  .avatar-wrapper { width: 30px; height: 30px; }
+  .closer-name { font-size: 0.7rem; }
+  .closer-gmv { font-size: 0.75rem; }
+  .grupo-box { width: 180px; }
+  .confronto-box { width: 190px; }
+  .campeao-box { width: 220px; padding: 0.5rem 1rem; }
+}
