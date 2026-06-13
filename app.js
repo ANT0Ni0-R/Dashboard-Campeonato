@@ -652,20 +652,8 @@ function renderBracket(container, res) {
     champCard.style.width = "100%";
     champBox.appendChild(champCard);
     winnerContainer.appendChild(champBox);
-  } else {
-    // Placeholder da Taça quando não concluído
-    const placeholderChamp = document.createElement("div");
-    placeholderChamp.className = "campeao-box";
-    placeholderChamp.style.opacity = "0.3";
-    placeholderChamp.style.borderStyle = "dashed";
-    placeholderChamp.style.boxShadow = "none";
-    placeholderChamp.innerHTML = `
-      <div class="trofeu-icon" style="filter: grayscale(100%);">🏆</div>
-      <div class="campeao-label" style="color: var(--text-secondary);">Aguardando Campeão...</div>
-    `;
-    winnerContainer.appendChild(placeholderChamp);
+    bracket.appendChild(rowWinner);
   }
-  bracket.appendChild(rowWinner);
 
   // Envolve o canvas numa camada de escala e adiciona à tela
   const scaler = document.createElement("div");
