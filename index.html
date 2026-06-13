@@ -39,6 +39,17 @@
       </div>
     </header>
 
+    <!-- Barra de Status de Sincronização -->
+    <div class="sync-bar">
+      <button class="sync-force-btn" onclick="forcarAtualizacao()">↻ Forçar atualização</button>
+      <span class="sync-info">
+        Polling automático a cada <strong id="sync-intervalo">60s</strong>
+        · Próxima atualização em <strong id="sync-countdown">60s</strong>
+        · Atualizações nesta sessão: <strong id="sync-count">0</strong>
+        · Última: <strong id="sync-ultima">—</strong>
+      </span>
+    </div>
+
     <!-- Corpo Principal do Dashboard (Renderizado via JS) -->
     <main class="main-content" id="dashboard-body">
       <!-- O Bracket ou Leaderboard do Brasil será injetado aqui -->

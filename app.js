@@ -1,20 +1,28 @@
 // app.js - Motor de cálculo, controle de estados e renderização do Dashboard Copa
 
 let transactions = [];
-let simulatedDate = null; // Se null, usa o relógio real
+let simulatedDate = null;
 let pollInterval = null;
 let activePhaseId = "grupos";
+let syncCount = 0;
+let lastSyncTime = null;
+let nextSyncTime = null;
+let syncCountdownInterval = null;
 
 // Inicialização da aplicação
 window.addEventListener("DOMContentLoaded", () => {
   initSimulador();
   startPolling();
   updateDashboard();
-  // Atualiza o cronômetro a cada segundo sem refetch
+  window.addEventListener("resize", fitBracket);
   setInterval(() => {
     const phase = COMPETICAO.fases[activePhaseId];
     if (phase) updateTimer(phase);
+    updateSyncCountdown();
   }, 1000);
+  // Preenche o intervalo configurado na barra
+  const el = document.getElementById("sync-intervalo");
+  if (el) el.textContent = COMPETICAO.supabase.poll_segundos + "s";
 });
 
 // Inicialização do Painel de Simulação (Controlador de Relógio)
@@ -31,7 +39,6 @@ function initSimulador() {
       <button class="sim-btn" data-time="2026-06-19T16:00:00-03:00">Sexta (Brasil)</button>
       <button class="sim-btn" data-time="2026-06-20T14:00:00-03:00">Sábado (Semis)</button>
       <button class="sim-btn" data-time="2026-06-21T18:00:00-03:00">Domingo (Final)</button>
-      <button class="sim-btn" data-time="2026-06-22T12:00:00-03:00">Segunda (Pós-Final)</button>
     </div>
   `;
   document.body.appendChild(simPanel);
@@ -123,28 +130,52 @@ function startPolling() {
   pollInterval = setInterval(updateDashboard, ms);
 }
 
-// Core: Processo de atualização do Dashboard
+/// Core: Processo de atualização do Dashboard
 async function updateDashboard() {
   showLoading(true);
   try {
-    // 1. Determina a fase ativa
     activePhaseId = determineActivePhase();
-    
-    // 2. Busca as transações
     await fetchTransactions();
-
-    // 3. Processa dados e calcula chaveamento/ranking
     const resultados = calcularResultados(transactions);
-
-    // 4. Renderiza a tela baseada na fase
     renderDashboard(resultados);
     showStatusDot("success");
+    // Registra sincronização bem-sucedida
+    syncCount++;
+    lastSyncTime = new Date();
+    nextSyncTime = new Date(lastSyncTime.getTime() + COMPETICAO.supabase.poll_segundos * 1000);
+    updateSyncBar();
   } catch (err) {
     console.error("Erro na atualização do dashboard:", err);
     showStatusDot("error");
   } finally {
     showLoading(false);
   }
+}
+
+// Forçar atualização manual (chamado pelo botão na sync-bar)
+async function forcarAtualizacao() {
+  const btn = document.querySelector(".sync-force-btn");
+  if (btn) btn.classList.add("loading");
+  // Reinicia o timer do polling
+  startPolling();
+  await updateDashboard();
+  if (btn) btn.classList.remove("loading");
+}
+
+function updateSyncBar() {
+  const countEl = document.getElementById("sync-count");
+  const ultimaEl = document.getElementById("sync-ultima");
+  if (countEl) countEl.textContent = syncCount;
+  if (ultimaEl && lastSyncTime) {
+    ultimaEl.textContent = lastSyncTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+}
+
+function updateSyncCountdown() {
+  const el = document.getElementById("sync-countdown");
+  if (!el || !nextSyncTime) return;
+  const secsLeft = Math.max(0, Math.round((nextSyncTime - Date.now()) / 1000));
+  el.textContent = secsLeft + "s";
 }
 
 // Determina qual fase da competição está ativa
@@ -652,22 +683,40 @@ function renderBracket(container, res) {
     champCard.style.width = "100%";
     champBox.appendChild(champCard);
     winnerContainer.appendChild(champBox);
-  } else {
-    // Placeholder da Taça quando não concluído
-    const placeholderChamp = document.createElement("div");
-    placeholderChamp.className = "campeao-box";
-    placeholderChamp.style.opacity = "0.3";
-    placeholderChamp.style.borderStyle = "dashed";
-    placeholderChamp.style.boxShadow = "none";
-    placeholderChamp.innerHTML = `
-      <div class="trofeu-icon" style="filter: grayscale(100%);">🏆</div>
-      <div class="campeao-label" style="color: var(--text-secondary);">Aguardando Campeão...</div>
-    `;
-    winnerContainer.appendChild(placeholderChamp);
+    bracket.appendChild(rowWinner);
   }
-  bracket.appendChild(rowWinner);
 
-  container.appendChild(bracket);
+  // Envolve o canvas numa camada de escala e adiciona à tela
+  const scaler = document.createElement("div");
+  scaler.className = "bracket-scaler";
+  scaler.appendChild(bracket);
+  container.appendChild(scaler);
+
+  // Escala o canvas para caber na área disponível
+  fitBracket();
+}
+
+// Mede o canvas (largura fixa 1500px, altura natural) e aplica transform:scale()
+// para que TODO o chaveamento caiba na área visível, em qualquer resolução,
+// sem cortes nem sobreposições e preservando as proporções entre as fases.
+function fitBracket() {
+  const stage = document.getElementById("dashboard-body");
+  if (!stage) return;
+  const scaler = stage.querySelector(".bracket-scaler");
+  const canvas = scaler ? scaler.querySelector(".bracket-wrapper") : null;
+  if (!scaler || !canvas) return;
+
+  // Mede o tamanho natural do canvas (sem escala)
+  scaler.style.transform = "translate(-50%, -50%) scale(1)";
+  const cw = canvas.offsetWidth;
+  const ch = canvas.offsetHeight;
+  if (!cw || !ch) return;
+
+  const availW = stage.clientWidth;
+  const availH = stage.clientHeight;
+  const scale = Math.min(availW / cw, availH / ch);
+
+  scaler.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(4)})`;
 }
 
 // Cria container de linha de fase com classes corretas
@@ -720,11 +769,6 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   box.className = "confronto-box";
   box.innerHTML = `<div class="confronto-title">${title}</div>`;
 
-  const vsBadge = document.createElement("div");
-  vsBadge.className = "confronto-vs";
-  vsBadge.textContent = "VS";
-  box.appendChild(vsBadge);
-
   if (!c1 && !c2) {
     // Placeholder quando a fase anterior não terminou
     const emptyCard = document.createElement("div");
@@ -756,15 +800,20 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   const phaseIsOver = nowMs > phaseEndMs;
 
   const card1 = createCloserCard(comp1, g1,
-    isC1Leader && !phaseIsOver,   // isLiveLeader: dourado, fase aberta
-    isC1Leader && phaseIsOver     // isQualified: verde, fase encerrada
+    isC1Leader && !phaseIsOver,
+    isC1Leader && phaseIsOver
   );
   const card2 = createCloserCard(comp2, g2,
     isC2Leader && !phaseIsOver,
     isC2Leader && phaseIsOver
   );
 
+  const vsBadge = document.createElement("div");
+  vsBadge.className = "confronto-vs";
+  vsBadge.textContent = "VS";
+
   box.appendChild(card1);
+  box.appendChild(vsBadge);
   box.appendChild(card2);
   return box;
 }
