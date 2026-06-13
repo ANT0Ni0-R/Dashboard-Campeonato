@@ -32,7 +32,6 @@ function initSimulador() {
       <button class="sim-btn" data-time="2026-06-19T16:00:00-03:00">Sexta (Brasil)</button>
       <button class="sim-btn" data-time="2026-06-20T14:00:00-03:00">Sábado (Semis)</button>
       <button class="sim-btn" data-time="2026-06-21T18:00:00-03:00">Domingo (Final)</button>
-      <button class="sim-btn" data-time="2026-06-22T12:00:00-03:00">Segunda (Pós-Final)</button>
     </div>
   `;
   document.body.appendChild(simPanel);
@@ -677,9 +676,14 @@ function renderBracket(container, res) {
 }
 
 // Define proporções do grid com base na fase ativa
+// Grupos recebe 4fr (mais vendedores), demais fases ativas recebem 3fr, inativas 1fr
 function applyBracketGrid(bracket) {
   const phaseOrder = ["grupos", "quartas", "semis", "final", "campeao"];
-  const rows = phaseOrder.map(id => (activePhaseId === id || (id === "campeao" && activePhaseId === "final")) ? "3fr" : "1fr");
+  const rows = phaseOrder.map(id => {
+    const isActive = activePhaseId === id || (id === "campeao" && activePhaseId === "final");
+    if (!isActive) return "1fr";
+    return id === "grupos" ? "4fr" : "3fr";
+  });
   bracket.style.gridTemplateRows = rows.join(" ");
 }
 
