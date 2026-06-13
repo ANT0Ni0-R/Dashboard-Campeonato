@@ -2,7 +2,7 @@ name: Deploy Copa Dashboard to GitHub Pages
 
 on:
   push:
-    branches: [claude/intelligent-maxwell-n92seo]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
