@@ -10,7 +10,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initSimulador();
   startPolling();
   updateDashboard();
-  window.addEventListener("resize", applyAutoZoom);
+  window.addEventListener("resize", fitBracket);
   // Atualiza o cronômetro a cada segundo sem refetch
   setInterval(() => {
     const phase = COMPETICAO.fases[activePhaseId];
@@ -667,35 +667,37 @@ function renderBracket(container, res) {
   }
   bracket.appendChild(rowWinner);
 
-  container.appendChild(bracket);
+  // Envolve o canvas numa camada de escala e adiciona à tela
+  const scaler = document.createElement("div");
+  scaler.className = "bracket-scaler";
+  scaler.appendChild(bracket);
+  container.appendChild(scaler);
 
-  // Ajusta grid-template-rows: fase ativa recebe 3fr, demais 1fr
-  applyBracketGrid(bracket);
-  // Zoom automático para caber em qualquer resolução
-  applyAutoZoom();
+  // Escala o canvas para caber na área disponível
+  fitBracket();
 }
 
-// Define proporções do grid com base na fase ativa
-// Grupos recebe 4fr (mais vendedores), demais fases ativas recebem 3fr, inativas 1fr
-function applyBracketGrid(bracket) {
-  const phaseOrder = ["grupos", "quartas", "semis", "final", "campeao"];
-  const rows = phaseOrder.map(id => {
-    const isActive = activePhaseId === id || (id === "campeao" && activePhaseId === "final");
-    if (!isActive) return "1fr";
-    return id === "grupos" ? "4fr" : "3fr";
-  });
-  bracket.style.gridTemplateRows = rows.join(" ");
-}
+// Mede o canvas (largura fixa 1500px, altura natural) e aplica transform:scale()
+// para que TODO o chaveamento caiba na área visível, em qualquer resolução,
+// sem cortes nem sobreposições e preservando as proporções entre as fases.
+function fitBracket() {
+  const stage = document.getElementById("dashboard-body");
+  if (!stage) return;
+  const scaler = stage.querySelector(".bracket-scaler");
+  const canvas = scaler ? scaler.querySelector(".bracket-wrapper") : null;
+  if (!scaler || !canvas) return;
 
-// Aplica zoom global no app-container para caber na viewport atual
-function applyAutoZoom() {
-  const container = document.querySelector(".app-container");
-  if (!container) return;
-  container.style.zoom = "";
-  const scaleW = window.innerWidth / container.scrollWidth;
-  const scaleH = window.innerHeight / container.scrollHeight;
-  const scale = Math.min(scaleW, scaleH, 1);
-  if (scale < 0.99) container.style.zoom = scale.toFixed(3);
+  // Mede o tamanho natural do canvas (sem escala)
+  scaler.style.transform = "translate(-50%, -50%) scale(1)";
+  const cw = canvas.offsetWidth;
+  const ch = canvas.offsetHeight;
+  if (!cw || !ch) return;
+
+  const availW = stage.clientWidth;
+  const availH = stage.clientHeight;
+  const scale = Math.min(availW / cw, availH / ch);
+
+  scaler.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(4)})`;
 }
 
 // Cria container de linha de fase com classes corretas
