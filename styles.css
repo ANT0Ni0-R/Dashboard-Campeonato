@@ -183,6 +183,60 @@ h1 {
   box-shadow: 0 0 8px var(--accent-red);
 }
 
+/* Barra de Sincronização */
+.sync-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.35rem 0.9rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.sync-bar strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.sync-force-btn {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sync-force-btn:hover {
+  background: rgba(59, 130, 246, 0.28);
+  border-color: rgba(59, 130, 246, 0.7);
+}
+
+.sync-force-btn:active {
+  transform: scale(0.96);
+}
+
+.sync-force-btn.loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sync-info {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Área de Conteúdo Principal */
 .main-content {
   flex: 1;
