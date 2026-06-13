@@ -7,8 +7,6 @@ const COMPETICAO = {
     // Slug de busca do produto. Na terça mudará para o slug do produto legado.
     slug_like: "%FORMAÇÃO DE PLANEJADOR FINANCEIRO%",
     regua: [
-      { ate: 1000, mult: 12 },
-      { ate: 2000, mult: 4 },
       { ate: null, mult: 1 }
     ]
   },
