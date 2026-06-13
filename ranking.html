@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ranking Geral do Lançamento</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ── Layout exclusivo desta tela ── */
+    .ranking-page {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem 2rem;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* Cabeçalho */
+    .rk-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(51, 65, 85, 0.5);
+      padding: 0.8rem 2rem;
+      border-radius: 16px;
+      margin-bottom: 0.6rem;
+      flex-shrink: 0;
+    }
+
+    .rk-title-section { display: flex; align-items: center; gap: 1.2rem; }
+    .rk-logo { font-size: 1.8rem; }
+
+    .rk-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, #fff 30%, #fbbf24 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .rk-subtitle {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.1rem;
+    }
+
+    .rk-meta { display: flex; align-items: center; gap: 1.5rem; }
+
+    .rk-total-box { text-align: right; }
+    .rk-total-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; }
+    .rk-total-valor { font-family: monospace; font-size: 1.5rem; font-weight: 800; color: #22c55e; }
+
+    .rk-status-box {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem;
+    }
+    .rk-status-dot-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: #94a3b8; }
+    .rk-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .rk-dot.err { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .rk-dot.loading { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; animation: pulse 1s infinite alternate; }
+    .rk-ultima { font-size: 0.68rem; color: #64748b; }
+
+    /* Barra de sync */
+    .rk-sync-bar {
+      display: flex; align-items: center; gap: 1rem;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(51, 65, 85, 0.5);
+      border-radius: 10px;
+      padding: 0.3rem 0.9rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+    .rk-sync-bar strong { color: #f8fafc; font-weight: 700; }
+    .rk-force-btn {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #60a5fa; font-size: 0.72rem; font-weight: 700;
+      padding: 0.18rem 0.6rem; border-radius: 6px; cursor: pointer;
+      transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+    }
+    .rk-force-btn:hover { background: rgba(59,130,246,0.28); }
+    .rk-force-btn:active { transform: scale(0.96); }
+
+    /* Tabela */
+    .rk-table-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 0.4rem;
+    }
+
+    table.rk-table { width: 100%; border-collapse: collapse; }
+
+    table.rk-table th {
+      padding: 0.55rem 1rem;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(51,65,85,0.5);
+      position: sticky; top: 0;
+      background: #060913;
+      z-index: 2;
+    }
+
+    table.rk-table td {
+      padding: 0.55rem 1rem;
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(51,65,85,0.15);
+      vertical-align: middle;
+    }
+
+    tr.pos-1 { background: rgba(250,204,21,0.06); border-left: 3px solid #facc15; }
+    tr.pos-2 { background: rgba(203,213,225,0.04); border-left: 3px solid #cbd5e1; }
+    tr.pos-3 { background: rgba(180,83,9,0.05); border-left: 3px solid #b45309; }
+    tr.pos-n { border-left: 3px solid transparent; }
+
+    .cell-pos { font-family: 'Outfit',sans-serif; font-weight: 800; font-size: 1.1rem; width: 48px; text-align: center; }
+    tr.pos-1 .cell-pos { color: #facc15; text-shadow: 0 0 10px rgba(250,204,21,0.4); }
+    tr.pos-2 .cell-pos { color: #cbd5e1; }
+    tr.pos-3 .cell-pos { color: #b45309; }
+    tr.pos-n .cell-pos { color: #64748b; }
+
+    .cell-vendedor { display: flex; align-items: center; gap: 1rem; }
+
+    .rk-av-wrap { width: 42px; height: 42px; position: relative; flex-shrink: 0; }
+    .rk-av {
+      width: 100%; height: 100%; border-radius: 8px; object-fit: cover;
+      border: 1.5px solid rgba(51,65,85,0.5);
+    }
+    tr.pos-1 .rk-av { border-color: #facc15; }
+    tr.pos-2 .rk-av { border-color: #cbd5e1; }
+    tr.pos-3 .rk-av { border-color: #b45309; }
+
+    .rk-flag-badge {
+      position: absolute; bottom: -2px; right: -2px;
+      width: 16px; height: 11px; border-radius: 2px;
+      border: 0.5px solid rgba(255,255,255,0.3); overflow: hidden; background: #1e293b;
+    }
+    .rk-flag-badge img { width:100%; height:100%; object-fit:cover; display:block; }
+
+    .rk-seller-info { display: flex; flex-direction: column; }
+    .rk-seller-name { font-family: 'Outfit',sans-serif; font-weight: 700; font-size: 1rem; }
+    .rk-seller-pmp  { font-family: monospace; font-size: 0.72rem; color: #94a3b8; }
+
+    .cell-qtd { color: #94a3b8; font-size: 0.85rem; }
+
+    .cell-gmv { font-family: monospace; font-size: 1.1rem; font-weight: 800; color: #fbbf24; text-align: right; }
+    tr.pos-1 .cell-gmv { color: #22c55e; }
+
+    /* Aviso de erro */
+    .rk-erro {
+      text-align: center; padding: 3rem; color: #ef4444;
+      font-size: 1rem; font-weight: 600;
+    }
+    .rk-erro small { display: block; color: #64748b; font-size: 0.8rem; margin-top: 0.5rem; font-weight: 400; }
+  </style>
+</head>
+<body>
+<div class="ranking-page">
+
+  <!-- Header -->
+  <div class="rk-header">
+    <div class="rk-title-section">
+      <span class="rk-logo">🏅</span>
+      <div>
+        <div class="rk-title">Ranking Geral do Lançamento</div>
+        <div class="rk-subtitle" id="rk-produto-label">Carregando...</div>
+      </div>
+    </div>
+    <div class="rk-meta">
+      <div class="rk-total-box">
+        <div class="rk-total-label">GMV Total</div>
+        <div class="rk-total-valor" id="rk-total">R$ —</div>
+      </div>
+      <div class="rk-status-box">
+        <div class="rk-status-dot-row">
+          <div class="rk-dot" id="rk-dot"></div>
+          <span id="rk-status-label">Carregando...</span>
+        </div>
+        <div class="rk-ultima" id="rk-ultima">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync bar -->
+  <div class="rk-sync-bar">
+    <button class="rk-force-btn" onclick="loadData()">↻ Atualizar agora</button>
+    <span>
+      Dados do <strong>BigQuery</strong> via <strong>bq_fetch.py</strong>
+      · Próxima leitura do arquivo em <strong id="rk-countdown">30:00</strong>
+    </span>
+  </div>
+
+  <!-- Tabela -->
+  <div class="rk-table-wrap">
+    <table class="rk-table">
+      <thead>
+        <tr>
+          <th style="width:56px">Pos</th>
+          <th>Vendedor</th>
+          <th style="text-align:center">Vendas</th>
+          <th style="text-align:right">GMV</th>
+        </tr>
+      </thead>
+      <tbody id="rk-tbody">
+        <tr><td colspan="4" class="rk-erro">Aguardando dados...<small>Execute bq_fetch.py antes de abrir esta página.</small></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script>
+// ── Configuração ──────────────────────────────────────────────────────────────
+const BQ_DATA_FILE    = "bq_data.json";
+const RELOAD_INTERVAL = 30 * 60 * 1000; // 30 min em ms
+
+let nextReload = Date.now() + RELOAD_INTERVAL;
+
+// ── Inicialização ─────────────────────────────────────────────────────────────
+loadData();
+setInterval(loadData, RELOAD_INTERVAL);
+setInterval(updateCountdown, 1000);
+
+// ── Carrega bq_data.json e renderiza ─────────────────────────────────────────
+async function loadData() {
+  setDot("loading", "Atualizando...");
+  nextReload = Date.now() + RELOAD_INTERVAL;
+  try {
+    const resp = await fetch(BQ_DATA_FILE + "?_=" + Date.now());
+    if (!resp.ok) throw new Error("Arquivo não encontrado (HTTP " + resp.status + ")");
+    const data = await resp.json();
+
+    if (data.erro) throw new Error(data.erro);
+
+    renderTabela(data);
+    setDot("ok", "BigQuery");
+
+    const ultima = data.atualizado_em
+      ? new Date(data.atualizado_em).toLocaleTimeString("pt-BR")
+      : "—";
+    document.getElementById("rk-ultima").textContent = "Dados de: " + ultima;
+
+    const produto = data.filtro_produto || "Todos os produtos (modo teste)";
+    document.getElementById("rk-produto-label").textContent = produto;
+
+  } catch (e) {
+    setDot("err", "Erro ao carregar");
+    document.getElementById("rk-ultima").textContent = e.message;
+    document.getElementById("rk-tbody").innerHTML =
+      `<tr><td colspan="4" class="rk-erro">${e.message}<small>Rode: python bq_fetch.py</small></td></tr>`;
+  }
+}
+
+// ── Renderiza linhas da tabela ────────────────────────────────────────────────
+function renderTabela(data) {
+  const vendedores = data.vendedores || [];
+  const tbody = document.getElementById("rk-tbody");
+
+  if (!vendedores.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="rk-erro">Nenhum dado encontrado.<small>Verifique o filtro de produto no bq_fetch.py.</small></td></tr>';
+    document.getElementById("rk-total").textContent = "R$ 0,00";
+    return;
+  }
+
+  const gmvTotal = vendedores.reduce((s, v) => s + v.gmv_total, 0);
+  document.getElementById("rk-total").textContent = fmtGMV(gmvTotal);
+
+  tbody.innerHTML = vendedores.map((v, i) => {
+    const pos    = i + 1;
+    const cls    = pos === 1 ? "pos-1" : pos === 2 ? "pos-2" : pos === 3 ? "pos-3" : "pos-n";
+    const posStr = pos === 1 ? "1°" : pos === 2 ? "2°" : pos === 3 ? "3°" : pos + "°";
+
+    // Tenta casar com o config.js pelo seller_pmp
+    const cfg     = COMPETICAO.vendedores[v.seller_pmp] || null;
+    const nome    = cfg ? cfg.nome : (v.seller_name || v.seller_pmp);
+    const foto    = cfg ? cfg.foto : "";
+    const bandeira= cfg ? cfg.bandeira : "flags/brasil.svg";
+
+    const fotoHTML = foto
+      ? `<img src="${foto}" class="rk-av" alt="${nome}" onerror="this.style.display='none'">`
+      : `<div class="rk-av" style="background:rgba(30,41,59,0.6);display:flex;align-items:center;justify-content:center;font-size:1.1rem;">👤</div>`;
+
+    return `
+      <tr class="${cls}">
+        <td class="cell-pos">${posStr}</td>
+        <td>
+          <div class="cell-vendedor">
+            <div class="rk-av-wrap">
+              ${fotoHTML}
+              <div class="rk-flag-badge"><img src="${bandeira}" alt=""></div>
+            </div>
+            <div class="rk-seller-info">
+              <span class="rk-seller-name">${nome}</span>
+              <span class="rk-seller-pmp">${v.seller_pmp}</span>
+            </div>
+          </div>
+        </td>
+        <td class="cell-qtd" style="text-align:center">${v.qtd_vendas}</td>
+        <td class="cell-gmv">${fmtGMV(v.gmv_total)}</td>
+      </tr>`;
+  }).join("");
+}
+
+// ── Countdown para próximo reload ─────────────────────────────────────────────
+function updateCountdown() {
+  const secsLeft = Math.max(0, Math.round((nextReload - Date.now()) / 1000));
+  const m = String(Math.floor(secsLeft / 60)).padStart(2, "0");
+  const s = String(secsLeft % 60).padStart(2, "0");
+  document.getElementById("rk-countdown").textContent = `${m}:${s}`;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtGMV(val) {
+  return "R$ " + Number(val).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function setDot(state, label) {
+  const dot  = document.getElementById("rk-dot");
+  const span = document.getElementById("rk-status-label");
+  dot.className = "rk-dot" + (state === "err" ? " err" : state === "loading" ? " loading" : "");
+  if (span) span.textContent = label;
+}
+</script>
+</body>
+</html>
