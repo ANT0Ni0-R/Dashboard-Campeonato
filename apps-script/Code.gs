@@ -18,7 +18,10 @@ var TABELA = '`grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with
 // Filtro de produto:
 //   '' (vazio)  -> VERSÃO DE TESTE: traz todos os produtos (valida o front)
 //   'legado'    -> produção: busca parcial, case-insensitive, no product_name
-var PRODUTO_LIKE = '';
+var PRODUTO_LIKE = 'legado';
+
+// PMPs dos participantes do campeonato
+var PMPS_CAMPEONATO = ['CCL','FAL','MDR','HDZ','HLM','THS','EZB','HMD','JPP','HUM','JKC'];
 
 // ===== SERVE A PÁGINA =====
 function doGet() {
@@ -30,10 +33,12 @@ function doGet() {
 
 // ===== CONSULTA O BIGQUERY (chamado pelo front via google.script.run) =====
 function getRankingData() {
+  var pmpsStr = PMPS_CAMPEONATO.map(function(p){ return "'" + p + "'"; }).join(',');
   var filtros = [
     'is_refunded = false',
     'seller_pmp IS NOT NULL',
-    'LENGTH(seller_pmp) = 3'
+    'LENGTH(seller_pmp) = 3',
+    'seller_pmp IN (' + pmpsStr + ')'
   ];
   if (PRODUTO_LIKE) {
     filtros.push("UPPER(product_name) LIKE UPPER('%" + PRODUTO_LIKE + "%')");
