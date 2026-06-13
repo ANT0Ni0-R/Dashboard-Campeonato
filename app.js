@@ -10,6 +10,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initSimulador();
   startPolling();
   updateDashboard();
+  window.addEventListener("resize", applyAutoZoom);
   // Atualiza o cronômetro a cada segundo sem refetch
   setInterval(() => {
     const phase = COMPETICAO.fases[activePhaseId];
@@ -668,6 +669,29 @@ function renderBracket(container, res) {
   bracket.appendChild(rowWinner);
 
   container.appendChild(bracket);
+
+  // Ajusta grid-template-rows: fase ativa recebe 3fr, demais 1fr
+  applyBracketGrid(bracket);
+  // Zoom automático para caber em qualquer resolução
+  applyAutoZoom();
+}
+
+// Define proporções do grid com base na fase ativa
+function applyBracketGrid(bracket) {
+  const phaseOrder = ["grupos", "quartas", "semis", "final", "campeao"];
+  const rows = phaseOrder.map(id => (activePhaseId === id || (id === "campeao" && activePhaseId === "final")) ? "3fr" : "1fr");
+  bracket.style.gridTemplateRows = rows.join(" ");
+}
+
+// Aplica zoom global no app-container para caber na viewport atual
+function applyAutoZoom() {
+  const container = document.querySelector(".app-container");
+  if (!container) return;
+  container.style.zoom = "";
+  const scaleW = window.innerWidth / container.scrollWidth;
+  const scaleH = window.innerHeight / container.scrollHeight;
+  const scale = Math.min(scaleW, scaleH, 1);
+  if (scale < 0.99) container.style.zoom = scale.toFixed(3);
 }
 
 // Cria container de linha de fase com classes corretas
