@@ -1,0 +1,47 @@
+name: Deploy Copa Dashboard to GitHub Pages
+
+on:
+  push:
+    branches: [claude/intelligent-maxwell-n92seo]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Permite uma execução concorrente, cancelando a anterior em andamento
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Monta o site apenas com os arquivos da Copa
+        run: |
+          mkdir -p _site
+          cp index.html app.js styles.css config.js _site/
+          cp db_transactions_events_rows.json _site/
+          cp -r fotos flags _site/
+
+      - name: Configura o GitHub Pages (habilita se necessario)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Faz upload do artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publica no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
