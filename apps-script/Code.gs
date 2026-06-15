@@ -20,6 +20,13 @@ var TABELA = '`grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with
 //   'legado'    -> produção: busca parcial, case-insensitive, no product_name
 var PRODUTO_LIKE = 'legado';
 
+// MODO TESTE: quando true, traz os últimos TESTE_DIAS dias SEM filtro de produto
+// (valida visualização + integração de dados de ponta a ponta).
+var MODO_TESTE = false;
+var TESTE_DIAS = 30;
+// Coluna de data usada na janela do Modo Teste (confirmado: transaction_dt).
+var DATA_COL = 'transaction_dt';
+
 // PMPs dos participantes do campeonato
 var PMPS_CAMPEONATO = ['CCL','FAL','MDR','HDZ','HLM','THS','EZB','HMD','JPP','HUM','JKC'];
 
@@ -40,7 +47,11 @@ function getRankingData() {
     'LENGTH(seller_pmp) = 3',
     'seller_pmp IN (' + pmpsStr + ')'
   ];
-  if (PRODUTO_LIKE) {
+  if (MODO_TESTE) {
+    // Janela dos últimos N dias, sem filtro de produto.
+    // DATE(...) torna a comparação robusta para colunas DATE/DATETIME/TIMESTAMP.
+    filtros.push('DATE(' + DATA_COL + ') >= DATE_SUB(CURRENT_DATE(), INTERVAL ' + TESTE_DIAS + ' DAY)');
+  } else if (PRODUTO_LIKE) {
     filtros.push("UPPER(product_name) LIKE UPPER('%" + PRODUTO_LIKE + "%')");
   }
   var where = filtros.join('\n      AND ');
@@ -70,7 +81,9 @@ function getRankingData() {
 
   return {
     atualizado_em:  new Date().toISOString(),
-    filtro_produto: PRODUTO_LIKE || null,
+    filtro_produto: MODO_TESTE ? null : (PRODUTO_LIKE || null),
+    modo_teste:     MODO_TESTE,
+    teste_dias:     TESTE_DIAS,
     vendedores:     vendedores
   };
 }

@@ -1,15 +1,20 @@
 const COMPETICAO = {
-  // fase_ativa_override: "grupos" | "quartas" | "brasil" | "semis" | "final" | null
+  // fase_ativa_override: "grupos" | "quartas" | "semis" | "final" | null
   // Usar null para derivar automaticamente do relógio da máquina (America/Sao_Paulo)
   fase_ativa_override: null,
 
   produto: {
-    // Slug de busca do produto. Na terça mudará para o slug do produto legado.
-    slug_like: "%FORMAÇÃO DE PLANEJADOR FINANCEIRO%",
+    // Slug de busca do produto (case-insensitive via ILIKE no Supabase).
+    // "%legado%" -> filtra a coluna `slug` por qualquer ocorrência de "legado".
+    slug_like: "%legado%",
     regua: [
       { ate: null, mult: 1 }
     ]
   },
+
+  // Modo Teste (botão no painel inferior): puxa os últimos N dias SEM filtro de
+  // produto/slug e ilumina a tela inteira com dados reais para validar a integração.
+  modo_teste: { dias: 30 },
 
   supabase: {
     url: "https://ipalripfknzhrzddhvdx.supabase.co",
@@ -35,10 +40,18 @@ const COMPETICAO = {
   },
 
   fases: {
+    // FASE DE GRUPOS — Terça a Sábado (GMV acumulado no período).
+    // A sexta (dia_copa) cai DENTRO desta janela, então seu GMV soma no acumulado
+    // dos grupos E também alimenta a competição pontual do Dia da Copa.
     grupos: {
       tipo: "grupos",
       inicio: "2026-06-16T00:00:00-03:00",
-      fim: "2026-06-17T23:59:59-03:00",
+      fim: "2026-06-20T23:59:59-03:00",
+      // Sub-janela: Sexta = "Dia da Copa" (todos contra todos, competição do dia).
+      dia_copa: {
+        inicio: "2026-06-19T00:00:00-03:00",
+        fim: "2026-06-19T23:59:59-03:00"
+      },
       grupos: [
         { nome: "Grupo A", membros: ["CCL", "FAL", "MDR"], avancam: 2 },
         { nome: "Grupo B", membros: ["HDZ", "HLM", "THS"], avancam: 2 },
@@ -49,23 +62,18 @@ const COMPETICAO = {
     },
     quartas: {
       tipo: "mata-mata-1v1",
-      inicio: "2026-06-18T00:00:00-03:00",
-      fim: "2026-06-18T23:59:59-03:00"
-    },
-    brasil: {
-      tipo: "tela-a-parte",
-      inicio: "2026-06-19T00:00:00-03:00",
-      fim: "2026-06-19T23:59:59-03:00"
+      inicio: "2026-06-21T00:00:00-03:00",
+      fim: "2026-06-21T23:59:59-03:00"
     },
     semis: {
       tipo: "mata-mata-1v1",
-      inicio: "2026-06-20T00:00:00-03:00",
-      fim: "2026-06-20T23:59:59-03:00"
+      inicio: "2026-06-22T00:00:00-03:00",
+      fim: "2026-06-22T23:59:59-03:00"
     },
     final: {
       tipo: "mata-mata-1v1",
-      inicio: "2026-06-21T00:00:00-03:00",
-      fim: "2026-06-21T23:59:59-03:00"
+      inicio: "2026-06-23T00:00:00-03:00",
+      fim: "2026-06-23T23:59:59-03:00"
     }
   }
 };

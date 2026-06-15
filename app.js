@@ -2,6 +2,7 @@
 
 let transactions = [];
 let simulatedDate = null;
+let testMode = false;          // Modo Teste: últimos 30 dias, sem filtro de produto
 let pollInterval = null;
 let activePhaseId = "grupos";
 let syncCount = 0;
@@ -33,12 +34,12 @@ function initSimulador() {
     <div class="sim-header">Simulador de Copa (Clique para testar fases)</div>
     <div class="sim-buttons">
       <button class="sim-btn active" data-time="real">Relógio Real</button>
-      <button class="sim-btn" data-time="2026-06-16T10:00:00-03:00">Terça (Grupos - Dia 1)</button>
-      <button class="sim-btn" data-time="2026-06-17T20:00:00-03:00">Quarta (Grupos - Dia 2)</button>
-      <button class="sim-btn" data-time="2026-06-18T15:00:00-03:00">Quinta (Quartas)</button>
-      <button class="sim-btn" data-time="2026-06-19T16:00:00-03:00">Sexta (Brasil)</button>
-      <button class="sim-btn" data-time="2026-06-20T14:00:00-03:00">Sábado (Semis)</button>
-      <button class="sim-btn" data-time="2026-06-21T18:00:00-03:00">Domingo (Final)</button>
+      <button class="sim-btn" data-time="2026-06-16T10:00:00-03:00">Grupos (Ter)</button>
+      <button class="sim-btn" data-time="2026-06-19T15:00:00-03:00">Dia da Copa (Sex)</button>
+      <button class="sim-btn" data-time="2026-06-21T15:00:00-03:00">Quartas (Dom)</button>
+      <button class="sim-btn" data-time="2026-06-22T15:00:00-03:00">Semis (Seg)</button>
+      <button class="sim-btn" data-time="2026-06-23T18:00:00-03:00">Final (Ter)</button>
+      <button class="sim-btn test" data-test="1">🧪 Modo Teste (30d)</button>
     </div>
   `;
   document.body.appendChild(simPanel);
@@ -98,22 +99,38 @@ function initSimulador() {
       border-color: #fbbf24;
       color: #060913;
     }
+    .sim-btn.test {
+      border-color: rgba(96, 165, 250, 0.5);
+      color: #93c5fd;
+    }
+    .sim-btn.test:hover {
+      background: rgba(59, 130, 246, 0.2);
+      color: #fff;
+    }
+    .sim-btn.test.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #fff;
+    }
   `;
   document.head.appendChild(style);
 
   // Bind de cliques no painel
   simPanel.querySelectorAll(".sim-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", () => {
       simPanel.querySelectorAll(".sim-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      
-      const timeVal = btn.getAttribute("data-time");
-      if (timeVal === "real") {
-        simulatedDate = null;
+
+      if (btn.hasAttribute("data-test")) {
+        // Modo Teste: abre a tela do Dia da Copa (mais rica visualmente) e puxa 30 dias reais
+        testMode = true;
+        simulatedDate = new Date("2026-06-19T15:00:00-03:00");
       } else {
-        simulatedDate = new Date(timeVal);
+        testMode = false;
+        const timeVal = btn.getAttribute("data-time");
+        simulatedDate = (timeVal === "real") ? null : new Date(timeVal);
       }
-      updateDashboard();
+      forcarAtualizacao();
     });
   });
 }
@@ -184,10 +201,10 @@ function determineActivePhase() {
     return COMPETICAO.fase_ativa_override;
   }
   const nowMs = getNow().getTime();
-  
+
   // Ordena fases cronologicamente por data de início
   const faseIds = Object.keys(COMPETICAO.fases);
-  
+
   // Verifica se estamos em alguma janela
   for (let id of faseIds) {
     const inicioMs = parseDate(COMPETICAO.fases[id].inicio).getTime();
@@ -202,7 +219,7 @@ function determineActivePhase() {
   if (nowMs < gruposInicio) {
     return "grupos"; // Antes de começar, exibe grupos
   }
-  
+
   // Pós-competição: exibe a Final
   return "final";
 }
@@ -220,14 +237,34 @@ function parseDate(dateStr) {
   return new Date(cleaned);
 }
 
+// True quando estamos na sub-janela da Sexta (Dia da Copa) dentro da fase de grupos
+function isCopaDay() {
+  const dc = COMPETICAO.fases.grupos.dia_copa;
+  if (!dc) return false;
+  const nowMs = getNow().getTime();
+  return nowMs >= parseDate(dc.inicio).getTime() && nowMs <= parseDate(dc.fim).getTime();
+}
+
 // Executa requisição REST ao Supabase ou lê JSON local como fallback
 async function fetchTransactions() {
-  const hasSupabase = COMPETICAO.supabase.url && COMPETICAO.supabase.anon_key && 
+  const hasSupabase = COMPETICAO.supabase.url && COMPETICAO.supabase.anon_key &&
                       !COMPETICAO.supabase.url.includes("[A DEFINIR]");
-  
+
   if (hasSupabase) {
     try {
-      const url = `${COMPETICAO.supabase.url}/rest/v1/${COMPETICAO.supabase.tabela}?type=eq.order_success&select=price,pmp,created_at&created_at=gte.2026-06-16T00:00:00-03:00`;
+      const base = `${COMPETICAO.supabase.url}/rest/v1/${COMPETICAO.supabase.tabela}` +
+                   `?type=eq.order_success&select=price,pmp,created_at,slug`;
+      let url;
+      if (testMode) {
+        // Últimos N dias, SEM filtro de produto (valida integração + visualização)
+        const dias = (COMPETICAO.modo_teste && COMPETICAO.modo_teste.dias) || 30;
+        const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+        url = `${base}&created_at=gte.${desde}`;
+      } else {
+        // Produção: filtra a coluna `slug` por "%legado%" (case-insensitive via ilike)
+        const padrao = encodeURIComponent(COMPETICAO.produto.slug_like.replace(/%/g, "*"));
+        url = `${base}&slug=ilike.${padrao}&created_at=gte.2026-06-16T00:00:00-03:00`;
+      }
       const resp = await fetch(url, {
         method: "GET",
         headers: {
@@ -250,11 +287,11 @@ async function fetchTransactions() {
     const resp = await fetch("db_transactions_events_rows.json");
     if (!resp.ok) throw new Error(`Status: ${resp.status}`);
     const localData = await resp.json();
-    
+
     // Normaliza datas deslocando-as 154 dias para frente para bater com as datas da competição em Junho
     // Ex: Jan 13 (Terça) -> Jun 16 (Terça)
     const OFFSET_MS = 154 * 24 * 60 * 60 * 1000;
-    
+
     transactions = localData
       .filter(t => t.type === "order_success")
       .map(t => {
@@ -296,13 +333,26 @@ function calcularResultados(transactionList) {
       foto: COMPETICAO.vendedores[code].foto,
       bandeira: COMPETICAO.vendedores[code].bandeira,
       gmv_grupos: 0,
+      gmv_copa: 0,     // Sexta (Dia da Copa) — competição pontual do dia
       gmv_quartas: 0,
-      gmv_brasil: 0,
       gmv_semis: 0,
       gmv_final: 0,
       eliminado: false
     };
   });
+
+  const f = COMPETICAO.fases;
+  const dc = f.grupos.dia_copa;
+  const gruposIni = parseDate(f.grupos.inicio).getTime();
+  const gruposFim = parseDate(f.grupos.fim).getTime();
+  const copaIni = dc ? parseDate(dc.inicio).getTime() : 0;
+  const copaFim = dc ? parseDate(dc.fim).getTime() : 0;
+  const quartasIni = parseDate(f.quartas.inicio).getTime();
+  const quartasFimW = parseDate(f.quartas.fim).getTime();
+  const semisIni = parseDate(f.semis.inicio).getTime();
+  const semisFimW = parseDate(f.semis.fim).getTime();
+  const finalIni = parseDate(f.final.inicio).getTime();
+  const finalFimW = parseDate(f.final.fim).getTime();
 
   // 2. Distribui e calcula o GMV de cada transação nas fases
   transactionList.forEach(t => {
@@ -315,28 +365,39 @@ function calcularResultados(transactionList) {
     if (seller_code.length !== 3 || !closers[seller_code]) return;
 
     const gmv = calcularGMV(t.price);
+    const c = closers[seller_code];
+
+    // MODO TESTE: ignora as datas e ilumina todos os buckets com o GMV real
+    if (testMode) {
+      c.gmv_grupos += gmv;
+      c.gmv_copa += gmv;
+      c.gmv_quartas += gmv;
+      c.gmv_semis += gmv;
+      c.gmv_final += gmv;
+      return;
+    }
+
     const timeMs = parseDate(t.created_at).getTime();
 
-    // Associa o GMV ao período correto
-    const f = COMPETICAO.fases;
-    if (timeMs >= parseDate(f.grupos.inicio).getTime() && timeMs <= parseDate(f.grupos.fim).getTime()) {
-      closers[seller_code].gmv_grupos += gmv;
-    } else if (timeMs >= parseDate(f.quartas.inicio).getTime() && timeMs <= parseDate(f.quartas.fim).getTime()) {
-      closers[seller_code].gmv_quartas += gmv;
-    } else if (timeMs >= parseDate(f.brasil.inicio).getTime() && timeMs <= parseDate(f.brasil.fim).getTime()) {
-      closers[seller_code].gmv_brasil += gmv;
-    } else if (timeMs >= parseDate(f.semis.inicio).getTime() && timeMs <= parseDate(f.semis.fim).getTime()) {
-      closers[seller_code].gmv_semis += gmv;
-    } else if (timeMs >= parseDate(f.final.inicio).getTime() && timeMs <= parseDate(f.final.fim).getTime()) {
-      closers[seller_code].gmv_final += gmv;
+    // Associa o GMV ao período correto. A Sexta soma DUPLO: nos grupos (acumulado)
+    // e na competição pontual do Dia da Copa.
+    if (timeMs >= gruposIni && timeMs <= gruposFim) {
+      c.gmv_grupos += gmv;
+      if (dc && timeMs >= copaIni && timeMs <= copaFim) c.gmv_copa += gmv;
+    } else if (timeMs >= quartasIni && timeMs <= quartasFimW) {
+      c.gmv_quartas += gmv;
+    } else if (timeMs >= semisIni && timeMs <= semisFimW) {
+      c.gmv_semis += gmv;
+    } else if (timeMs >= finalIni && timeMs <= finalFimW) {
+      c.gmv_final += gmv;
     }
   });
 
   const nowMs = getNow().getTime();
-  const gruposEndMs = parseDate(COMPETICAO.fases.grupos.fim).getTime();
-  const quartasEndMs = parseDate(COMPETICAO.fases.quartas.fim).getTime();
-  const semisEndMs = parseDate(COMPETICAO.fases.semis.fim).getTime();
-  const finalEndMs = parseDate(COMPETICAO.fases.final.fim).getTime();
+  const gruposEndMs = gruposFim;
+  const quartasEndMs = quartasFimW;
+  const semisEndMs = semisFimW;
+  const finalEndMs = finalFimW;
 
   // 3. FASE DE GRUPOS E REPESCAGEM
   const standingGrupos = {};
@@ -503,8 +564,12 @@ function formatCurrency(val) {
 function renderDashboard(res) {
   // Atualiza metadados do cabeçalho
   const currentPhase = COMPETICAO.fases[activePhaseId];
-  document.getElementById("fase-nome").textContent = translatePhaseName(activePhaseId);
-  document.getElementById("product-name").textContent = COMPETICAO.produto.slug_like.replace(/%/g, "");
+  const copa = isCopaDay();
+  let faseNome = copa ? "Dia da Copa (Sexta)" : translatePhaseName(activePhaseId);
+  if (testMode) faseNome = "🧪 Modo Teste · " + faseNome;
+  document.getElementById("fase-nome").textContent = faseNome;
+  document.getElementById("product-name").textContent =
+    testMode ? "TESTE · 30 dias" : COMPETICAO.produto.slug_like.replace(/%/g, "");
 
   // Atualiza cronômetro regressivo
   updateTimer(currentPhase);
@@ -512,11 +577,11 @@ function renderDashboard(res) {
   const container = document.getElementById("dashboard-body");
   container.innerHTML = "";
 
-  if (activePhaseId === "brasil") {
-    // Renderiza a tela de Ranking Estilo Brasileirão (pausa o Bracket)
-    renderBrasilLeaderboard(container, res);
+  if (activePhaseId === "grupos" && copa) {
+    // Sexta = Dia da Copa: tela dividida (grupos à esquerda, todos-contra-todos à direita)
+    renderCopaDay(container, res);
   } else {
-    // Renderiza o Bracket completo
+    // Demais dias: chaveamento completo
     renderBracket(container, res);
   }
 }
@@ -526,7 +591,6 @@ function translatePhaseName(id) {
   const dict = {
     grupos: "Fase de Grupos",
     quartas: "Quartas de Final",
-    brasil: "Jogo do Brasil (Sexta)",
     semis: "Semifinais",
     final: "Grande Final"
   };
@@ -540,10 +604,16 @@ function updateTimer(phase) {
     timerEl.textContent = "00:00:00";
     return;
   }
-  
+
+  // No Dia da Copa, conta para o fim da sexta (não para o fim dos grupos)
+  let inicio = parseDate(phase.inicio).getTime();
+  let fim = parseDate(phase.fim).getTime();
+  if (isCopaDay() && COMPETICAO.fases.grupos.dia_copa) {
+    inicio = parseDate(COMPETICAO.fases.grupos.dia_copa.inicio).getTime();
+    fim = parseDate(COMPETICAO.fases.grupos.dia_copa.fim).getTime();
+  }
+
   const now = getNow().getTime();
-  const inicio = parseDate(phase.inicio).getTime();
-  const fim = parseDate(phase.fim).getTime();
 
   if (now < inicio) {
     // Fase ainda não começou
@@ -567,26 +637,21 @@ function formatDuration(diffMs) {
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-// Renderiza a estrutura de Bracket Vertical Completo
-function renderBracket(container, res) {
-  const bracket = document.createElement("div");
-  bracket.className = "bracket-wrapper";
-
-  // --- LINHA 1: GRUPOS + REPESCAGEM ---
-  const rowGrupos = createPhaseRow("grupos");
-  
+// Cria o bloco de grupos (A, B, C, D) + Repescagem. Reutilizado pelo chaveamento
+// e pela tela do Dia da Copa. `destaqueClassificados` liga o highlight verde.
+function createGruposContainer(res, destaqueClassificados) {
   const containerGrupos = document.createElement("div");
   containerGrupos.className = "grupos-container";
-  
+
   // Renderiza Grupos A, B, C, D
   COMPETICAO.fases.grupos.grupos.forEach(gConf => {
     const gBox = document.createElement("div");
     gBox.className = "grupo-box";
     gBox.innerHTML = `<div class="grupo-title">${gConf.nome}</div>`;
-    
+
     const membersList = document.createElement("div");
     membersList.className = "grupo-members";
-    
+
     const sortedMembers = res.grupos[gConf.nome];
     // Identifica o líder parcial do grupo
     const maxGMV = Math.max(...sortedMembers.map(m => m.gmv_grupos));
@@ -594,10 +659,10 @@ function renderBracket(container, res) {
     sortedMembers.forEach(c => {
       const isLeader = maxGMV > 0 && c.gmv_grupos === maxGMV;
       const isQualified = c.posicao_grupo <= gConf.avancam;
-      const card = createCloserCard(c, c.gmv_grupos, isLeader, isQualified && activePhaseId === "grupos");
+      const card = createCloserCard(c, c.gmv_grupos, isLeader, isQualified && destaqueClassificados);
       membersList.appendChild(card);
     });
-    
+
     gBox.appendChild(membersList);
     containerGrupos.appendChild(gBox);
   });
@@ -608,23 +673,39 @@ function renderBracket(container, res) {
   repBox.innerHTML = `<div class="grupo-box"><div class="grupo-title" style="color: #60a5fa;">Repescagem</div></div>`;
   const repMembers = document.createElement("div");
   repMembers.className = "grupo-members";
-  
+
   // Apenas quem sobrou dos grupos entra aqui
   const maxRepGMV = Math.max(...res.repescagem.map(m => m.gmv_grupos));
   res.repescagem.forEach((c, idx) => {
     const isWinnerRep = idx === 0; // O primeiro elemento é o classificado
     const isLeader = maxRepGMV > 0 && c.gmv_grupos === maxRepGMV;
-    const card = createCloserCard(c, c.gmv_grupos, isLeader, isWinnerRep && activePhaseId === "grupos");
+    const card = createCloserCard(c, c.gmv_grupos, isLeader, isWinnerRep && destaqueClassificados);
     repMembers.appendChild(card);
   });
   repBox.querySelector(".grupo-box").appendChild(repMembers);
   containerGrupos.appendChild(repBox);
 
-  rowGrupos.querySelector(".phase-grid").appendChild(containerGrupos);
+  return containerGrupos;
+}
+
+// Renderiza a estrutura de Bracket Vertical Completo
+function renderBracket(container, res) {
+  const bracket = document.createElement("div");
+  bracket.className = "bracket-wrapper";
+
+  const nowMs = getNow().getTime();
+  const quartasDone = nowMs > parseDate(COMPETICAO.fases.quartas.fim).getTime();
+  const semisDone = nowMs > parseDate(COMPETICAO.fases.semis.fim).getTime();
+
+  // --- LINHA 1: GRUPOS + REPESCAGEM ---
+  const rowGrupos = createPhaseRow("grupos");
+  rowGrupos.querySelector(".phase-grid").appendChild(
+    createGruposContainer(res, activePhaseId === "grupos")
+  );
   bracket.appendChild(rowGrupos);
 
 
-  // --- LINHA 2: QUARTAS DE FINAL ---
+  // --- LINHA 2: QUARTAS DE FINAL (mostra os escalados dos grupos) ---
   const rowQF = createPhaseRow("quartas");
   const containerQF = document.createElement("div");
   containerQF.className = "confrontos-container";
@@ -637,25 +718,31 @@ function renderBracket(container, res) {
   bracket.appendChild(rowQF);
 
 
-  // --- LINHA 3: SEMIFINAIS ---
+  // --- LINHA 3: SEMIFINAIS (a definir até as quartas terminarem) ---
   const rowSF = createPhaseRow("semis");
   const containerSF = document.createElement("div");
   containerSF.className = "confrontos-container";
 
   res.semis.forEach(s => {
-    const cBox = createConfrontoBox(s.label, s.c1, s.c2, s.vencedor, "gmv_semis", "quartas");
+    const c1 = quartasDone ? s.c1 : null;
+    const c2 = quartasDone ? s.c2 : null;
+    const venc = quartasDone ? s.vencedor : null;
+    const cBox = createConfrontoBox(s.label, c1, c2, venc, "gmv_semis", "quartas");
     containerSF.appendChild(cBox);
   });
   rowSF.querySelector(".phase-grid").appendChild(containerSF);
   bracket.appendChild(rowSF);
 
 
-  // --- LINHA 4: GRANDE FINAL ---
+  // --- LINHA 4: GRANDE FINAL (a definir até as semis terminarem) ---
   const rowF = createPhaseRow("final");
   const containerF = document.createElement("div");
   containerF.className = "confrontos-container";
 
-  const finalBox = createConfrontoBox(res.final.label, res.final.c1, res.final.c2, res.final.vencedor, "gmv_final", "semis");
+  const fc1 = semisDone ? res.final.c1 : null;
+  const fc2 = semisDone ? res.final.c2 : null;
+  const fvenc = semisDone ? res.final.vencedor : null;
+  const finalBox = createConfrontoBox(res.final.label, fc1, fc2, fvenc, "gmv_final", "semis");
   containerF.appendChild(finalBox);
 
   rowF.querySelector(".phase-grid").appendChild(containerF);
@@ -670,7 +757,7 @@ function renderBracket(container, res) {
   }
   rowWinner.innerHTML = `<div class="phase-grid"></div>`;
   const winnerContainer = rowWinner.querySelector(".phase-grid");
-  
+
   if (res.campeao) {
     const champBox = document.createElement("div");
     champBox.className = "campeao-box";
@@ -733,11 +820,12 @@ function createPhaseRow(id) {
   return row;
 }
 
-// Helper: Cria card do vendedor
+// Helper: Cria card do vendedor.
+// Novo layout: foto | nome + GMV | bandeira MAIOR à direita (sem código PMP).
 function createCloserCard(c, gmvVal, isLiveLeader = false, isQualified = false) {
   const card = document.createElement("div");
   card.className = "closer-card";
-  
+
   if (c.eliminado) {
     card.classList.add("eliminated");
   } else {
@@ -745,19 +833,17 @@ function createCloserCard(c, gmvVal, isLiveLeader = false, isQualified = false) 
     if (isQualified) card.classList.add("qualified");
   }
 
+  const bandeira = c.bandeira || "flags/brasil.svg";
   card.innerHTML = `
     <div class="avatar-wrapper">
       <img src="${c.foto}" alt="${c.nome}" class="avatar-img" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
-      <div class="flag-badge">
-        <img src="${c.bandeira}" alt="${c.selecao}" class="flag-img">
-      </div>
     </div>
     <div class="closer-details">
-      <div class="closer-identity">
-        <span class="closer-name">${c.nome}</span>
-        <span class="closer-code">${c.code}</span>
-      </div>
+      <span class="closer-name">${c.nome}</span>
       <div class="closer-gmv">${formatCurrency(gmvVal)}</div>
+    </div>
+    <div class="closer-flag">
+      <img src="${bandeira}" alt="${c.selecao || ''}" class="flag-img">
     </div>
   `;
   return card;
@@ -770,13 +856,15 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   box.innerHTML = `<div class="confronto-title">${title}</div>`;
 
   if (!c1 && !c2) {
-    // Placeholder quando a fase anterior não terminou
+    // Placeholder quando a fase anterior ainda não foi decidida ("A definir")
     const emptyCard = document.createElement("div");
-    emptyCard.className = "closer-card eliminated";
-    emptyCard.style.justifyContent = "center";
-    emptyCard.style.padding = "0.5rem";
-    emptyCard.innerHTML = `<span class="closer-name" style="font-size: 0.65rem;">Aguardando fase anterior...</span>`;
+    emptyCard.className = "closer-card a-definir";
+    emptyCard.innerHTML = `<span class="a-definir-label">A definir</span>`;
     box.appendChild(emptyCard);
+    const vsBadge = document.createElement("div");
+    vsBadge.className = "confronto-vs";
+    vsBadge.textContent = "VS";
+    box.appendChild(vsBadge);
     box.appendChild(emptyCard.cloneNode(true));
     return box;
   }
@@ -828,89 +916,122 @@ function getFaseIdFromGmvProp(prop) {
   return dict[prop] || "";
 }
 
-// Renderiza a tela estilo Brasileirão (Sexta-feira Jogo do Brasil)
-function renderBrasilLeaderboard(container, res) {
-  // Ordena os 11 closers por GMV de Sexta desc
+// ===========================================================
+//  DIA DA COPA (Sexta) — tela dividida:
+//  Esquerda: grupos + repescagem | Direita: todos contra todos (pódio + lista)
+// ===========================================================
+function renderCopaDay(container, res) {
+  const split = document.createElement("div");
+  split.className = "copa-day-split";
+
+  // --- LADO ESQUERDO: grupos + repescagem ---
+  const left = document.createElement("div");
+  left.className = "copa-left";
+  left.innerHTML = `<div class="copa-side-title">Fase de Grupos <span>acumulado Ter–Sáb</span></div>`;
+  left.appendChild(createGruposContainer(res, true));
+
+  // --- LADO DIREITO: ranking do dia (todos contra todos) ---
+  const right = document.createElement("div");
+  right.className = "copa-right";
+
+  // Ordena os 11 closers pelo GMV do dia (Sexta / Dia da Copa)
   const ranking = Object.keys(res.closers)
     .map(c => res.closers[c])
-    .sort((a, b) => b.gmv_brasil - a.gmv_brasil);
+    .sort((a, b) => b.gmv_copa - a.gmv_copa);
 
-  const totalGeral = ranking.reduce((acc, c) => acc + c.gmv_brasil, 0);
+  const totalDia = ranking.reduce((acc, c) => acc + c.gmv_copa, 0);
 
-  const wrapper = document.createElement("div");
-  wrapper.className = "brasil-ranking-wrapper";
-  
-  wrapper.innerHTML = `
-    <div class="brasil-header">
-      <div class="brasil-header-title">
-        <span class="brasil-icon-pulse">🇧🇷</span>
-        <div class="brasil-header-text">
-          <h2>Jogo do Brasil — Classificação Geral</h2>
-          <p>Todos os 11 closers disputando o ranking geral do dia</p>
+  right.innerHTML = `
+    <div class="copa-right-header">
+      <div class="copa-right-title">
+        <span class="copa-icon">🇧🇷</span>
+        <div>
+          <h2>Jogo do Brasil — Dia da Copa</h2>
+          <p>Todos os 11 closers • ranking do dia (sexta)</p>
         </div>
       </div>
-      <div class="brasil-total-acumulado">
-        <div class="brasil-total-label">Faturamento Geral Sexta</div>
-        <div class="brasil-total-valor">${formatCurrency(totalGeral)}</div>
+      <div class="copa-right-total">
+        <div class="copa-total-label">GMV do Dia</div>
+        <div class="copa-total-valor">${formatCurrency(totalDia)}</div>
       </div>
-    </div>
-    <div class="ranking-table-container">
-      <table class="ranking-table">
-        <thead>
-          <tr>
-            <th class="ranking-pos">Pos</th>
-            <th>Vendedor</th>
-            <th>Seleção</th>
-            <th style="text-align: right;">GMV Sexta</th>
-          </tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
     </div>
   `;
 
-  const tbody = wrapper.querySelector("tbody");
-  
-  ranking.forEach((c, idx) => {
-    const tr = document.createElement("tr");
-    tr.className = "ranking-row";
-    
-    // Configura classe de pódio ou normal
-    let posClass = "pos-normal";
-    if (idx === 0) posClass = "pos-1";
-    else if (idx === 1) posClass = "pos-2";
-    else if (idx === 2) posClass = "pos-3";
+  // Pódio (top 3) + lista (demais)
+  right.appendChild(buildPodium(ranking.slice(0, 3)));
+  right.appendChild(buildCopaList(ranking.slice(3)));
 
-    tr.classList.add(posClass);
+  split.appendChild(left);
+  split.appendChild(right);
+  container.appendChild(split);
+}
 
-    tr.innerHTML = `
-      <td class="ranking-pos">${idx + 1}º</td>
-      <td>
-        <div class="ranking-closer-cell">
-          <div class="ranking-avatar-wrapper">
-            <img src="${c.foto}" alt="${c.nome}" class="ranking-avatar" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
-            <div class="ranking-flag">
-              <img src="${c.bandeira}" alt="${c.selecao}" style="width:100%; height:100%; object-fit:cover;">
-            </div>
-          </div>
-          <div class="ranking-closer-info">
-            <span class="ranking-closer-name">${c.nome}</span>
-            <span class="ranking-closer-pmp">${c.code}</span>
-          </div>
+// Constrói o pódio (2º à esquerda, 1º ao centro mais alto, 3º à direita)
+function buildPodium(top3) {
+  const podium = document.createElement("div");
+  podium.className = "podium";
+
+  // Ordem visual: 2 - 1 - 3
+  const ordem = [
+    { c: top3[1], pos: 2 },
+    { c: top3[0], pos: 1 },
+    { c: top3[2], pos: 3 }
+  ];
+
+  ordem.forEach(({ c, pos }) => {
+    const place = document.createElement("div");
+    place.className = `podium-place place-${pos}`;
+    if (!c) { podium.appendChild(place); return; }
+
+    const bandeira = c.bandeira || "flags/brasil.svg";
+    const medalha = pos === 1 ? "🥇" : pos === 2 ? "🥈" : "🥉";
+    place.innerHTML = `
+      <div class="podium-card">
+        <div class="podium-medal">${medalha}</div>
+        <div class="podium-avatar">
+          <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
         </div>
-      </td>
-      <td>
-        <span class="ranking-selection-name">${c.selecao}</span>
-      </td>
-      <td class="ranking-gmv-cell">
-        ${formatCurrency(c.gmv_brasil)}
-      </td>
+        <div class="podium-name">${c.nome}</div>
+        <div class="podium-selecao">
+          <img src="${bandeira}" alt="${c.selecao || ''}" class="podium-flag">
+          <span>${c.selecao || ''}</span>
+        </div>
+        <div class="podium-gmv">${formatCurrency(c.gmv_copa)}</div>
+      </div>
+      <div class="podium-bar"><span class="podium-num">${pos}</span></div>
     `;
-    tbody.appendChild(tr);
+    podium.appendChild(place);
   });
 
-  container.appendChild(wrapper);
+  return podium;
+}
+
+// Constrói a lista dos demais colocados (4º em diante) com bandeira + seleção
+function buildCopaList(resto) {
+  const list = document.createElement("div");
+  list.className = "copa-list";
+
+  resto.forEach((c, idx) => {
+    const pos = idx + 4;
+    const bandeira = c.bandeira || "flags/brasil.svg";
+    const row = document.createElement("div");
+    row.className = "copa-list-row" + (c.gmv_copa <= 0 ? " zero" : "");
+    row.innerHTML = `
+      <div class="copa-list-pos">${pos}º</div>
+      <div class="copa-list-avatar">
+        <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
+      </div>
+      <div class="copa-list-name">${c.nome}</div>
+      <div class="copa-list-selecao">
+        <img src="${bandeira}" alt="${c.selecao || ''}" class="copa-list-flag">
+        <span>${c.selecao || ''}</span>
+      </div>
+      <div class="copa-list-gmv">${formatCurrency(c.gmv_copa)}</div>
+    `;
+    list.appendChild(row);
+  });
+
+  return list;
 }
 
 // Manipuladores visuais de carregamento e status de conexão
