@@ -270,7 +270,8 @@ function getCongelamento(now) {
 // Executa requisição REST ao Supabase ou lê JSON local como fallback
 async function fetchTransactions() {
   const hasSupabase = COMPETICAO.supabase.url && COMPETICAO.supabase.anon_key &&
-                      !COMPETICAO.supabase.url.includes("[A DEFINIR]");
+                      !COMPETICAO.supabase.url.includes("[A DEFINIR]") &&
+                      !COMPETICAO.supabase.anon_key.includes("__SUPABASE_ANON_KEY__");
 
   if (hasSupabase) {
     try {
