@@ -32,6 +32,21 @@ jobs:
           cp db_transactions_events_rows.json _site/
           cp -r fotos flags _site/
 
+      - name: Injeta a anon_key do Supabase a partir do secret
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Secret SUPABASE_ANON_KEY vazio. O site usara o fallback JSON."
+          fi
+          # Substitui o placeholder no config.js publicado (nao toca no arquivo versionado).
+          python3 - "$SUPABASE_ANON_KEY" <<'PY'
+          import sys, pathlib
+          key = sys.argv[1]
+          p = pathlib.Path("_site/config.js")
+          p.write_text(p.read_text().replace("__SUPABASE_ANON_KEY__", key))
+          PY
+
       - name: Configura o GitHub Pages (habilita se necessario)
         uses: actions/configure-pages@v5
         with:

@@ -18,7 +18,10 @@ const COMPETICAO = {
 
   supabase: {
     url: "https://ipalripfknzhrzddhvdx.supabase.co",
-    anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwYWxyaXBma256aHJ6ZGRodmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDk1MTYsImV4cCI6MjA3MzcyNTUxNn0.HQ9BiUd07DT05n_mKsuedKwxvw5UQdR0QovSjk27JoA",
+    // A anon_key NAO fica versionada. No deploy (GitHub Pages), o workflow
+    // substitui o placeholder abaixo pelo valor do secret SUPABASE_ANON_KEY.
+    // Localmente o placeholder permanece e o app cai no fallback JSON.
+    anon_key: "__SUPABASE_ANON_KEY__",
     tabela: "db_transactions_events",
     poll_segundos: 60
   },
