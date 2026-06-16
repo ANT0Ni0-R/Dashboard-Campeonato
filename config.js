@@ -35,17 +35,17 @@ const COMPETICAO = {
   vendedores: {
     // Chave de 3 letras (seller_code/PMP). Visível e associada às transações.
     // Cada vendedor representa uma seleção (país) com a respectiva bandeira em flags/.
-    "CCL": { nome: "Camila",     selecao: "Inglaterra", foto: "fotos/CCL.jpeg", bandeira: "flags/inglaterra.svg" },
-    "HDZ": { nome: "Diniz",      selecao: "Argentina",  foto: "fotos/HDZ.jpg",  bandeira: "flags/argentina.svg" },
-    "EZB": { nome: "Enzo",       selecao: "Portugal",   foto: "fotos/EZB.jpg",  bandeira: "flags/portugal.svg" },
-    "FAL": { nome: "Fernando",   selecao: "Canadá",     foto: "fotos/FAL.JPG",  bandeira: "flags/canada.svg" },
-    "HLM": { nome: "Harry",      selecao: "Espanha",    foto: "fotos/HLM.jpg",  bandeira: "flags/espanha.svg" },
-    "HMD": { nome: "Henrique",   selecao: "USA",        foto: "fotos/HMD.jpg",  bandeira: "flags/usa.svg" },
-    "HUM": { nome: "Hudson",     selecao: "Japão",      foto: "fotos/HUM.jpg",  bandeira: "flags/japao.svg" },
-    "JKC": { nome: "Jackson",    selecao: "México",     foto: "fotos/JKC.jpeg", bandeira: "flags/mexico.svg" },
+    "CCL": { nome: "Camila",     selecao: "Inglaterra", foto: "fotos/CCL.jpeg", bandeira: "flags/inglaterra.png" },
+    "HDZ": { nome: "Diniz",      selecao: "Argentina",  foto: "fotos/HDZ.jpg",  bandeira: "flags/argentina.webp" },
+    "EZB": { nome: "Enzo",       selecao: "Portugal",   foto: "fotos/EZB.jpg",  bandeira: "flags/portugal.webp" },
+    "FAL": { nome: "Fernando",   selecao: "Canadá",     foto: "fotos/FAL.JPG",  bandeira: "flags/canada.png" },
+    "HLM": { nome: "Harry",      selecao: "Espanha",    foto: "fotos/HLM.jpg",  bandeira: "flags/espanha.png" },
+    "HMD": { nome: "Henrique",   selecao: "USA",        foto: "fotos/HMD.jpg",  bandeira: "flags/usa.png" },
+    "HUM": { nome: "Hudson",     selecao: "Japão",      foto: "fotos/HUM.jpg",  bandeira: "flags/japao.png" },
+    "JKC": { nome: "Jackson",    selecao: "México",     foto: "fotos/JKC.jpeg", bandeira: "flags/mexico.webp" },
     "JPP": { nome: "João Pedro", selecao: "Brasil",     foto: "fotos/JPP.jpg",  bandeira: "flags/brasil.svg" },
-    "MDR": { nome: "Monica",     selecao: "Holanda",    foto: "fotos/MDR.jpg",  bandeira: "flags/holanda.svg" },
-    "THS": { nome: "Thayna",     selecao: "França",     foto: "fotos/THS.JPG",  bandeira: "flags/franca.svg" }
+    "MDR": { nome: "Monica",     selecao: "Holanda",    foto: "fotos/MDR.jpg",  bandeira: "flags/holanda.webp" },
+    "THS": { nome: "Thayna",     selecao: "França",     foto: "fotos/THS.JPG",  bandeira: "flags/franca.png" }
   },
 
   fases: {
