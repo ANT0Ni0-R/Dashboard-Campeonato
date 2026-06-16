@@ -883,7 +883,7 @@ function createCloserCard(c, gmvVal, isLiveLeader = false, isQualified = false) 
       <div class="closer-gmv">${formatCurrency(gmvVal)}</div>
     </div>
     <div class="closer-flag">
-      <img src="${bandeira}" alt="${c.selecao || ''}" class="flag-img">
+      <img src="${bandeira}" alt="${c.selecao || ''}" class="flag-img" onerror="this.style.visibility='hidden'">
     </div>
   `;
   return card;
@@ -1063,7 +1063,7 @@ function buildCopaList(resto) {
       </div>
       <div class="copa-list-name">${c.nome}</div>
       <div class="copa-list-selecao">
-        <img src="${bandeira}" alt="${c.selecao || ''}" class="copa-list-flag">
+        <img src="${bandeira}" alt="${c.selecao || ''}" class="copa-list-flag" onerror="this.style.visibility='hidden'">
         <span>${c.selecao || ''}</span>
       </div>
       <div class="copa-list-gmv">${formatCurrency(c.gmv_copa)}</div>
