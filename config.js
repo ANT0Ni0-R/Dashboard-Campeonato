@@ -23,20 +23,29 @@ const COMPETICAO = {
     poll_segundos: 60
   },
 
+  // Congelamento diario: para fins de premiacao diaria, o placar exibe um snapshot
+  // do acumulado a partir do horario de corte e fica congelado ate a meia-noite (00:00).
+  // As vendas feitas durante a janela congelada NAO somem: voltam a contar a partir das 00:00.
+  congelamento: {
+    ativo: true,
+    hora_padrao: "21:00",    // congela todo dia as 21:00
+    hora_dia_copa: "18:30"   // na sexta (Dia da Copa) congela as 18:30
+  },
+
   vendedores: {
     // Chave de 3 letras (seller_code/PMP). Visível e associada às transações.
-    // Todos iniciam com a bandeira do brasil.svg por definição inicial do briefing.
-    "CCL": { nome: "Camila",     selecao: "Brasil", foto: "fotos/CCL.jpeg", bandeira: "flags/brasil.svg" },
-    "HDZ": { nome: "Diniz",      selecao: "Brasil", foto: "fotos/HDZ.jpg",  bandeira: "flags/brasil.svg" },
-    "EZB": { nome: "Enzo",       selecao: "Brasil", foto: "fotos/EZB.jpg",  bandeira: "flags/brasil.svg" },
-    "FAL": { nome: "Fernando",   selecao: "Brasil", foto: "fotos/FAL.JPG",  bandeira: "flags/brasil.svg" },
-    "HLM": { nome: "Harry",      selecao: "Brasil", foto: "fotos/HLM.jpg",  bandeira: "flags/brasil.svg" },
-    "HMD": { nome: "Henrique",   selecao: "Brasil", foto: "fotos/HMD.jpg",  bandeira: "flags/brasil.svg" },
-    "HUM": { nome: "Hudson",     selecao: "Brasil", foto: "fotos/HUM.jpg",  bandeira: "flags/brasil.svg" },
-    "JKC": { nome: "Jackson",    selecao: "Brasil", foto: "fotos/JKC.jpeg", bandeira: "flags/brasil.svg" },
-    "JPP": { nome: "João Pedro", selecao: "Brasil", foto: "fotos/JPP.jpg",  bandeira: "flags/brasil.svg" },
-    "MDR": { nome: "Monica",     selecao: "Brasil", foto: "fotos/MDR.jpg",  bandeira: "flags/brasil.svg" },
-    "THS": { nome: "Thayna",     selecao: "Brasil", foto: "fotos/THS.JPG",  bandeira: "flags/brasil.svg" }
+    // Cada vendedor representa uma seleção (país) com a respectiva bandeira em flags/.
+    "CCL": { nome: "Camila",     selecao: "Inglaterra", foto: "fotos/CCL.jpeg", bandeira: "flags/inglaterra.svg" },
+    "HDZ": { nome: "Diniz",      selecao: "Argentina",  foto: "fotos/HDZ.jpg",  bandeira: "flags/argentina.svg" },
+    "EZB": { nome: "Enzo",       selecao: "Portugal",   foto: "fotos/EZB.jpg",  bandeira: "flags/portugal.svg" },
+    "FAL": { nome: "Fernando",   selecao: "Canadá",     foto: "fotos/FAL.JPG",  bandeira: "flags/canada.svg" },
+    "HLM": { nome: "Harry",      selecao: "Espanha",    foto: "fotos/HLM.jpg",  bandeira: "flags/espanha.svg" },
+    "HMD": { nome: "Henrique",   selecao: "USA",        foto: "fotos/HMD.jpg",  bandeira: "flags/usa.svg" },
+    "HUM": { nome: "Hudson",     selecao: "Japão",      foto: "fotos/HUM.jpg",  bandeira: "flags/japao.svg" },
+    "JKC": { nome: "Jackson",    selecao: "México",     foto: "fotos/JKC.jpeg", bandeira: "flags/mexico.svg" },
+    "JPP": { nome: "João Pedro", selecao: "Brasil",     foto: "fotos/JPP.jpg",  bandeira: "flags/brasil.svg" },
+    "MDR": { nome: "Monica",     selecao: "Holanda",    foto: "fotos/MDR.jpg",  bandeira: "flags/holanda.svg" },
+    "THS": { nome: "Thayna",     selecao: "França",     foto: "fotos/THS.JPG",  bandeira: "flags/franca.svg" }
   },
 
   fases: {
@@ -53,10 +62,10 @@ const COMPETICAO = {
         fim: "2026-06-19T23:59:59-03:00"
       },
       grupos: [
-        { nome: "Grupo A", membros: ["CCL", "FAL", "MDR"], avancam: 2 },
-        { nome: "Grupo B", membros: ["HDZ", "HLM", "THS"], avancam: 2 },
-        { nome: "Grupo C", membros: ["EZB", "HMD", "JPP"], avancam: 2 },
-        { nome: "Grupo D", membros: ["HUM", "JKC"],       avancam: 1 }
+        { nome: "Grupo A", membros: ["HDZ", "HLM", "JPP"], avancam: 2 },
+        { nome: "Grupo B", membros: ["HUM", "JKC", "MDR"], avancam: 2 },
+        { nome: "Grupo C", membros: ["EZB", "FAL", "THS"], avancam: 2 },
+        { nome: "Grupo D", membros: ["CCL", "HMD"],        avancam: 1 }
       ],
       repescagem: { sobem: 1 }
     },

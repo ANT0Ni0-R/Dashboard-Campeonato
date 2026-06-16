@@ -153,8 +153,14 @@ async function updateDashboard() {
   try {
     activePhaseId = determineActivePhase();
     await fetchTransactions();
-    const resultados = calcularResultados(transactions);
+    // Congelamento diario: durante a janela, considera apenas vendas ate o horario de corte.
+    const fz = getCongelamento(getNow());
+    const txns = fz.congelado
+      ? transactions.filter(t => parseDate(t.created_at).getTime() <= fz.cutoffMs)
+      : transactions;
+    const resultados = calcularResultados(txns);
     renderDashboard(resultados);
+    toggleCongeladoBanner(fz);
     showStatusDot("success");
     // Registra sincronização bem-sucedida
     syncCount++;
@@ -243,6 +249,22 @@ function isCopaDay() {
   if (!dc) return false;
   const nowMs = getNow().getTime();
   return nowMs >= parseDate(dc.inicio).getTime() && nowMs <= parseDate(dc.fim).getTime();
+}
+
+// Congelamento diario (apuracao para premiacao diaria). Retorna { congelado, cutoffMs, horaStr }.
+// Durante a janela [corte, 23:59:59] o placar exibe o snapshot acumulado ate o horario de corte.
+// Fora da janela nao ha corte, entao as vendas do periodo congelado voltam a contar apos 00:00.
+// Assume que a maquina (TV) roda em America/Sao_Paulo, mesma premissa do restante do app.
+function getCongelamento(now) {
+  const cfg = COMPETICAO.congelamento;
+  if (!cfg || !cfg.ativo || testMode) return { congelado: false, cutoffMs: null, horaStr: null };
+  const horaStr = isCopaDay() ? cfg.hora_dia_copa : cfg.hora_padrao;
+  const [h, m] = horaStr.split(":").map(Number);
+  const cutoff = new Date(now); cutoff.setHours(h, m, 0, 0);
+  const fimDia = new Date(now); fimDia.setHours(23, 59, 59, 999);
+  const nowMs = now.getTime();
+  const congelado = nowMs >= cutoff.getTime() && nowMs <= fimDia.getTime();
+  return { congelado, cutoffMs: cutoff.getTime(), horaStr };
 }
 
 // Executa requisição REST ao Supabase ou lê JSON local como fallback
@@ -577,12 +599,30 @@ function renderDashboard(res) {
   const container = document.getElementById("dashboard-body");
   container.innerHTML = "";
 
-  if (activePhaseId === "grupos" && copa) {
+  const copaView = (activePhaseId === "grupos" && copa);
+  // Marca a view atual para escopar o CSS (header compacto e destaque de fase no chaveamento)
+  document.body.classList.toggle("view-copa", copaView);
+  document.body.classList.toggle("view-bracket", !copaView);
+
+  if (copaView) {
     // Sexta = Dia da Copa: tela dividida (grupos à esquerda, todos-contra-todos à direita)
     renderCopaDay(container, res);
   } else {
     // Demais dias: chaveamento completo
     renderBracket(container, res);
+  }
+}
+
+// Mostra/oculta o banner de "resultado congelado" (apuracao diaria) no header.
+function toggleCongeladoBanner(fz) {
+  const banner = document.getElementById("congelado-banner");
+  if (!banner) return;
+  if (fz && fz.congelado) {
+    const sub = document.getElementById("congelado-sub");
+    if (sub) sub.textContent = `Apuração diária · snapshot ${fz.horaStr}`;
+    banner.hidden = false;
+  } else {
+    banner.hidden = true;
   }
 }
 

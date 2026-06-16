@@ -6,14 +6,14 @@ Dois dashboards separados para um evento de vendas do Grupo Primo (lançamento "
 
 | Dashboard | Arquivo | Fonte de dados | Hospedagem |
 |---|---|---|---|
-| Copa de Vendas (bracket) | `index.html` + `app.js` + `styles.css` + `config.js` | Supabase (real-time polling 60s) | GitHub Pages |
+| Copa do Mundo: O Legado (bracket) | `index.html` + `app.js` + `styles.css` + `config.js` | Supabase (real-time polling 60s) | GitHub Pages |
 | Ranking Geral do Lançamento | `apps-script/Index.html` + `apps-script/Code.gs` | BigQuery (polling 30 min) | Apps Script Web App |
 
 URL GitHub Pages (Copa): `https://ant0ni0-r.github.io/Dashboard-Campeonato/`
 
 ---
 
-## Dashboard 1 — Copa de Vendas (bracket)
+## Dashboard 1 — Copa do Mundo: O Legado (bracket)
 
 ### Arquitetura
 

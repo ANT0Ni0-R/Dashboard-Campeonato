@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Copa de Vendas — Grupo Primo</title>
+  <title>Copa do Mundo: O Legado — Grupo Primo</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,12 +13,21 @@
       <div class="header-title-section">
         <span class="logo-copa">🏆</span>
         <div>
-          <h1>Copa de Vendas</h1>
+          <h1>Copa do Mundo: O Legado</h1>
           <span class="product-tag" id="product-name">Produto</span>
         </div>
       </div>
 
       <div class="header-meta-section">
+        <!-- Banner de Apuracao Diaria (congelamento) -->
+        <div class="congelado-banner" id="congelado-banner" hidden>
+          <span class="congelado-icon">🔒</span>
+          <div class="congelado-text">
+            <span class="congelado-title">RESULTADO CONGELADO</span>
+            <span class="congelado-sub" id="congelado-sub">Apuração diária</span>
+          </div>
+        </div>
+
         <!-- Status de Conexão com o Supabase -->
         <div class="status-indicator">
           <div class="status-dot" id="status-dot"></div>
