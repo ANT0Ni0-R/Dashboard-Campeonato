@@ -9,7 +9,13 @@ const COMPETICAO = {
     slug_like: "%legado%",
     regua: [
       { ate: null, mult: 1 }
-    ]
+    ],
+    // E-mails de compradores cujas transacoes sao ignoradas em TODOS os placares
+    // (Copa e Ranking Geral). Comparacao case-insensitive.
+    excluir_emails: ["cristianeamanda@hotmail.com", "lmfalconi@gmail.com"],
+    // Override de price/GMV por e-mail de comprador (case-insensitive, chaves em
+    // minusculas). Aplicado por transacao, antes da regua de GMV.
+    ajustar_precos: { "masterbrushsouza@gmail.com": 4741.51 }
   },
 
   supabase: {
