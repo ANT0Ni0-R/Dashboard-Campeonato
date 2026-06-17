@@ -1210,3 +1210,83 @@ body.view-bracket .phase-row.active .avatar-wrapper { width: 46px; height: 46px;
 body.view-bracket .phase-row.active .closer-flag { width: 38px; height: 26px; }
 body.view-bracket .phase-row.active .grupo-title { font-size: 0.92rem; }
 body.view-bracket .phase-row.active .confronto-title { font-size: 0.8rem; }
+
+/* ===========================================================
+   SELETOR DE DIA (canto superior direito) — fechamento diário
+   =========================================================== */
+.day-selector-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+.day-selector-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+.day-selector {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 10px;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+  max-width: 240px;
+}
+.day-selector:hover { border-color: var(--accent-gold); }
+.day-selector:focus { box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.25); }
+.day-selector option { background: #0f172a; color: var(--text-primary); }
+
+/* ===========================================================
+   VISÃO DE 2 FASES — fase ativa (destaque máximo) + próxima (prévia)
+   Sobrescreve os tamanhos compactos padrão; só no chaveamento (view-bracket).
+   =========================================================== */
+body.view-bracket .bracket-wrapper { gap: 1.4rem; }
+
+/* Selo "Próxima fase · prévia" no topo da linha secundária */
+.preview-tag {
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-color);
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  z-index: 11;
+}
+
+/* Fase ATIVA: realce ampliado (há folga de espaço com apenas 2 linhas) */
+body.view-bracket .phase-row.active .grupo-box { width: 250px; }
+body.view-bracket .phase-row.active .repescagem-container { width: 250px; }
+body.view-bracket .phase-row.active .confronto-box { width: 285px; }
+body.view-bracket .phase-row.active .closer-name { font-size: 1.05rem; }
+body.view-bracket .phase-row.active .closer-gmv { font-size: 1.05rem; }
+body.view-bracket .phase-row.active .avatar-wrapper { width: 54px; height: 54px; }
+body.view-bracket .phase-row.active .closer-flag { width: 44px; height: 30px; }
+body.view-bracket .phase-row.active .grupo-title { font-size: 1.02rem; }
+body.view-bracket .phase-row.active .confronto-title { font-size: 0.92rem; }
+body.view-bracket .phase-row.active .grupo-members { padding: 0.55rem; gap: 0.45rem; }
+
+/* PRÓXIMA fase (prévia): legível, porém claramente secundária */
+body.view-bracket .phase-row.preview { opacity: 0.8; }
+body.view-bracket .phase-row.preview .grupo-box { width: 180px; }
+body.view-bracket .phase-row.preview .repescagem-container { width: 180px; }
+body.view-bracket .phase-row.preview .confronto-box { width: 200px; }
+body.view-bracket .phase-row.preview .avatar-wrapper { width: 34px; height: 34px; }
+body.view-bracket .phase-row.preview .closer-name { font-size: 0.8rem; }
+body.view-bracket .phase-row.preview .closer-gmv { font-size: 0.8rem; }
+body.view-bracket .phase-row.preview .closer-flag { width: 28px; height: 19px; }
+body.view-bracket .phase-row.preview .confronto-title { font-size: 0.66rem; }

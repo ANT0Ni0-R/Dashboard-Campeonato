@@ -1,8 +1,9 @@
 // app.js - Motor de cálculo, controle de estados e renderização do Dashboard Copa
 
 let transactions = [];
-let simulatedDate = null;
-let testMode = false;          // Modo Teste: últimos 30 dias, sem filtro de produto
+// Seletor de dia: null = Ao Vivo (relógio real). "YYYY-MM-DD" = fechamento daquele
+// dia (total cheio do dia, para premiações diárias).
+let viewDay = null;
 let pollInterval = null;
 let activePhaseId = "grupos";
 let syncCount = 0;
@@ -12,7 +13,7 @@ let syncCountdownInterval = null;
 
 // Inicialização da aplicação
 window.addEventListener("DOMContentLoaded", () => {
-  initSimulador();
+  initDaySelector();
   startPolling();
   updateDashboard();
   window.addEventListener("resize", fitBracket);
@@ -26,118 +27,60 @@ window.addEventListener("DOMContentLoaded", () => {
   if (el) el.textContent = COMPETICAO.supabase.poll_segundos + "s";
 });
 
-// Inicialização do Painel de Simulação (Controlador de Relógio)
-function initSimulador() {
-  const simPanel = document.createElement("div");
-  simPanel.className = "simulador-panel";
-  simPanel.innerHTML = `
-    <div class="sim-header">Simulador de Copa (Clique para testar fases)</div>
-    <div class="sim-buttons">
-      <button class="sim-btn active" data-time="real">Relógio Real</button>
-      <button class="sim-btn" data-time="2026-06-16T10:00:00-03:00">Grupos (Ter)</button>
-      <button class="sim-btn" data-time="2026-06-19T15:00:00-03:00">Dia da Copa (Sex)</button>
-      <button class="sim-btn" data-time="2026-06-21T15:00:00-03:00">Quartas (Dom)</button>
-      <button class="sim-btn" data-time="2026-06-22T15:00:00-03:00">Semis (Seg)</button>
-      <button class="sim-btn" data-time="2026-06-23T18:00:00-03:00">Final (Ter)</button>
-      <button class="sim-btn test" data-test="1">🧪 Modo Teste (30d)</button>
-    </div>
-  `;
-  document.body.appendChild(simPanel);
+// Inicialização do Seletor de Dia (canto superior direito).
+// Permite visualizar o FECHAMENTO de cada dia (total cheio do dia) para as
+// premiações diárias. "Ao Vivo" volta ao relógio real.
+function initDaySelector() {
+  const select = document.getElementById("day-selector");
+  if (!select) return;
 
-  // Adiciona estilos inline rápidos para o simulador
-  const style = document.createElement("style");
-  style.textContent = `
-    .simulador-panel {
-      position: fixed;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%) translateY(85%);
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(251, 191, 36, 0.3);
-      border-radius: 12px 12px 0 0;
-      padding: 8px 16px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5);
-    }
-    .simulador-panel:hover {
-      transform: translateX(-50%) translateY(0);
-    }
-    .sim-header {
-      font-family: 'Outfit', sans-serif;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #fbbf24;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .sim-buttons {
-      display: flex;
-      gap: 6px;
-    }
-    .sim-btn {
-      background: rgba(30, 41, 59, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #94a3b8;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .sim-btn:hover {
-      background: rgba(251, 191, 36, 0.15);
-      color: #fff;
-    }
-    .sim-btn.active {
-      background: #fbbf24;
-      border-color: #fbbf24;
-      color: #060913;
-    }
-    .sim-btn.test {
-      border-color: rgba(96, 165, 250, 0.5);
-      color: #93c5fd;
-    }
-    .sim-btn.test:hover {
-      background: rgba(59, 130, 246, 0.2);
-      color: #fff;
-    }
-    .sim-btn.test.active {
-      background: #3b82f6;
-      border-color: #3b82f6;
-      color: #fff;
-    }
-  `;
-  document.head.appendChild(style);
+  select.innerHTML = `<option value="">🔴 Ao Vivo</option>`;
+  buildCompetitionDays().forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d.iso;          // "YYYY-MM-DD"
+    opt.textContent = d.label;  // ex: "Ter 16/06 · Fase de Grupos"
+    select.appendChild(opt);
+  });
 
-  // Bind de cliques no painel
-  simPanel.querySelectorAll(".sim-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      simPanel.querySelectorAll(".sim-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-
-      if (btn.hasAttribute("data-test")) {
-        // Modo Teste: abre a tela do Dia da Copa (mais rica visualmente) e puxa 30 dias reais
-        testMode = true;
-        simulatedDate = new Date("2026-06-19T15:00:00-03:00");
-      } else {
-        testMode = false;
-        const timeVal = btn.getAttribute("data-time");
-        simulatedDate = (timeVal === "real") ? null : new Date(timeVal);
-      }
-      forcarAtualizacao();
-    });
+  select.addEventListener("change", () => {
+    viewDay = select.value || null;
+    forcarAtualizacao();
   });
 }
 
-// Retorna o Date atual (real ou simulado)
+// Gera a lista de dias da competição a partir do config (span grupos.inicio -> final.fim).
+// Cada dia é rotulado com o dia da semana e a fase correspondente (derivada das datas).
+function buildCompetitionDays() {
+  const weekdays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const pad = n => String(n).padStart(2, "0");
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  // Itera por dia-calendário usando uma âncora ao meio-dia UTC (independente do
+  // fuso da máquina). As datas da competição estão em -03:00 (sem horário de verão).
+  const toUTCNoon = isoDate => new Date(isoDate + "T12:00:00Z");
+  let cur = toUTCNoon(COMPETICAO.fases.grupos.inicio.slice(0, 10));
+  const last = toUTCNoon(COMPETICAO.fases.final.fim.slice(0, 10));
+
+  const days = [];
+  while (cur.getTime() <= last.getTime()) {
+    const y = cur.getUTCFullYear(), m = cur.getUTCMonth() + 1, d = cur.getUTCDate();
+    const iso = `${y}-${pad(m)}-${pad(d)}`;
+    const asOfMs = parseDate(iso + "T23:59:59-03:00").getTime();
+    const faseLabel = isCopaDayMs(asOfMs) ? "Dia da Copa" : translatePhaseName(phaseForMs(asOfMs));
+    days.push({
+      iso,
+      label: `${weekdays[cur.getUTCDay()]} ${pad(d)}/${pad(m)} · ${faseLabel}`
+    });
+    cur = new Date(cur.getTime() + DAY_MS);
+  }
+  return days;
+}
+
+// Retorna o Date atual. Com um dia selecionado, ancora no fim daquele dia
+// (23:59:59) — base do "fechamento / total cheio do dia".
 function getNow() {
-  return simulatedDate ? new Date(simulatedDate) : new Date();
+  if (viewDay) return parseDate(viewDay + "T23:59:59-03:00");
+  return new Date();
 }
 
 // Configura o Polling periódico
@@ -153,14 +96,15 @@ async function updateDashboard() {
   try {
     activePhaseId = determineActivePhase();
     await fetchTransactions();
-    // Congelamento diario: durante a janela, considera apenas vendas ate o horario de corte.
-    const fz = getCongelamento(getNow());
-    const txns = fz.congelado
-      ? transactions.filter(t => parseDate(t.created_at).getTime() <= fz.cutoffMs)
+    // Apuração: ao vivo aplica o congelamento no horário de corte; com um dia
+    // selecionado, mostra o total cheio daquele dia (corte = fim do dia).
+    const ap = getApuracao();
+    const txns = ap.filtrar
+      ? transactions.filter(t => parseDate(t.created_at).getTime() <= ap.cutoffMs)
       : transactions;
     const resultados = calcularResultados(txns);
     renderDashboard(resultados);
-    toggleCongeladoBanner(fz);
+    toggleApuracaoBanner(ap);
     showStatusDot("success");
     // Registra sincronização bem-sucedida
     syncCount++;
@@ -201,32 +145,24 @@ function updateSyncCountdown() {
   el.textContent = secsLeft + "s";
 }
 
-// Determina qual fase da competição está ativa
+// Determina qual fase da competição está ativa (relógio real ou dia selecionado).
 function determineActivePhase() {
   if (COMPETICAO.fase_ativa_override) {
     return COMPETICAO.fase_ativa_override;
   }
-  const nowMs = getNow().getTime();
+  return phaseForMs(getNow().getTime());
+}
 
-  // Ordena fases cronologicamente por data de início
-  const faseIds = Object.keys(COMPETICAO.fases);
-
-  // Verifica se estamos em alguma janela
-  for (let id of faseIds) {
+// Mapeia um instante (ms) para o id da fase correspondente, derivando das datas
+// configuradas. Reutilizado pelo seletor de dia para rotular cada dia.
+function phaseForMs(nowMs) {
+  for (let id of Object.keys(COMPETICAO.fases)) {
     const inicioMs = parseDate(COMPETICAO.fases[id].inicio).getTime();
     const fimMs = parseDate(COMPETICAO.fases[id].fim).getTime();
-    if (nowMs >= inicioMs && nowMs <= fimMs) {
-      return id;
-    }
+    if (nowMs >= inicioMs && nowMs <= fimMs) return id;
   }
-
-  // Gaps entre fases ou fora da competição
-  const gruposInicio = parseDate(COMPETICAO.fases.grupos.inicio).getTime();
-  if (nowMs < gruposInicio) {
-    return "grupos"; // Antes de começar, exibe grupos
-  }
-
-  // Pós-competição: exibe a Final
+  // Antes de começar, exibe grupos; pós-competição, exibe a Final.
+  if (nowMs < parseDate(COMPETICAO.fases.grupos.inicio).getTime()) return "grupos";
   return "final";
 }
 
@@ -245,9 +181,12 @@ function parseDate(dateStr) {
 
 // True quando estamos na sub-janela da Sexta (Dia da Copa) dentro da fase de grupos
 function isCopaDay() {
+  return isCopaDayMs(getNow().getTime());
+}
+
+function isCopaDayMs(nowMs) {
   const dc = COMPETICAO.fases.grupos.dia_copa;
   if (!dc) return false;
-  const nowMs = getNow().getTime();
   return nowMs >= parseDate(dc.inicio).getTime() && nowMs <= parseDate(dc.fim).getTime();
 }
 
@@ -257,7 +196,7 @@ function isCopaDay() {
 // Assume que a maquina (TV) roda em America/Sao_Paulo, mesma premissa do restante do app.
 function getCongelamento(now) {
   const cfg = COMPETICAO.congelamento;
-  if (!cfg || !cfg.ativo || testMode) return { congelado: false, cutoffMs: null, horaStr: null };
+  if (!cfg || !cfg.ativo) return { congelado: false, cutoffMs: null, horaStr: null };
   const horaStr = isCopaDay() ? cfg.hora_dia_copa : cfg.hora_padrao;
   const [h, m] = horaStr.split(":").map(Number);
   const cutoff = new Date(now); cutoff.setHours(h, m, 0, 0);
@@ -265,6 +204,19 @@ function getCongelamento(now) {
   const nowMs = now.getTime();
   const congelado = nowMs >= cutoff.getTime() && nowMs <= fimDia.getTime();
   return { congelado, cutoffMs: cutoff.getTime(), horaStr };
+}
+
+// Resolve a apuração exibida. Dois modos:
+//  - "dia": seletor de dia ativo -> total cheio daquele dia (corte = 23:59:59).
+//  - "corte": ao vivo -> congelamento diário no horário de corte (21:00 / 18:30 na sexta).
+function getApuracao() {
+  if (viewDay) {
+    const cutoffMs = parseDate(viewDay + "T23:59:59-03:00").getTime();
+    const [yyyy, mm, dd] = viewDay.split("-");
+    return { modo: "dia", filtrar: true, cutoffMs, label: `${dd}/${mm}` };
+  }
+  const fz = getCongelamento(getNow());
+  return { modo: "corte", filtrar: fz.congelado, cutoffMs: fz.cutoffMs, label: fz.horaStr };
 }
 
 // Executa requisição REST ao Supabase ou lê JSON local como fallback
@@ -277,17 +229,9 @@ async function fetchTransactions() {
     try {
       const base = `${COMPETICAO.supabase.url}/rest/v1/${COMPETICAO.supabase.tabela}` +
                    `?type=eq.order_success&select=price,pmp,created_at,slug`;
-      let url;
-      if (testMode) {
-        // Últimos N dias, SEM filtro de produto (valida integração + visualização)
-        const dias = (COMPETICAO.modo_teste && COMPETICAO.modo_teste.dias) || 30;
-        const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
-        url = `${base}&created_at=gte.${desde}`;
-      } else {
-        // Produção: filtra a coluna `slug` por "%legado%" (case-insensitive via ilike)
-        const padrao = encodeURIComponent(COMPETICAO.produto.slug_like.replace(/%/g, "*"));
-        url = `${base}&slug=ilike.${padrao}&created_at=gte.2026-06-16T00:00:00-03:00`;
-      }
+      // Filtra a coluna `slug` por "%legado%" (case-insensitive via ilike)
+      const padrao = encodeURIComponent(COMPETICAO.produto.slug_like.replace(/%/g, "*"));
+      const url = `${base}&slug=ilike.${padrao}&created_at=gte.2026-06-16T00:00:00-03:00`;
       const resp = await fetch(url, {
         method: "GET",
         headers: {
@@ -390,16 +334,6 @@ function calcularResultados(transactionList) {
     const gmv = calcularGMV(t.price);
     const c = closers[seller_code];
 
-    // MODO TESTE: ignora as datas e ilumina todos os buckets com o GMV real
-    if (testMode) {
-      c.gmv_grupos += gmv;
-      c.gmv_copa += gmv;
-      c.gmv_quartas += gmv;
-      c.gmv_semis += gmv;
-      c.gmv_final += gmv;
-      return;
-    }
-
     const timeMs = parseDate(t.created_at).getTime();
 
     // Associa o GMV ao período correto. A Sexta soma DUPLO: nos grupos (acumulado)
@@ -449,22 +383,24 @@ function calcularResultados(transactionList) {
   const sortedRepescagem = dePassagem.sort((a, b) => b.gmv_grupos - a.gmv_grupos);
   const repEscudo = sortedRepescagem[0]; // Vencedor da repescagem
 
-  // Lista dos 8 classificados finais para as Quartas
-  // Ordem deterministicamente solicitada: 1ºA, 2ºA, 1ºB, 2ºB, 1ºC, 2ºC, 1ºD, REP
-  const qA1 = standingGrupos["Grupo A"][0];
-  const qA2 = standingGrupos["Grupo A"][1];
-  const qB1 = standingGrupos["Grupo B"][0];
-  const qB2 = standingGrupos["Grupo B"][1];
-  const qC1 = standingGrupos["Grupo C"][0];
-  const qC2 = standingGrupos["Grupo C"][1];
-  const qD1 = standingGrupos["Grupo D"][0];
+  // Classificados por seed (chave usada pelo chaveamento configurável das Quartas).
+  //   A1/A2 = 1º/2º do Grupo A | B1/B2 = Grupo B | C1/C2 = Grupo C | D1 = 1º do Grupo D
+  //   REP   = vencedor da repescagem
+  const seeds = {
+    A1: standingGrupos["Grupo A"][0],
+    A2: standingGrupos["Grupo A"][1],
+    B1: standingGrupos["Grupo B"][0],
+    B2: standingGrupos["Grupo B"][1],
+    C1: standingGrupos["Grupo C"][0],
+    C2: standingGrupos["Grupo C"][1],
+    D1: standingGrupos["Grupo D"][0],
+    REP: repEscudo
+  };
 
-  const classificadosQF = [
-    qA1, qA2, qB1, qB2, qC1, qC2, qD1, repEscudo
-  ];
+  const classificadosQF = Object.values(seeds);
 
   // Se a fase de grupos já acabou, os demais vendedores que não estão na lista são eliminados
-  if (nowMs > gruposEndMs) {
+  if (nowMs >= gruposEndMs) {
     Object.keys(closers).forEach(code => {
       const c = closers[code];
       const classificado = classificadosQF.find(q => q && q.code === c.code);
@@ -474,14 +410,15 @@ function calcularResultados(transactionList) {
     });
   }
 
-  // 4. QUARTAS DE FINAL
-  // QF1: 1ºA x 2ºB, QF2: 1ºB x 2ºA, QF3: 1ºC x 1ºD, QF4: REP x 2ºC
-  const confrontosQF = [
-    { id: "QF1", label: "QF 1", c1: qA1, c2: qB2 },
-    { id: "QF2", label: "QF 2", c1: qB1, c2: qA2 },
-    { id: "QF3", label: "QF 3", c1: qC1, c2: qD1 },
-    { id: "QF4", label: "QF 4", c1: repEscudo, c2: qC2 }
-  ];
+  // 4. QUARTAS DE FINAL — confrontos montados a partir do chaveamento em config.js.
+  // Cada item referencia dois seeds (ex.: C1 x C2, D1 x REP).
+  const confrontosQF = COMPETICAO.fases.quartas.chaveamento.map((cf, i) => ({
+    id: "QF" + (i + 1),
+    label: cf.label,
+    c1: seeds[cf.seeds[0]],
+    c2: seeds[cf.seeds[1]],
+    vencedor: null
+  }));
 
   // Calcula vencedores das Quartas
   confrontosQF.forEach(qf => {
@@ -500,7 +437,7 @@ function calcularResultados(transactionList) {
       qf.vencedor = qf.c1.gmv_grupos >= qf.c2.gmv_grupos ? qf.c1 : qf.c2;
     }
 
-    if (nowMs > quartasEndMs) {
+    if (nowMs >= quartasEndMs) {
       // Elimina o perdedor das QF
       const perdedor = qf.vencedor.code === qf.c1.code ? qf.c2 : qf.c1;
       perdedor.eliminado = true;
@@ -535,7 +472,7 @@ function calcularResultados(transactionList) {
       sf.vencedor = sf.c1.gmv_quartas >= sf.c2.gmv_quartas ? sf.c1 : sf.c2;
     }
 
-    if (nowMs > semisEndMs) {
+    if (nowMs >= semisEndMs) {
       // Elimina o perdedor das semis
       const perdedor = sf.vencedor.code === sf.c1.code ? sf.c2 : sf.c1;
       perdedor.eliminado = true;
@@ -560,7 +497,7 @@ function calcularResultados(transactionList) {
       confrontoFinal.vencedor = vSF1.gmv_semis >= vSF2.gmv_semis ? vSF1 : vSF2;
     }
 
-    if (nowMs > finalEndMs) {
+    if (nowMs >= finalEndMs) {
       // Elimina o perdedor da final
       const perdedor = confrontoFinal.vencedor.code === vSF1.code ? vSF2 : vSF1;
       perdedor.eliminado = true;
@@ -574,7 +511,7 @@ function calcularResultados(transactionList) {
     quartas: confrontosQF,
     semis: confrontosSF,
     final: confrontoFinal,
-    campeao: nowMs > finalEndMs ? confrontoFinal.vencedor : null
+    campeao: nowMs >= finalEndMs ? confrontoFinal.vencedor : null
   };
 }
 
@@ -588,11 +525,10 @@ function renderDashboard(res) {
   // Atualiza metadados do cabeçalho
   const currentPhase = COMPETICAO.fases[activePhaseId];
   const copa = isCopaDay();
-  let faseNome = copa ? "Dia da Copa (Sexta)" : translatePhaseName(activePhaseId);
-  if (testMode) faseNome = "🧪 Modo Teste · " + faseNome;
+  const faseNome = copa ? "Dia da Copa (Sexta)" : translatePhaseName(activePhaseId);
   document.getElementById("fase-nome").textContent = faseNome;
   document.getElementById("product-name").textContent =
-    testMode ? "TESTE · 30 dias" : COMPETICAO.produto.slug_like.replace(/%/g, "");
+    COMPETICAO.produto.slug_like.replace(/%/g, "");
 
   // Atualiza cronômetro regressivo
   updateTimer(currentPhase);
@@ -614,17 +550,28 @@ function renderDashboard(res) {
   }
 }
 
-// Mostra/oculta o banner de "resultado congelado" (apuracao diaria) no header.
-function toggleCongeladoBanner(fz) {
+// Mostra/oculta o banner de apuração no header.
+//  - modo "dia": fechamento do dia selecionado (total cheio do dia).
+//  - modo "corte": resultado congelado no horário de corte (ao vivo).
+function toggleApuracaoBanner(ap) {
   const banner = document.getElementById("congelado-banner");
   if (!banner) return;
-  if (fz && fz.congelado) {
-    const sub = document.getElementById("congelado-sub");
-    if (sub) sub.textContent = `Apuração diária · snapshot ${fz.horaStr}`;
-    banner.hidden = false;
+  if (!ap || !ap.filtrar) { banner.hidden = true; return; }
+
+  const icon = banner.querySelector(".congelado-icon");
+  const title = banner.querySelector(".congelado-title");
+  const sub = document.getElementById("congelado-sub");
+
+  if (ap.modo === "dia") {
+    if (icon) icon.textContent = "📅";
+    if (title) title.textContent = "FECHAMENTO DO DIA";
+    if (sub) sub.textContent = `${ap.label} · total do dia`;
   } else {
-    banner.hidden = true;
+    if (icon) icon.textContent = "🔒";
+    if (title) title.textContent = "RESULTADO CONGELADO";
+    if (sub) sub.textContent = `Apuração diária · snapshot ${ap.label}`;
   }
+  banner.hidden = false;
 }
 
 // Traduz o ID da fase para um nome amigável de exibição
@@ -729,89 +676,29 @@ function createGruposContainer(res, destaqueClassificados) {
   return containerGrupos;
 }
 
-// Renderiza a estrutura de Bracket Vertical Completo
+// Sequência de fases do chaveamento (a Copa/Sexta é tela à parte, fora daqui).
+const PHASE_ORDER = ["grupos", "quartas", "semis", "final", "campeao"];
+
+// Renderiza o chaveamento em DUAS linhas: a fase ATIVA (grande, com destaque) e a
+// PRÓXIMA fase (prévia projetada pelo placar atual). Ex.: Grupos + Quartas, depois
+// Quartas + Semis, etc. Não se aplica à tela do Dia da Copa (renderCopaDay).
 function renderBracket(container, res) {
   const bracket = document.createElement("div");
   bracket.className = "bracket-wrapper";
 
-  const nowMs = getNow().getTime();
-  const quartasDone = nowMs > parseDate(COMPETICAO.fases.quartas.fim).getTime();
-  const semisDone = nowMs > parseDate(COMPETICAO.fases.semis.fim).getTime();
+  const idx = Math.max(0, PHASE_ORDER.indexOf(activePhaseId));
+  const activeId = PHASE_ORDER[idx];
+  const nextId = PHASE_ORDER[idx + 1] || null;
 
-  // --- LINHA 1: GRUPOS + REPESCAGEM ---
-  const rowGrupos = createPhaseRow("grupos");
-  rowGrupos.querySelector(".phase-grid").appendChild(
-    createGruposContainer(res, activePhaseId === "grupos")
-  );
-  bracket.appendChild(rowGrupos);
+  // Linha 1: fase ativa (destaque máximo)
+  const activeSection = buildPhaseSection(activeId, res, true);
+  if (activeSection) bracket.appendChild(activeSection);
 
-
-  // --- LINHA 2: QUARTAS DE FINAL (mostra os escalados dos grupos) ---
-  const rowQF = createPhaseRow("quartas");
-  const containerQF = document.createElement("div");
-  containerQF.className = "confrontos-container";
-
-  res.quartas.forEach(q => {
-    const cBox = createConfrontoBox(q.label, q.c1, q.c2, q.vencedor, "gmv_quartas", "grupos");
-    containerQF.appendChild(cBox);
-  });
-  rowQF.querySelector(".phase-grid").appendChild(containerQF);
-  bracket.appendChild(rowQF);
-
-
-  // --- LINHA 3: SEMIFINAIS (a definir até as quartas terminarem) ---
-  const rowSF = createPhaseRow("semis");
-  const containerSF = document.createElement("div");
-  containerSF.className = "confrontos-container";
-
-  res.semis.forEach(s => {
-    const c1 = quartasDone ? s.c1 : null;
-    const c2 = quartasDone ? s.c2 : null;
-    const venc = quartasDone ? s.vencedor : null;
-    const cBox = createConfrontoBox(s.label, c1, c2, venc, "gmv_semis", "quartas");
-    containerSF.appendChild(cBox);
-  });
-  rowSF.querySelector(".phase-grid").appendChild(containerSF);
-  bracket.appendChild(rowSF);
-
-
-  // --- LINHA 4: GRANDE FINAL (a definir até as semis terminarem) ---
-  const rowF = createPhaseRow("final");
-  const containerF = document.createElement("div");
-  containerF.className = "confrontos-container";
-
-  const fc1 = semisDone ? res.final.c1 : null;
-  const fc2 = semisDone ? res.final.c2 : null;
-  const fvenc = semisDone ? res.final.vencedor : null;
-  const finalBox = createConfrontoBox(res.final.label, fc1, fc2, fvenc, "gmv_final", "semis");
-  containerF.appendChild(finalBox);
-
-  rowF.querySelector(".phase-grid").appendChild(containerF);
-  bracket.appendChild(rowF);
-
-
-  // --- LINHA 5: CAMPEÃO ---
-  const rowWinner = document.createElement("div");
-  rowWinner.className = "phase-row";
-  if (res.campeao) {
-    rowWinner.className += " active";
-  }
-  rowWinner.innerHTML = `<div class="phase-grid"></div>`;
-  const winnerContainer = rowWinner.querySelector(".phase-grid");
-
-  if (res.campeao) {
-    const champBox = document.createElement("div");
-    champBox.className = "campeao-box";
-    champBox.innerHTML = `
-      <div class="trofeu-icon">🏆</div>
-      <div class="campeao-label">Campeão do Lançamento</div>
-    `;
-    const champCard = createCloserCard(res.campeao, res.campeao.gmv_final, false, true);
-    champCard.style.marginTop = "0.5rem";
-    champCard.style.width = "100%";
-    champBox.appendChild(champCard);
-    winnerContainer.appendChild(champBox);
-    bracket.appendChild(rowWinner);
+  // Linha 2: próxima fase (prévia projetada). Para "campeao", só aparece quando
+  // já existe um campeão definido (sem placeholder de campeão).
+  if (nextId) {
+    const nextSection = buildPhaseSection(nextId, res, false);
+    if (nextSection) bracket.appendChild(nextSection);
   }
 
   // Envolve o canvas numa camada de escala e adiciona à tela
@@ -822,6 +709,63 @@ function renderBracket(container, res) {
 
   // Escala o canvas para caber na área disponível
   fitBracket();
+}
+
+// Monta a linha (.phase-row) de uma fase. isActive controla o destaque/escala.
+// Retorna null quando não há conteúdo a exibir (ex.: campeão ainda indefinido).
+function buildPhaseSection(id, res, isActive) {
+  if (id === "campeao") {
+    return res.campeao ? buildCampeaoRow(res) : null;
+  }
+
+  const row = createPhaseRow(id, isActive);
+  const grid = row.querySelector(".phase-grid");
+
+  if (id === "grupos") {
+    grid.appendChild(createGruposContainer(res, activePhaseId === "grupos"));
+  } else {
+    grid.appendChild(buildConfrontosFor(id, res));
+  }
+  return row;
+}
+
+// Constrói o container de confrontos (mata-mata) de uma fase, com os participantes
+// projetados pelo placar atual (prévia). createConfrontoBox trata slots vazios.
+function buildConfrontosFor(id, res) {
+  const cont = document.createElement("div");
+  cont.className = "confrontos-container";
+
+  if (id === "quartas") {
+    res.quartas.forEach(q =>
+      cont.appendChild(createConfrontoBox(q.label, q.c1, q.c2, q.vencedor, "gmv_quartas", "grupos")));
+  } else if (id === "semis") {
+    res.semis.forEach(s =>
+      cont.appendChild(createConfrontoBox(s.label, s.c1, s.c2, s.vencedor, "gmv_semis", "quartas")));
+  } else if (id === "final") {
+    cont.appendChild(createConfrontoBox(res.final.label, res.final.c1, res.final.c2, res.final.vencedor, "gmv_final", "semis"));
+  }
+  return cont;
+}
+
+// Linha exclusiva do Campeão (destacada como ativa).
+function buildCampeaoRow(res) {
+  const row = document.createElement("div");
+  row.className = "phase-row active campeao-row";
+  row.innerHTML = `<div class="phase-grid"></div>`;
+
+  const champBox = document.createElement("div");
+  champBox.className = "campeao-box";
+  champBox.innerHTML = `
+    <div class="trofeu-icon">🏆</div>
+    <div class="campeao-label">Campeão do Lançamento</div>
+  `;
+  const champCard = createCloserCard(res.campeao, res.campeao.gmv_final, false, true);
+  champCard.style.marginTop = "0.5rem";
+  champCard.style.width = "100%";
+  champBox.appendChild(champCard);
+
+  row.querySelector(".phase-grid").appendChild(champBox);
+  return row;
 }
 
 // Mede o canvas (largura fixa 1500px, altura natural) e aplica transform:scale()
@@ -847,17 +791,20 @@ function fitBracket() {
   scaler.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(4)})`;
 }
 
-// Cria container de linha de fase com classes corretas
-function createPhaseRow(id) {
+// Cria a linha de fase. isActive => destaque máximo; senão => prévia da próxima fase.
+function createPhaseRow(id, isActive) {
   const row = document.createElement("div");
-  row.className = "phase-row";
-  if (activePhaseId === id) {
-    row.className += " active";
-  }
+  row.className = "phase-row " + (isActive ? "active" : "preview");
   row.innerHTML = `
     <div class="phase-side-label">${translatePhaseName(id)}</div>
     <div class="phase-grid"></div>
   `;
+  if (!isActive) {
+    const tag = document.createElement("div");
+    tag.className = "preview-tag";
+    tag.textContent = "Próxima fase · prévia";
+    row.appendChild(tag);
+  }
   return row;
 }
 
@@ -926,7 +873,7 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   const nowMs = getNow().getTime();
   const phaseId = getFaseIdFromGmvProp(gmvPropName);
   const phaseEndMs = phaseId && COMPETICAO.fases[phaseId] ? parseDate(COMPETICAO.fases[phaseId].fim).getTime() : 0;
-  const phaseIsOver = nowMs > phaseEndMs;
+  const phaseIsOver = nowMs >= phaseEndMs;
 
   const card1 = createCloserCard(comp1, g1,
     isC1Leader && !phaseIsOver,

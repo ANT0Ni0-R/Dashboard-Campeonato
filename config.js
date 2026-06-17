@@ -12,10 +12,6 @@ const COMPETICAO = {
     ]
   },
 
-  // Modo Teste (botão no painel inferior): puxa os últimos N dias SEM filtro de
-  // produto/slug e ilumina a tela inteira com dados reais para validar a integração.
-  modo_teste: { dias: 30 },
-
   supabase: {
     url: "https://ipalripfknzhrzddhvdx.supabase.co",
     // A anon_key NAO fica versionada. No deploy (GitHub Pages), o workflow
@@ -75,7 +71,19 @@ const COMPETICAO = {
     quartas: {
       tipo: "mata-mata-1v1",
       inicio: "2026-06-21T00:00:00-03:00",
-      fim: "2026-06-21T23:59:59-03:00"
+      fim: "2026-06-21T23:59:59-03:00",
+      // Chaveamento data-driven (rastreável num só lugar). Seeds dos classificados:
+      //   A1,A2 = 1º/2º do Grupo A | B1,B2 = 1º/2º do Grupo B
+      //   C1,C2 = 1º/2º do Grupo C | D1 = 1º do Grupo D | REP = vencedor da repescagem
+      // Regras desta edição:
+      //   - Os dois do Grupo C se enfrentam entre si (C1 x C2).
+      //   - O melhor do Grupo D enfrenta o vindo da repescagem (D1 x REP).
+      chaveamento: [
+        { label: "QF 1", seeds: ["A1", "B2"] },
+        { label: "QF 2", seeds: ["B1", "A2"] },
+        { label: "QF 3", seeds: ["C1", "C2"] },
+        { label: "QF 4", seeds: ["D1", "REP"] }
+      ]
     },
     semis: {
       tipo: "mata-mata-1v1",
