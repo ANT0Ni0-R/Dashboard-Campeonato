@@ -249,6 +249,7 @@
   // Agrega transacoes por seller_code (PMP), aplicando exclusao de e-mails.
   function agregar(rows) {
     var excluir = (COMPETICAO.produto.excluir_emails || []).map(function (e) { return e.toLowerCase(); });
+    var ajustes = (COMPETICAO.produto.ajustar_precos || {});
     var acc = {};
     rows.forEach(function (t) {
       if (!t.pmp) return;
@@ -257,8 +258,10 @@
       var seg = t.pmp.split("-");
       var code = seg[seg.length - 1].toUpperCase();
       if (code.length !== 3 || !COMPETICAO.vendedores[code]) return;
+      // Override de price por e-mail (por transacao)
+      var precoEfetivo = (email && ajustes.hasOwnProperty(email)) ? ajustes[email] : t.price;
       if (!acc[code]) acc[code] = { pmp: code, nome: COMPETICAO.vendedores[code].nome, gmv: 0, qtd: 0 };
-      acc[code].gmv += Number(t.price) || 0;
+      acc[code].gmv += Number(precoEfetivo) || 0;
       acc[code].qtd += 1;
     });
     return Object.keys(acc).map(function (k) { return acc[k]; })

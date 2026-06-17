@@ -336,7 +336,11 @@ function calcularResultados(transactionList) {
     // Vendedor válido apenas se possui 3 letras e está no cadastro
     if (seller_code.length !== 3 || !closers[seller_code]) return;
 
-    const gmv = calcularGMV(t.price);
+    // Override de price por e-mail (aplicado por transacao, antes da regua)
+    const ajustes = (COMPETICAO.produto.ajustar_precos || {});
+    const precoEfetivo = (email && Object.prototype.hasOwnProperty.call(ajustes, email))
+      ? ajustes[email] : t.price;
+    const gmv = calcularGMV(precoEfetivo);
     const c = closers[seller_code];
 
     const timeMs = parseDate(t.created_at).getTime();
