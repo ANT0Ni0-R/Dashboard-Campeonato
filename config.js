@@ -22,13 +22,13 @@ const COMPETICAO = {
     poll_segundos: 60
   },
 
-  // Congelamento diario: para fins de premiacao diaria, o placar exibe um snapshot
-  // do acumulado a partir do horario de corte e fica congelado ate a meia-noite (00:00).
-  // As vendas feitas durante a janela congelada NAO somem: voltam a contar a partir das 00:00.
+  // Congelamento diario (DESATIVADO): no modo ao vivo o placar segue contando sem
+  // congelar. O fechamento de cada dia (premiacao diaria) agora e visto sob demanda
+  // pelo Seletor de Dia no canto superior direito. Mantido aqui apenas como toggle.
   congelamento: {
-    ativo: true,
-    hora_padrao: "21:00",    // congela todo dia as 21:00
-    hora_dia_copa: "18:30"   // na sexta (Dia da Copa) congela as 18:30
+    ativo: false,
+    hora_padrao: "21:00",    // (sem efeito enquanto ativo=false)
+    hora_dia_copa: "18:30"   // (sem efeito enquanto ativo=false)
   },
 
   vendedores: {
