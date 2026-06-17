@@ -9,7 +9,10 @@ const COMPETICAO = {
     slug_like: "%legado%",
     regua: [
       { ate: null, mult: 1 }
-    ]
+    ],
+    // E-mails de compradores cujas transacoes sao ignoradas em TODOS os placares
+    // (Copa e Ranking Geral). Comparacao case-insensitive.
+    excluir_emails: ["cristianeamanda@hotmail.com", "lmfalconi@gmail.com"]
   },
 
   supabase: {

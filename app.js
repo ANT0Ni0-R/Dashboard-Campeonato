@@ -228,7 +228,7 @@ async function fetchTransactions() {
   if (hasSupabase) {
     try {
       const base = `${COMPETICAO.supabase.url}/rest/v1/${COMPETICAO.supabase.tabela}` +
-                   `?type=eq.order_success&select=price,pmp,created_at,slug`;
+                   `?type=eq.order_success&select=price,pmp,created_at,slug,email`;
       // Filtra a coluna `slug` por "%legado%" (case-insensitive via ilike)
       const padrao = encodeURIComponent(COMPETICAO.produto.slug_like.replace(/%/g, "*"));
       const url = `${base}&slug=ilike.${padrao}&created_at=gte.2026-06-16T00:00:00-03:00`;
@@ -267,6 +267,7 @@ async function fetchTransactions() {
         return {
           price: t.price,
           pmp: t.pmp,
+          email: t.email,
           created_at: normalizedTime.toISOString()
         };
       });
@@ -324,6 +325,10 @@ function calcularResultados(transactionList) {
   // 2. Distribui e calcula o GMV de cada transação nas fases
   transactionList.forEach(t => {
     if (!t.pmp) return;
+    // Ignora transacoes de compradores na lista de exclusao (case-insensitive)
+    const email = (t.email || "").trim().toLowerCase();
+    const excluir = (COMPETICAO.produto.excluir_emails || []);
+    if (email && excluir.some(e => e.toLowerCase() === email)) return;
     // seller_code = split_part(pmp, '-', -1)
     const segments = t.pmp.split('-');
     const seller_code = segments[segments.length - 1].toUpperCase();
