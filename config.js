@@ -10,12 +10,15 @@ const COMPETICAO = {
     regua: [
       { ate: null, mult: 1 }
     ],
-    // E-mails de compradores cujas transacoes sao ignoradas em TODOS os placares
-    // (Copa e Ranking Geral). Comparacao case-insensitive.
-    excluir_emails: ["cristianeamanda@hotmail.com", "lmfalconi@gmail.com"],
-    // Override de price/GMV por e-mail de comprador (case-insensitive, chaves em
-    // minusculas). Aplicado por transacao, antes da regua de GMV.
-    ajustar_precos: { "masterbrushsouza@gmail.com": 4741.51 }
+    // IDs (campo `id` do Supabase) cujas transacoes sao ignoradas nos placares.
+    // Comparacao case-insensitive.
+    // 6a31f4d2cc1cfab5a1fe7e7b = cristianeamanda@hotmail.com
+    // 6a32aec05a20e4c3d73c6f57 = lmfalconi@gmail.com
+    excluir_ids: ["6a31f4d2cc1cfab5a1fe7e7b", "6a32aec05a20e4c3d73c6f57"],
+    // Override de price/GMV por `id` (case-insensitive, chaves em minusculas).
+    // Aplicado por transacao, antes da regua de GMV.
+    // 6a313a63b98a6054e251eab7 = masterbrushsouza@gmail.com
+    ajustar_precos: { "6a313a63b98a6054e251eab7": 4741.51 }
   },
 
   supabase: {
