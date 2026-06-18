@@ -315,7 +315,7 @@
   }
 
   function fmt(v) {
-    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
   function iniciais(nome) {
     var p = String(nome).trim().split(/\s+/);
