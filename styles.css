@@ -1078,17 +1078,17 @@ h1 {
   border-radius: 14px 14px 0 0;
   padding: 0.7rem 0.6rem 0.6rem;
 }
-.podium-medal { font-size: 1.5rem; line-height: 1; margin-bottom: 0.25rem; }
+/* Foto em destaque: ocupa toda a largura do quadro, logo abaixo do nome (sem medalha) */
+.podium-name { font-family: var(--font-title); font-weight: 700; font-size: 1.05rem; margin-bottom: 0.45rem; text-align: center; }
 .podium-avatar {
-  width: 64px; height: 64px; border-radius: 12px; overflow: hidden;
+  width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden;
   border: 2px solid var(--border-color); flex-shrink: 0;
 }
 .podium-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.podium-name { font-family: var(--font-title); font-weight: 700; font-size: 0.95rem; margin-top: 0.4rem; text-align: center; }
-.podium-selecao { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.15rem; }
-.podium-flag { width: 20px; height: 14px; object-fit: cover; border-radius: 2px; border: 0.5px solid rgba(255,255,255,0.3); }
-.podium-selecao span { font-size: 0.7rem; color: var(--text-secondary); }
-.podium-gmv { font-family: monospace; font-weight: 800; font-size: 1rem; margin-top: 0.35rem; color: var(--accent-gold); }
+.podium-selecao { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.4rem; }
+.podium-flag { width: 22px; height: 15px; object-fit: cover; border-radius: 2px; border: 0.5px solid rgba(255,255,255,0.3); }
+.podium-selecao span { font-size: 0.74rem; color: var(--text-secondary); }
+.podium-gmv { font-family: monospace; font-weight: 800; font-size: 1.05rem; margin-top: 0.35rem; color: var(--accent-gold); }
 .podium-bar {
   width: 100%;
   display: flex; align-items: center; justify-content: center;
@@ -1104,10 +1104,10 @@ h1 {
 .place-1 .podium-bar { height: 92px; background: linear-gradient(180deg, #fde68a, #facc15); }
 .place-2 .podium-bar { height: 64px; background: linear-gradient(180deg, #f1f5f9, #cbd5e1); }
 .place-3 .podium-bar { height: 44px; background: linear-gradient(180deg, #fbbf24, #b45309); }
-.place-1 .podium-avatar { width: 78px; height: 78px; border-color: #facc15; }
+.place-1 .podium-avatar { border-color: #facc15; }
+.place-1 .podium-name { font-size: 1.2rem; }
 .place-1 .podium-card { border-color: rgba(250, 204, 21, 0.5); box-shadow: 0 0 22px rgba(250,204,21,0.18); }
-.place-1 .podium-gmv { color: var(--accent-green); }
-.place-1 .podium-medal { font-size: 1.9rem; }
+.place-1 .podium-gmv { color: var(--accent-green); font-size: 1.2rem; }
 .place-2 .podium-avatar { border-color: #cbd5e1; }
 .place-3 .podium-avatar { border-color: #b45309; }
 
@@ -1290,3 +1290,294 @@ body.view-bracket .phase-row.preview .closer-name { font-size: 0.8rem; }
 body.view-bracket .phase-row.preview .closer-gmv { font-size: 0.8rem; }
 body.view-bracket .phase-row.preview .closer-flag { width: 28px; height: 19px; }
 body.view-bracket .phase-row.preview .confronto-title { font-size: 0.66rem; }
+
+/* ===========================================================
+   HEADER COMPACTO compartilhado pelas telas cheias (semis/final/diário),
+   mesmo tratamento do chaveamento, para liberar altura ao conteúdo.
+   =========================================================== */
+body.view-semis header,
+body.view-final header,
+body.view-daily header {
+  padding: 0.5rem 1.6rem;
+  margin-bottom: 0.8rem;
+}
+body.view-semis h1, body.view-final h1, body.view-daily h1 { font-size: 1.25rem; }
+body.view-semis .logo-copa, body.view-final .logo-copa, body.view-daily .logo-copa { font-size: 1.4rem; }
+body.view-semis .fase-nome, body.view-final .fase-nome, body.view-daily .fase-nome { font-size: 1.1rem; }
+
+/* ===========================================================
+   FECHAMENTO DO DIA — tela de ranking só pelo GMV do dia selecionado.
+   Reaproveita o pódio (sem medalhas) e a lista do Dia da Copa em largura cheia.
+   =========================================================== */
+.daily-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 1.2rem 2rem;
+  overflow: hidden;
+}
+.daily-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+  padding-bottom: 0.8rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+.daily-title { display: flex; align-items: center; gap: 1rem; }
+.daily-icon { font-size: 2.2rem; animation: pulse 1.5s infinite alternate; }
+.daily-title h2 {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, var(--accent-gold) 0%, var(--accent-green) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.daily-title p { font-size: 0.8rem; color: var(--text-secondary); }
+.daily-total-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; text-align: right; }
+.daily-total-valor { font-family: monospace; font-size: 1.6rem; font-weight: 800; color: var(--accent-green); text-align: right; }
+/* Pódio do fechamento ganha mais respiro e fotos ainda maiores em tela cheia */
+.daily-wrap .podium { gap: 1.6rem; margin-bottom: 1.3rem; }
+.daily-wrap .podium-place { max-width: 280px; }
+
+/* ===========================================================
+   SEMIFINAIS — tela horizontal: Semi 1 | cotados p/ final | Semi 2
+   =========================================================== */
+.semis-stage {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1.4rem;
+  height: 100%;
+  overflow: hidden;
+}
+.semi-block {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid var(--border-glow-active);
+  border-radius: 18px;
+  box-shadow: var(--glow-shadow), 0 8px 28px rgba(0,0,0,0.5);
+  padding: 1.2rem 1rem;
+}
+.semi-block-title {
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-gold);
+  margin-bottom: 1.2rem;
+}
+.semi-duo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+.big-player {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 1rem 0.8rem;
+  transition: all 0.3s;
+}
+.big-player.a-definir {
+  justify-content: center;
+  min-height: 180px;
+  border-style: dashed;
+  border-color: rgba(71, 85, 105, 0.5);
+  opacity: 0.6;
+}
+.big-player.leader {
+  border-color: var(--accent-gold);
+  box-shadow: var(--glow-shadow);
+  background: rgba(251, 191, 36, 0.08);
+}
+.big-player.winner {
+  border-color: var(--accent-green);
+  box-shadow: var(--green-glow-shadow);
+  background: rgba(34, 197, 150, 0.08);
+}
+.big-player.eliminated { opacity: 0.32; filter: grayscale(100%); }
+.bp-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 200px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+}
+.big-player.leader .bp-photo { border-color: var(--accent-gold); }
+.big-player.winner .bp-photo { border-color: var(--accent-green); }
+.bp-photo img { width: 100%; height: 100%; object-fit: cover; }
+.bp-name { font-family: var(--font-title); font-weight: 800; font-size: 1.3rem; margin-top: 0.6rem; }
+.bp-selecao { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.2rem; }
+.bp-flag { width: 26px; height: 18px; object-fit: cover; border-radius: 3px; border: 0.5px solid rgba(255,255,255,0.3); }
+.bp-selecao span { font-size: 0.85rem; color: var(--text-secondary); }
+.bp-gmv { font-family: monospace; font-weight: 800; font-size: 1.25rem; margin-top: 0.4rem; color: var(--accent-gold); }
+.big-player.winner .bp-gmv { color: var(--accent-green); }
+.semi-vs {
+  flex-shrink: 0;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Centro: cotados para a final (líderes atuais de cada semi) */
+.final-projection {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.1) 0%, rgba(15, 23, 42, 0.6) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 18px;
+  padding: 1.2rem 1rem;
+}
+.final-projection .trofeu-icon { font-size: 2rem; margin-bottom: 0.3rem; }
+.final-proj-title {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-gold);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+.final-proj-inner { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; align-items: center; }
+.proj-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.5rem 0.7rem;
+}
+.proj-card.a-definir { justify-content: center; border-style: dashed; opacity: 0.6; }
+.proj-avatar { width: 46px; height: 46px; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border-color); flex-shrink: 0; }
+.proj-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.proj-info { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
+.proj-name { font-family: var(--font-title); font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-gmv { font-family: monospace; font-weight: 800; font-size: 0.9rem; color: var(--accent-gold); }
+.proj-flag { width: 28px; height: 19px; object-fit: cover; border-radius: 3px; border: 0.5px solid rgba(255,255,255,0.3); flex-shrink: 0; }
+.final-proj-vs {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* ===========================================================
+   GRANDE FINAL — tela dividida em duas metades, imagem grande do finalista.
+   Campeão coroado só no fim do dia (classe .champion).
+   =========================================================== */
+.final-stage {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 1.2rem;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.final-half {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  position: relative;
+  transition: all 0.4s;
+}
+.final-half.a-definir { border-style: dashed; opacity: 0.6; }
+.final-half.leader {
+  border-color: var(--accent-gold);
+  box-shadow: var(--glow-shadow), 0 8px 28px rgba(0,0,0,0.5);
+  background: rgba(251, 191, 36, 0.07);
+}
+.final-half.champion {
+  border: 2px solid var(--accent-gold);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.18) 0%, rgba(15, 23, 42, 0.85) 100%);
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.3);
+  animation: pulse-glow 2s infinite alternate;
+}
+.final-half.dim { opacity: 0.35; filter: grayscale(100%); }
+.fh-champ { display: flex; flex-direction: column; align-items: center; margin-bottom: 0.3rem; }
+.fh-trophy { font-size: 2.4rem; animation: float 3s ease-in-out infinite; }
+.fh-champ-label {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent-gold);
+}
+.fh-photo {
+  width: 46%;
+  max-width: 320px;
+  aspect-ratio: 3 / 4;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 3px solid var(--border-color);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.final-half.leader .fh-photo { border-color: var(--accent-gold); }
+.final-half.champion .fh-photo { border-color: var(--accent-gold); }
+.fh-photo img { width: 100%; height: 100%; object-fit: cover; }
+.fh-name { font-family: var(--font-title); font-weight: 800; font-size: 2.2rem; }
+.fh-selecao { display: flex; align-items: center; gap: 0.5rem; }
+.fh-flag { width: 34px; height: 23px; object-fit: cover; border-radius: 3px; border: 0.5px solid rgba(255,255,255,0.3); }
+.fh-selecao span { font-size: 1rem; color: var(--text-secondary); }
+.fh-gmv { font-family: monospace; font-weight: 800; font-size: 1.8rem; color: var(--accent-gold); }
+.final-half.champion .fh-gmv { color: var(--accent-green); }
+.final-vs {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  background: #0f172a;
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  width: 56px; height: 56px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
