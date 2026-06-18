@@ -305,6 +305,7 @@ function calcularResultados(transactionList) {
       gmv_quartas: 0,
       gmv_semis: 0,
       gmv_final: 0,
+      gmv_dia: 0,      // GMV apenas do dia selecionado no seletor (fechamento diário)
       eliminado: false
     };
   });
@@ -321,6 +322,10 @@ function calcularResultados(transactionList) {
   const semisFimW = parseDate(f.semis.fim).getTime();
   const finalIni = parseDate(f.final.inicio).getTime();
   const finalFimW = parseDate(f.final.fim).getTime();
+
+  // Janela do dia selecionado (fechamento diário): apenas as vendas daquele dia.
+  const diaIni = viewDay ? parseDate(viewDay + "T00:00:00-03:00").getTime() : 0;
+  const diaFim = viewDay ? parseDate(viewDay + "T23:59:59-03:00").getTime() : 0;
 
   // 2. Distribui e calcula o GMV de cada transação nas fases
   transactionList.forEach(t => {
@@ -344,6 +349,9 @@ function calcularResultados(transactionList) {
     const c = closers[seller_code];
 
     const timeMs = parseDate(t.created_at).getTime();
+
+    // GMV exclusivo do dia selecionado (independente da fase) — base do fechamento diário.
+    if (viewDay && timeMs >= diaIni && timeMs <= diaFim) c.gmv_dia += gmv;
 
     // Associa o GMV ao período correto. A Sexta soma DUPLO: nos grupos (acumulado)
     // e na competição pontual do Dia da Copa.
@@ -546,17 +554,34 @@ function renderDashboard(res) {
   container.innerHTML = "";
 
   const copaView = (activePhaseId === "grupos" && copa);
-  // Marca a view atual para escopar o CSS (header compacto e destaque de fase no chaveamento)
-  document.body.classList.toggle("view-copa", copaView);
-  document.body.classList.toggle("view-bracket", !copaView);
 
-  if (copaView) {
-    // Sexta = Dia da Copa: tela dividida (grupos à esquerda, todos-contra-todos à direita)
+  // Decide a view ativa. Ordem de prioridade:
+  //  1. Seletor de dia ativo -> Fechamento do Dia (ranking só do GMV daquele dia).
+  //  2. Sexta (Dia da Copa) ao vivo -> tela dividida grupos + todos-contra-todos.
+  //  3. Semifinais ao vivo -> tela horizontal Semi 1 | cotados p/ final | Semi 2.
+  //  4. Final ao vivo -> tela dividida em duas metades (um finalista em cada lado).
+  //  5. Demais (grupos/quartas) -> chaveamento de duas linhas.
+  let viewClass;
+  if (viewDay) {
+    viewClass = "view-daily";
+    renderDailyClosing(container, res);
+  } else if (copaView) {
+    viewClass = "view-copa";
     renderCopaDay(container, res);
+  } else if (activePhaseId === "semis") {
+    viewClass = "view-semis";
+    renderSemis(container, res);
+  } else if (activePhaseId === "final") {
+    viewClass = "view-final";
+    renderFinal(container, res);
   } else {
-    // Demais dias: chaveamento completo
+    viewClass = "view-bracket";
     renderBracket(container, res);
   }
+
+  // Marca a view atual para escopar o CSS (header compacto, destaques, etc.)
+  ["view-copa", "view-bracket", "view-daily", "view-semis", "view-final"]
+    .forEach(c => document.body.classList.toggle(c, c === viewClass));
 }
 
 // Mostra/oculta o banner de apuração no header.
@@ -884,13 +909,21 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   const phaseEndMs = phaseId && COMPETICAO.fases[phaseId] ? parseDate(COMPETICAO.fases[phaseId].fim).getTime() : 0;
   const phaseIsOver = nowMs >= phaseEndMs;
 
-  const card1 = createCloserCard(comp1, g1,
-    isC1Leader && !phaseIsOver,
-    isC1Leader && phaseIsOver
+  // Mantém o vencedor (ou líder parcial) SEMPRE no topo do confronto, para que
+  // todos os jogos fiquem visualmente consistentes (ex.: QF2 igual às demais).
+  const slots = [
+    { comp: comp1, gmv: g1, leader: isC1Leader },
+    { comp: comp2, gmv: g2, leader: isC2Leader }
+  ];
+  slots.sort((a, b) => (Number(b.leader) - Number(a.leader)) || (b.gmv - a.gmv));
+
+  const card1 = createCloserCard(slots[0].comp, slots[0].gmv,
+    slots[0].leader && !phaseIsOver,
+    slots[0].leader && phaseIsOver
   );
-  const card2 = createCloserCard(comp2, g2,
-    isC2Leader && !phaseIsOver,
-    isC2Leader && phaseIsOver
+  const card2 = createCloserCard(slots[1].comp, slots[1].gmv,
+    slots[1].leader && !phaseIsOver,
+    slots[1].leader && phaseIsOver
   );
 
   const vsBadge = document.createElement("div");
@@ -955,16 +988,18 @@ function renderCopaDay(container, res) {
   `;
 
   // Pódio (top 3) + lista (demais)
-  right.appendChild(buildPodium(ranking.slice(0, 3)));
-  right.appendChild(buildCopaList(ranking.slice(3)));
+  right.appendChild(buildPodium(ranking.slice(0, 3), "gmv_copa"));
+  right.appendChild(buildCopaList(ranking.slice(3), "gmv_copa"));
 
   split.appendChild(left);
   split.appendChild(right);
   container.appendChild(split);
 }
 
-// Constrói o pódio (2º à esquerda, 1º ao centro mais alto, 3º à direita)
-function buildPodium(top3) {
+// Constrói o pódio (2º à esquerda, 1º ao centro mais alto, 3º à direita).
+// Sem medalhas: a foto do vendedor é o destaque (ocupa todo o quadro após o nome).
+// gmvProp define qual GMV exibir (ex.: "gmv_copa" no Dia da Copa, "gmv_dia" no fechamento).
+function buildPodium(top3, gmvProp = "gmv_copa") {
   const podium = document.createElement("div");
   podium.className = "podium";
 
@@ -981,19 +1016,17 @@ function buildPodium(top3) {
     if (!c) { podium.appendChild(place); return; }
 
     const bandeira = c.bandeira || "flags/brasil.svg";
-    const medalha = pos === 1 ? "🥇" : pos === 2 ? "🥈" : "🥉";
     place.innerHTML = `
       <div class="podium-card">
-        <div class="podium-medal">${medalha}</div>
+        <div class="podium-name">${c.nome}</div>
         <div class="podium-avatar">
           <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
         </div>
-        <div class="podium-name">${c.nome}</div>
         <div class="podium-selecao">
           <img src="${bandeira}" alt="${c.selecao || ''}" class="podium-flag">
           <span>${c.selecao || ''}</span>
         </div>
-        <div class="podium-gmv">${formatCurrency(c.gmv_copa)}</div>
+        <div class="podium-gmv">${formatCurrency(c[gmvProp])}</div>
       </div>
       <div class="podium-bar"><span class="podium-num">${pos}</span></div>
     `;
@@ -1004,7 +1037,7 @@ function buildPodium(top3) {
 }
 
 // Constrói a lista dos demais colocados (4º em diante) com bandeira + seleção
-function buildCopaList(resto) {
+function buildCopaList(resto, gmvProp = "gmv_copa") {
   const list = document.createElement("div");
   list.className = "copa-list";
 
@@ -1012,7 +1045,7 @@ function buildCopaList(resto) {
     const pos = idx + 4;
     const bandeira = c.bandeira || "flags/brasil.svg";
     const row = document.createElement("div");
-    row.className = "copa-list-row" + (c.gmv_copa <= 0 ? " zero" : "");
+    row.className = "copa-list-row" + (c[gmvProp] <= 0 ? " zero" : "");
     row.innerHTML = `
       <div class="copa-list-pos">${pos}º</div>
       <div class="copa-list-avatar">
@@ -1023,12 +1056,240 @@ function buildCopaList(resto) {
         <img src="${bandeira}" alt="${c.selecao || ''}" class="copa-list-flag" onerror="this.style.visibility='hidden'">
         <span>${c.selecao || ''}</span>
       </div>
-      <div class="copa-list-gmv">${formatCurrency(c.gmv_copa)}</div>
+      <div class="copa-list-gmv">${formatCurrency(c[gmvProp])}</div>
     `;
     list.appendChild(row);
   });
 
   return list;
+}
+
+// ===========================================================
+//  FECHAMENTO DO DIA (Seletor de Dia) — ranking só pelo GMV do dia selecionado.
+//  Premiação diária: "o melhor do dia". Reaproveita o pódio (sem medalhas) + lista.
+// ===========================================================
+function renderDailyClosing(container, res) {
+  const wrap = document.createElement("div");
+  wrap.className = "daily-wrap";
+
+  // Ordena os 11 closers apenas pelo GMV do dia selecionado
+  const ranking = Object.keys(res.closers)
+    .map(c => res.closers[c])
+    .sort((a, b) => b.gmv_dia - a.gmv_dia);
+
+  const totalDia = ranking.reduce((acc, c) => acc + c.gmv_dia, 0);
+  const [yyyy, mm, dd] = viewDay.split("-");
+  const dataLabel = `${dd}/${mm}`;
+
+  wrap.innerHTML = `
+    <div class="daily-header">
+      <div class="daily-title">
+        <span class="daily-icon">🏅</span>
+        <div>
+          <h2>Fechamento do Dia — ${dataLabel}</h2>
+          <p>Melhor do dia • ranking apenas pelo GMV de ${dataLabel} (premiação diária)</p>
+        </div>
+      </div>
+      <div class="daily-total">
+        <div class="daily-total-label">GMV do Dia</div>
+        <div class="daily-total-valor">${formatCurrency(totalDia)}</div>
+      </div>
+    </div>
+  `;
+
+  wrap.appendChild(buildPodium(ranking.slice(0, 3), "gmv_dia"));
+  wrap.appendChild(buildCopaList(ranking.slice(3), "gmv_dia"));
+
+  container.appendChild(wrap);
+}
+
+// Card grande de jogador (foto em destaque) usado nas Semis e na Final.
+// opts: { leader, winner, eliminated, prev } — prev = nome da fase anterior p/ placeholder.
+function buildBigPlayerCard(c, gmvVal, opts = {}) {
+  const card = document.createElement("div");
+  card.className = "big-player";
+  if (!c) {
+    card.classList.add("a-definir");
+    card.innerHTML = `<span class="a-definir-label">A definir</span>`;
+    return card;
+  }
+  if (c.eliminado || opts.eliminated) card.classList.add("eliminated");
+  if (opts.leader) card.classList.add("leader");
+  if (opts.winner) card.classList.add("winner");
+
+  const bandeira = c.bandeira || "flags/brasil.svg";
+  card.innerHTML = `
+    <div class="bp-photo">
+      <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
+    </div>
+    <div class="bp-name">${c.nome}</div>
+    <div class="bp-selecao">
+      <img src="${bandeira}" alt="${c.selecao || ''}" class="bp-flag" onerror="this.style.visibility='hidden'">
+      <span>${c.selecao || ''}</span>
+    </div>
+    <div class="bp-gmv">${formatCurrency(gmvVal)}</div>
+  `;
+  return card;
+}
+
+// ===========================================================
+//  SEMIFINAIS — layout horizontal: Semi 1 | cotados para a Final | Semi 2.
+//  Cada semi mostra a dupla lado a lado (grande); o centro projeta o confronto
+//  da final pelos líderes atuais de cada semi ("cotados até o momento").
+// ===========================================================
+function renderSemis(container, res) {
+  const stage = document.createElement("div");
+  stage.className = "semis-stage";
+
+  const sf1 = res.semis[0];
+  const sf2 = res.semis[1];
+  const semisOver = getNow().getTime() >= parseDate(COMPETICAO.fases.semis.fim).getTime();
+
+  stage.appendChild(buildSemiBlock(sf1, "Semifinal 1", semisOver));
+  stage.appendChild(buildFinalProjection(sf1.vencedor, sf2.vencedor));
+  stage.appendChild(buildSemiBlock(sf2, "Semifinal 2", semisOver));
+
+  container.appendChild(stage);
+}
+
+function buildSemiBlock(sf, titulo, semisOver) {
+  const block = document.createElement("div");
+  block.className = "semi-block";
+  block.innerHTML = `<div class="semi-block-title">${titulo}</div>`;
+
+  const duo = document.createElement("div");
+  duo.className = "semi-duo";
+
+  const leader1 = sf.vencedor && sf.c1 && sf.vencedor.code === sf.c1.code;
+  const leader2 = sf.vencedor && sf.c2 && sf.vencedor.code === sf.c2.code;
+
+  const card1 = buildBigPlayerCard(sf.c1, sf.c1 ? sf.c1.gmv_semis : 0,
+    { leader: leader1 && !semisOver, winner: leader1 && semisOver, prev: "quartas" });
+  const card2 = buildBigPlayerCard(sf.c2, sf.c2 ? sf.c2.gmv_semis : 0,
+    { leader: leader2 && !semisOver, winner: leader2 && semisOver, prev: "quartas" });
+
+  const vs = document.createElement("div");
+  vs.className = "semi-vs";
+  vs.textContent = "VS";
+
+  duo.appendChild(card1);
+  duo.appendChild(vs);
+  duo.appendChild(card2);
+  block.appendChild(duo);
+  return block;
+}
+
+// Centro das semis: confronto projetado da final pelos líderes atuais de cada semi.
+function buildFinalProjection(p1, p2) {
+  const box = document.createElement("div");
+  box.className = "final-projection";
+  box.innerHTML = `
+    <div class="trofeu-icon">🏆</div>
+    <div class="final-proj-title">Cotados para a Final</div>
+  `;
+
+  const inner = document.createElement("div");
+  inner.className = "final-proj-inner";
+  inner.appendChild(buildProjCard(p1));
+
+  const vs = document.createElement("div");
+  vs.className = "final-proj-vs";
+  vs.textContent = "VS";
+  inner.appendChild(vs);
+
+  inner.appendChild(buildProjCard(p2));
+  box.appendChild(inner);
+  return box;
+}
+
+function buildProjCard(c) {
+  const card = document.createElement("div");
+  card.className = "proj-card";
+  if (!c) {
+    card.classList.add("a-definir");
+    card.innerHTML = `<span class="a-definir-label">A definir</span>`;
+    return card;
+  }
+  const bandeira = c.bandeira || "flags/brasil.svg";
+  card.innerHTML = `
+    <div class="proj-avatar">
+      <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
+    </div>
+    <div class="proj-info">
+      <span class="proj-name">${c.nome}</span>
+      <span class="proj-gmv">${formatCurrency(c.gmv_semis)}</span>
+    </div>
+    <img src="${bandeira}" alt="${c.selecao || ''}" class="proj-flag" onerror="this.style.visibility='hidden'">
+  `;
+  return card;
+}
+
+// ===========================================================
+//  GRANDE FINAL — tela dividida: cada finalista ocupa metade da tela com a
+//  imagem grande. O campeão só é coroado no fim do dia (res.campeao truthy).
+// ===========================================================
+function renderFinal(container, res) {
+  const stage = document.createElement("div");
+  stage.className = "final-stage";
+
+  const f = res.final;
+  const finalOver = getNow().getTime() >= parseDate(COMPETICAO.fases.final.fim).getTime();
+  const champ = res.campeao; // só definido após o fim do dia da final
+
+  const win1 = f.vencedor && f.c1 && f.vencedor.code === f.c1.code;
+  const win2 = f.vencedor && f.c2 && f.vencedor.code === f.c2.code;
+
+  const half1 = buildFinalHalf(f.c1, f.c1 ? f.c1.gmv_final : 0, {
+    leader: win1 && !finalOver,
+    champion: !!(champ && win1),
+    dim: !!(champ && !win1)
+  });
+  const half2 = buildFinalHalf(f.c2, f.c2 ? f.c2.gmv_final : 0, {
+    leader: win2 && !finalOver,
+    champion: !!(champ && win2),
+    dim: !!(champ && !win2)
+  });
+
+  const vs = document.createElement("div");
+  vs.className = "final-vs";
+  vs.textContent = "VS";
+
+  stage.appendChild(half1);
+  stage.appendChild(vs);
+  stage.appendChild(half2);
+  container.appendChild(stage);
+}
+
+function buildFinalHalf(c, gmvVal, opts = {}) {
+  const half = document.createElement("div");
+  half.className = "final-half";
+  if (opts.leader) half.classList.add("leader");
+  if (opts.champion) half.classList.add("champion");
+  if (opts.dim) half.classList.add("dim");
+
+  if (!c) {
+    half.classList.add("a-definir");
+    half.innerHTML = `<span class="a-definir-label">A definir</span>`;
+    return half;
+  }
+
+  const bandeira = c.bandeira || "flags/brasil.svg";
+  const coroa = opts.champion
+    ? `<div class="fh-champ"><span class="fh-trophy">🏆</span><span class="fh-champ-label">Campeão do Lançamento</span></div>`
+    : "";
+  half.innerHTML = `
+    ${coroa}
+    <div class="fh-photo">
+      <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
+    </div>
+    <div class="fh-name">${c.nome}</div>
+    <div class="fh-selecao">
+      <img src="${bandeira}" alt="${c.selecao || ''}" class="fh-flag" onerror="this.style.visibility='hidden'">
+      <span>${c.selecao || ''}</span>
+    </div>
+    <div class="fh-gmv">${formatCurrency(gmvVal)}</div>
+  `;
+  return half;
 }
 
 // Manipuladores visuais de carregamento e status de conexão
