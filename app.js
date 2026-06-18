@@ -228,7 +228,7 @@ async function fetchTransactions() {
   if (hasSupabase) {
     try {
       const base = `${COMPETICAO.supabase.url}/rest/v1/${COMPETICAO.supabase.tabela}` +
-                   `?type=eq.order_success&select=price,pmp,created_at,slug,email`;
+                   `?type=eq.order_success&select=price,pmp,created_at,slug,id`;
       // Filtra a coluna `slug` por "%legado%" (case-insensitive via ilike)
       const padrao = encodeURIComponent(COMPETICAO.produto.slug_like.replace(/%/g, "*"));
       const url = `${base}&slug=ilike.${padrao}&created_at=gte.2026-06-16T00:00:00-03:00`;
@@ -267,7 +267,7 @@ async function fetchTransactions() {
         return {
           price: t.price,
           pmp: t.pmp,
-          email: t.email,
+          id: t.id,
           created_at: normalizedTime.toISOString()
         };
       });
@@ -330,10 +330,10 @@ function calcularResultados(transactionList) {
   // 2. Distribui e calcula o GMV de cada transação nas fases
   transactionList.forEach(t => {
     if (!t.pmp) return;
-    // Ignora transacoes de compradores na lista de exclusao (case-insensitive)
-    const email = (t.email || "").trim().toLowerCase();
-    const excluir = (COMPETICAO.produto.excluir_emails || []);
-    if (email && excluir.some(e => e.toLowerCase() === email)) return;
+    // Ignora transacoes na lista de exclusao por `id` (case-insensitive)
+    const id = (t.id || "").toString().trim().toLowerCase();
+    const excluir = (COMPETICAO.produto.excluir_ids || []);
+    if (id && excluir.some(e => e.toLowerCase() === id)) return;
     // seller_code = split_part(pmp, '-', -1)
     const segments = t.pmp.split('-');
     const seller_code = segments[segments.length - 1].toUpperCase();
@@ -341,10 +341,10 @@ function calcularResultados(transactionList) {
     // Vendedor válido apenas se possui 3 letras e está no cadastro
     if (seller_code.length !== 3 || !closers[seller_code]) return;
 
-    // Override de price por e-mail (aplicado por transacao, antes da regua)
+    // Override de price por `id` (aplicado por transacao, antes da regua)
     const ajustes = (COMPETICAO.produto.ajustar_precos || {});
-    const precoEfetivo = (email && Object.prototype.hasOwnProperty.call(ajustes, email))
-      ? ajustes[email] : t.price;
+    const precoEfetivo = (id && Object.prototype.hasOwnProperty.call(ajustes, id))
+      ? ajustes[id] : t.price;
     const gmv = calcularGMV(precoEfetivo);
     const c = closers[seller_code];
 
