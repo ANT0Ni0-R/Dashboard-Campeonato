@@ -532,9 +532,15 @@ function calcularResultados(transactionList) {
   };
 }
 
-// Formata valores numéricos para Real BRL
+// Formata valores numéricos para Real BRL (sem casas decimais — evita o GMV
+// estourar/encostar na bandeira nos cards e mantém os números mais limpos)
 function formatCurrency(val) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(val);
 }
 
 // Renderiza a interface baseada na fase de competição ativa
