@@ -665,9 +665,22 @@ function formatDuration(diffMs) {
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-// Cria o bloco de grupos (A, B, C, D) + Repescagem. Reutilizado pelo chaveamento
-// e pela tela do Dia da Copa. `destaqueClassificados` liga o highlight verde.
-function createGruposContainer(res, destaqueClassificados) {
+// Cria o bloco de grupos (A, B, C, D) + Repescagem. Reutilizado pelo chaveamento,
+// pela tela do Dia da Copa e pelo Fechamento do Dia.
+// opts:
+//   destaque         -> liga o highlight (verde) do classificado / melhor do grupo
+//   gmvProp          -> qual GMV exibir/ordenar ("gmv_grupos" padrão, "gmv_dia" no fechamento)
+//   mostrarRepescagem-> exibe (ou não) o bloco de repescagem ao lado
+//   modoDia          -> ordena por gmvProp e destaca o MELHOR de cada grupo no dia
+//                       (ignora a marcação de eliminado, pois é uma apuração diária)
+function createGruposContainer(res, opts = {}) {
+  const {
+    destaque = false,
+    gmvProp = "gmv_grupos",
+    mostrarRepescagem = true,
+    modoDia = false
+  } = opts;
+
   const containerGrupos = document.createElement("div");
   containerGrupos.className = "grupos-container";
 
@@ -680,20 +693,31 @@ function createGruposContainer(res, destaqueClassificados) {
     const membersList = document.createElement("div");
     membersList.className = "grupo-members";
 
-    const sortedMembers = res.grupos[gConf.nome];
-    // Identifica o líder parcial do grupo
-    const maxGMV = Math.max(...sortedMembers.map(m => m.gmv_grupos));
+    // No fechamento diário ordena pelo GMV do dia; senão usa o standing acumulado.
+    const sortedMembers = modoDia
+      ? gConf.membros.map(code => res.closers[code]).slice().sort((a, b) => b[gmvProp] - a[gmvProp])
+      : res.grupos[gConf.nome];
+
+    const maxGMV = Math.max(...sortedMembers.map(m => m[gmvProp]));
 
     sortedMembers.forEach(c => {
-      const isLeader = maxGMV > 0 && c.gmv_grupos === maxGMV;
-      const isQualified = c.posicao_grupo <= gConf.avancam;
-      const card = createCloserCard(c, c.gmv_grupos, isLeader, isQualified && destaqueClassificados);
-      membersList.appendChild(card);
+      const isLeader = maxGMV > 0 && c[gmvProp] === maxGMV;
+      if (modoDia) {
+        // Destaca em verde o melhor do grupo no dia (ignora eliminado)
+        const card = createCloserCard(c, c[gmvProp], false, isLeader && destaque, { ignoreEliminated: true });
+        membersList.appendChild(card);
+      } else {
+        const isQualified = c.posicao_grupo <= gConf.avancam;
+        const card = createCloserCard(c, c[gmvProp], isLeader, isQualified && destaque);
+        membersList.appendChild(card);
+      }
     });
 
     gBox.appendChild(membersList);
     containerGrupos.appendChild(gBox);
   });
+
+  if (!mostrarRepescagem) return containerGrupos;
 
   // Bloco de Repescagem ao lado
   const repBox = document.createElement("div");
@@ -707,7 +731,7 @@ function createGruposContainer(res, destaqueClassificados) {
   res.repescagem.forEach((c, idx) => {
     const isWinnerRep = idx === 0; // O primeiro elemento é o classificado
     const isLeader = maxRepGMV > 0 && c.gmv_grupos === maxRepGMV;
-    const card = createCloserCard(c, c.gmv_grupos, isLeader, isWinnerRep && destaqueClassificados);
+    const card = createCloserCard(c, c.gmv_grupos, isLeader, isWinnerRep && destaque);
     repMembers.appendChild(card);
   });
   repBox.querySelector(".grupo-box").appendChild(repMembers);
@@ -762,7 +786,7 @@ function buildPhaseSection(id, res, isActive) {
   const grid = row.querySelector(".phase-grid");
 
   if (id === "grupos") {
-    grid.appendChild(createGruposContainer(res, activePhaseId === "grupos"));
+    grid.appendChild(createGruposContainer(res, { destaque: activePhaseId === "grupos" }));
   } else {
     grid.appendChild(buildConfrontosFor(id, res));
   }
@@ -850,11 +874,11 @@ function createPhaseRow(id, isActive) {
 
 // Helper: Cria card do vendedor.
 // Novo layout: foto | nome + GMV | bandeira MAIOR à direita (sem código PMP).
-function createCloserCard(c, gmvVal, isLiveLeader = false, isQualified = false) {
+function createCloserCard(c, gmvVal, isLiveLeader = false, isQualified = false, opts = {}) {
   const card = document.createElement("div");
   card.className = "closer-card";
 
-  if (c.eliminado) {
+  if (c.eliminado && !opts.ignoreEliminated) {
     card.classList.add("eliminated");
   } else {
     if (isLiveLeader) card.classList.add("live-leader");
@@ -964,7 +988,7 @@ function renderCopaDay(container, res) {
   const left = document.createElement("div");
   left.className = "copa-left";
   left.innerHTML = `<div class="copa-side-title">Fase de Grupos <span>acumulado Ter–Sáb</span></div>`;
-  left.appendChild(createGruposContainer(res, true));
+  left.appendChild(createGruposContainer(res, { destaque: true }));
 
   // --- LADO DIREITO: ranking do dia (todos contra todos) ---
   const right = document.createElement("div");
@@ -1075,38 +1099,55 @@ function buildCopaList(resto, gmvProp = "gmv_copa") {
 //  Premiação diária: "o melhor do dia". Reaproveita o pódio (sem medalhas) + lista.
 // ===========================================================
 function renderDailyClosing(container, res) {
-  const wrap = document.createElement("div");
-  wrap.className = "daily-wrap";
+  const split = document.createElement("div");
+  split.className = "copa-day-split";
 
-  // Ordena os 11 closers apenas pelo GMV do dia selecionado
+  const [yyyy, mm, dd] = viewDay.split("-");
+  const dataLabel = `${dd}/${mm}`;
+
+  // --- LADO ESQUERDO: melhor de cada grupo (A, B, C, D) somente pelo GMV do dia ---
+  const left = document.createElement("div");
+  left.className = "copa-left";
+  left.innerHTML = `<div class="copa-side-title">Melhor por Grupo <span>somente GMV do dia ${dataLabel}</span></div>`;
+  left.appendChild(createGruposContainer(res, {
+    destaque: true,
+    gmvProp: "gmv_dia",
+    mostrarRepescagem: false,
+    modoDia: true
+  }));
+
+  // --- LADO DIREITO: ranking geral do dia (melhor do dia) ---
+  const right = document.createElement("div");
+  right.className = "copa-right";
+
   const ranking = Object.keys(res.closers)
     .map(c => res.closers[c])
     .sort((a, b) => b.gmv_dia - a.gmv_dia);
 
   const totalDia = ranking.reduce((acc, c) => acc + c.gmv_dia, 0);
-  const [yyyy, mm, dd] = viewDay.split("-");
-  const dataLabel = `${dd}/${mm}`;
 
-  wrap.innerHTML = `
-    <div class="daily-header">
-      <div class="daily-title">
-        <span class="daily-icon">🏅</span>
+  right.innerHTML = `
+    <div class="copa-right-header">
+      <div class="copa-right-title">
+        <span class="copa-icon">🏅</span>
         <div>
           <h2>Fechamento do Dia — ${dataLabel}</h2>
-          <p>Melhor do dia • ranking apenas pelo GMV de ${dataLabel} (premiação diária)</p>
+          <p>Melhor do dia geral • ranking apenas pelo GMV de ${dataLabel}</p>
         </div>
       </div>
-      <div class="daily-total">
-        <div class="daily-total-label">GMV do Dia</div>
-        <div class="daily-total-valor">${formatCurrency(totalDia)}</div>
+      <div class="copa-right-total">
+        <div class="copa-total-label">GMV do Dia</div>
+        <div class="copa-total-valor">${formatCurrency(totalDia)}</div>
       </div>
     </div>
   `;
 
-  wrap.appendChild(buildPodium(ranking.slice(0, 3), "gmv_dia"));
-  wrap.appendChild(buildCopaList(ranking.slice(3), "gmv_dia"));
+  right.appendChild(buildPodium(ranking.slice(0, 3), "gmv_dia"));
+  right.appendChild(buildCopaList(ranking.slice(3), "gmv_dia"));
 
-  container.appendChild(wrap);
+  split.appendChild(left);
+  split.appendChild(right);
+  container.appendChild(split);
 }
 
 // Card grande de jogador (foto em destaque) usado nas Semis e na Final.

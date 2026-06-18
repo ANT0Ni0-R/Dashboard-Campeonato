@@ -1306,46 +1306,6 @@ body.view-semis .logo-copa, body.view-final .logo-copa, body.view-daily .logo-co
 body.view-semis .fase-nome, body.view-final .fase-nome, body.view-daily .fase-nome { font-size: 1.1rem; }
 
 /* ===========================================================
-   FECHAMENTO DO DIA — tela de ranking só pelo GMV do dia selecionado.
-   Reaproveita o pódio (sem medalhas) e a lista do Dia da Copa em largura cheia.
-   =========================================================== */
-.daily-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
-  padding: 1.2rem 2rem;
-  overflow: hidden;
-}
-.daily-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 2px solid rgba(251, 191, 36, 0.3);
-  padding-bottom: 0.8rem;
-  margin-bottom: 1rem;
-  flex-shrink: 0;
-}
-.daily-title { display: flex; align-items: center; gap: 1rem; }
-.daily-icon { font-size: 2.2rem; animation: pulse 1.5s infinite alternate; }
-.daily-title h2 {
-  font-family: var(--font-title);
-  font-size: 1.5rem;
-  font-weight: 800;
-  background: linear-gradient(90deg, var(--accent-gold) 0%, var(--accent-green) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.daily-title p { font-size: 0.8rem; color: var(--text-secondary); }
-.daily-total-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; text-align: right; }
-.daily-total-valor { font-family: monospace; font-size: 1.6rem; font-weight: 800; color: var(--accent-green); text-align: right; }
-/* Pódio do fechamento ganha mais respiro e fotos ainda maiores em tela cheia */
-.daily-wrap .podium { gap: 1.6rem; margin-bottom: 1.3rem; }
-.daily-wrap .podium-place { max-width: 280px; }
-
-/* ===========================================================
    SEMIFINAIS — tela horizontal: Semi 1 | cotados p/ final | Semi 2
    =========================================================== */
 .semis-stage {
