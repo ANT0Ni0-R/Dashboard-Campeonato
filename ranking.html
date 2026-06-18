@@ -218,7 +218,7 @@
     if (hasSupabase) {
       try {
         var base = sb.url + "/rest/v1/" + sb.tabela +
-                   "?type=eq.order_success&select=price,pmp,created_at,slug,email";
+                   "?type=eq.order_success&select=price,pmp,created_at,slug,id";
         var padrao = encodeURIComponent(COMPETICAO.produto.slug_like.replace(/%/g, "*"));
         var url = base + "&slug=ilike." + padrao + "&created_at=gte.2026-06-16T00:00:00-03:00";
         var resp = await fetch(url, {
@@ -241,25 +241,25 @@
       .filter(function (t) { return t.type === "order_success"; })
       .map(function (t) {
         var nt = new Date(new Date(t.created_at).getTime() + OFFSET_MS);
-        return { price: t.price, pmp: t.pmp, email: t.email, slug: t.slug, created_at: nt.toISOString() };
+        return { price: t.price, pmp: t.pmp, id: t.id, slug: t.slug, created_at: nt.toISOString() };
       });
     return { rows: rows, fonte: "JSON local (teste)" };
   }
 
-  // Agrega transacoes por seller_code (PMP), aplicando exclusao de e-mails.
+  // Agrega transacoes por seller_code (PMP), aplicando exclusao por id.
   function agregar(rows) {
-    var excluir = (COMPETICAO.produto.excluir_emails || []).map(function (e) { return e.toLowerCase(); });
+    var excluir = (COMPETICAO.produto.excluir_ids || []).map(function (e) { return e.toLowerCase(); });
     var ajustes = (COMPETICAO.produto.ajustar_precos || {});
     var acc = {};
     rows.forEach(function (t) {
       if (!t.pmp) return;
-      var email = (t.email || "").trim().toLowerCase();
-      if (email && excluir.indexOf(email) !== -1) return;
+      var id = (t.id || "").toString().trim().toLowerCase();
+      if (id && excluir.indexOf(id) !== -1) return;
       var seg = t.pmp.split("-");
       var code = seg[seg.length - 1].toUpperCase();
       if (code.length !== 3 || !COMPETICAO.vendedores[code]) return;
-      // Override de price por e-mail (por transacao)
-      var precoEfetivo = (email && ajustes.hasOwnProperty(email)) ? ajustes[email] : t.price;
+      // Override de price por id (por transacao)
+      var precoEfetivo = (id && ajustes.hasOwnProperty(id)) ? ajustes[id] : t.price;
       if (!acc[code]) acc[code] = { pmp: code, nome: COMPETICAO.vendedores[code].nome, gmv: 0, qtd: 0 };
       acc[code].gmv += Number(precoEfetivo) || 0;
       acc[code].qtd += 1;
