@@ -43,10 +43,19 @@ var DEFAULTS = {
 };
 
 // ===== SERVE A PAGINA =====
-function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
+// Roteamento por parametro de URL:
+//   ...exec               -> Copa (bracket, layouts por fase)
+//   ...exec?view=ranking  -> Ranking Geral do Lancamento (tabela + podio)
+// Ambas usam o mesmo getTransactions() (mesmos segredos / mesma fonte).
+function doGet(e) {
+  var view = (e && e.parameter && e.parameter.view) || '';
+  var isRanking = (view === 'ranking');
+  var file  = isRanking ? 'RankingIndex' : 'Index';
+  var title = isRanking ? 'Ranking Geral do Lançamento' : 'Copa do Mundo: O Legado';
+
+  return HtmlService.createTemplateFromFile(file)
     .evaluate()
-    .setTitle('Copa do Mundo: O Legado')
+    .setTitle(title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

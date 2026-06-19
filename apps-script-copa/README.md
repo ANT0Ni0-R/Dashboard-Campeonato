@@ -9,15 +9,28 @@ guardar as credenciais do Supabase **fora do cliente**.
 `styles.css`) — a lógica de cálculo/renderização é a mesma; só a busca de dados
 mudou de fetch no navegador para `google.script.run` → servidor.
 
+## Duas telas no mesmo Web App (roteamento por URL)
+
+O `doGet(e)` decide qual tela servir pelo parâmetro `view`:
+
+| URL | Tela | Equivale no Pages a |
+|---|---|---|
+| `…/exec` | Copa (bracket, layouts por fase) | `/` (`index.html`) |
+| `…/exec?view=ranking` | Ranking Geral do Lançamento | `/ranking` (`ranking.html`) |
+
+As duas telas usam o **mesmo** `getTransactions()` (mesmos segredos / mesma fonte
+Supabase) e o mesmo `Config` (vendedores, fotos já normalizadas).
+
 ## Arquivos (cada um vira um arquivo no editor do Apps Script)
 
 | Arquivo no repo | Arquivo no Apps Script | Conteúdo |
 |---|---|---|
-| `Code.gs` | `Code.gs` (Script) | `doGet`, `getTransactions`, login + cache de token |
-| `Index.html` | `Index` (HTML) | casca HTML; monta a página via `include()` |
-| `Stylesheet.html` | `Stylesheet` (HTML) | CSS (cópia do `styles.css`) |
+| `Code.gs` | `Code.gs` (Script) | `doGet` (roteia por `view`), `getTransactions`, login + cache de token |
+| `Index.html` | `Index` (HTML) | casca HTML da Copa; monta a página via `include()` |
+| `Stylesheet.html` | `Stylesheet` (HTML) | CSS da Copa (cópia do `styles.css`) |
 | `Config.html` | `Config` (HTML) | `COMPETICAO` + `ASSETS_BASE` (cópia do `config.js`) |
-| `JavaScript.html` | `JavaScript` (HTML) | motor do dashboard (cópia do `app.js`) |
+| `JavaScript.html` | `JavaScript` (HTML) | motor da Copa (cópia do `app.js`) |
+| `RankingIndex.html` | `RankingIndex` (HTML) | tela do Ranking Geral (cópia do `ranking.html`, self-contained: CSS + corpo + JS) |
 
 > O Apps Script não lê o GitHub automaticamente: ao mudar qualquer arquivo aqui,
 > copie/cole no editor em `script.google.com` e gere uma nova versão da implantação.
@@ -68,12 +81,12 @@ Enquanto o repo atual continuar público, o default já funciona.
 
 ## Deploy
 
-1. Crie um projeto em `script.google.com` e cole os 5 arquivos.
+1. Crie um projeto em `script.google.com` e cole os 6 arquivos.
 2. Defina os Script Properties (acima).
 3. **Implantar → Nova implantação → App da Web**
    - Executar como: **Eu**
    - Quem tem acesso: **Qualquer pessoa** (necessário para a TV abrir sem login).
-4. Abra a URL `/exec` gerada na smart TV.
+4. Abra a URL na smart TV: `…/exec` (Copa) ou `…/exec?view=ranking` (Ranking).
 
 Para publicar mudanças depois: **Implantar → Gerenciar implantações → editar →
 nova versão**.
