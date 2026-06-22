@@ -124,9 +124,16 @@ O Apps Script **não lê os arquivos do GitHub automaticamente**. Para publicar 
 ### Supabase
 
 - Plano gratuito suporta carga tranquila para o caso de uso (14 usuários, polling 60s)
-- A anon key no código é intencional e segura (protegida por RLS no lado do Supabase)
 - Tabela: `db_transactions_events`, campo relevante: `type = 'order_success'`, `price`, `pmp`, `created_at`
 - A query filtra `created_at >= 2026-06-16T00:00:00-03:00` — antes dessa data, o Supabase retorna vazio e o fallback JSON assume
+
+#### Autenticação no Apps Script (CAPTCHA no Auth) — `apps-script/Code.gs`
+
+- A produção real consulta o Supabase **server-side** no Apps Script (`getTransactions()` em `Code.gs`), não direto do navegador.
+- O Supabase ativou **CAPTCHA** no Auth, o que quebrou o login `grant_type=password` que o `Code.gs` usava (`Falha no login Supabase (400): captcha protection`).
+- **Correção:** usar a **secret key** (`sb_secret_...`) no header `apikey`. Mapeia para `service_role`, ignora RLS, não expira e não passa por CAPTCHA (não há login). É **server-only** (o Supabase recusa em navegador e **revoga** keys achadas em repo público), então fica **só em Script Property `SUPABASE_SECRET_KEY`** — nunca versionada.
+- Com o sistema novo de chaves, a key vai no header **`apikey`**, não em `Authorization: Bearer`.
+- Fallback no `Code.gs`: se não houver secret key, ele aceita `SUPABASE_ACCESS_TOKEN` (JWT longo, Bearer) + `SUPABASE_PUBLISHABLE_KEY` (apikey), e por último o login legado (CAPTCHA). Passo a passo em `apps-script/README.md`.
 
 ### BigQuery
 
