@@ -121,7 +121,8 @@ function lerConfig_() {
     // renova sozinho — sem login, sem CAPTCHA, sem token estatico para gerenciar.
     jwtSecret:      p.getProperty('SUPABASE_JWT_SECRET'),
     jwtRole:        p.getProperty('SUPABASE_JWT_ROLE') || 'authenticated',
-    jwtSub:         p.getProperty('SUPABASE_JWT_SUB'),   // uuid do usuario, se a RLS usa auth.uid()
+    jwtSub:         p.getProperty('SUPABASE_JWT_SUB'),     // uuid do usuario, se a RLS usa auth.uid()
+    jwtEmail:       p.getProperty('SUPABASE_JWT_EMAIL'),   // e-mail, se a RLS usa auth.jwt()->>'email'
     accessToken:    p.getProperty('SUPABASE_ACCESS_TOKEN'),
     email:          p.getProperty('SUPABASE_AUTH_EMAIL'),
     password:       p.getProperty('SUPABASE_AUTH_PASSWORD')
@@ -283,6 +284,9 @@ function mintJwt_(cfg, forceRefresh) {
     payload.sub = cfg.jwtSub;
     payload.aud = 'authenticated';
   }
+  if (cfg.jwtEmail) {         // caso a policy de RLS use auth.jwt()->>'email'
+    payload.email = cfg.jwtEmail;
+  }
 
   var b64 = function (obj) {
     return Utilities.base64EncodeWebSafe(JSON.stringify(obj)).replace(/=+$/, '');
@@ -304,8 +308,9 @@ function setSecrets_() {
     // OPCAO B (mantem RLS): JWT Secret do projeto (Settings > API > JWT Settings).
     // O servidor assina e renova o token sozinho. Precisa tambem da publishable key.
     SUPABASE_JWT_SECRET: '',
-    SUPABASE_PUBLISHABLE_KEY: ''
-    // SUPABASE_JWT_SUB: ''   // uuid do usuario, so se a policy de RLS usa auth.uid()
+    SUPABASE_PUBLISHABLE_KEY: '',
+    SUPABASE_JWT_SUB: ''      // <<< uuid do usuario (Authentication > Users > User UID)
+    // SUPABASE_JWT_EMAIL: '' // so se a policy de RLS usar auth.jwt()->>'email'
 
     // OPCAO A (ignora RLS): service_role LEGADA (eyJ...), aba "Legacy API keys".
     // NAO use a sb_secret_ nova aqui: o Apps Script e bloqueado por User-Agent.
@@ -328,7 +333,8 @@ function diagSupabase() {
   Logger.log('FILTRO: slug ilike "%s"  E  created_at >= %s', cfg.slugLike, cfg.desde);
   Logger.log('SERVICE_ROLE_KEY (ou SECRET_KEY): %s', mask(cfg.serviceKey));
   Logger.log('PUBLISHABLE_KEY: %s', mask(cfg.publishableKey));
-  Logger.log('JWT_SECRET: %s  (role=%s, sub=%s)', mask(cfg.jwtSecret), cfg.jwtRole, cfg.jwtSub || '(nenhum)');
+  Logger.log('JWT_SECRET: %s  (role=%s, sub=%s, email=%s)', mask(cfg.jwtSecret), cfg.jwtRole,
+             cfg.jwtSub || '(nenhum)', cfg.jwtEmail || '(nenhum)');
   Logger.log('ACCESS_TOKEN: %s', mask(cfg.accessToken));
   Logger.log('Modo de auth que sera usado: %s',
              cfg.serviceKey   ? '1 (service_role / apikey, ignora RLS)' :
