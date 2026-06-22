@@ -128,6 +128,21 @@ function lerConfig_() {
   };
 }
 
+// Resolve os headers de autenticacao do modo ativo (usado pelo diagnostico).
+// Mesma ordem/regra de getTransactions(). force re-assina/re-loga ignorando cache.
+function resolveAuthHeaders_(cfg, force) {
+  if (cfg.serviceKey) return { apikey: cfg.serviceKey };
+  if (cfg.jwtSecret) {
+    if (!cfg.publishableKey) throw new Error('Falta SUPABASE_PUBLISHABLE_KEY (header apikey).');
+    return { apikey: cfg.publishableKey, Authorization: 'Bearer ' + mintJwt_(cfg, force) };
+  }
+  if (cfg.accessToken) {
+    if (!cfg.publishableKey) throw new Error('Falta SUPABASE_PUBLISHABLE_KEY (header apikey).');
+    return { apikey: cfg.publishableKey, Authorization: 'Bearer ' + cfg.accessToken };
+  }
+  return { apikey: cfg.publishableKey, Authorization: 'Bearer ' + getAccessToken_(cfg, force) };
+}
+
 // ===== CONSULTA O SUPABASE (chamado pelo front via google.script.run) =====
 // Retorna o array de transacoes (price, pmp, created_at, slug, id), igual ao
 // formato que o app.js ja espera.
@@ -310,6 +325,7 @@ function diagSupabase() {
   };
   Logger.log('URL: %s', cfg.url);
   Logger.log('TABELA: %s', cfg.tabela);
+  Logger.log('FILTRO: slug ilike "%s"  E  created_at >= %s', cfg.slugLike, cfg.desde);
   Logger.log('SERVICE_ROLE_KEY (ou SECRET_KEY): %s', mask(cfg.serviceKey));
   Logger.log('PUBLISHABLE_KEY: %s', mask(cfg.publishableKey));
   Logger.log('JWT_SECRET: %s  (role=%s, sub=%s)', mask(cfg.jwtSecret), cfg.jwtRole, cfg.jwtSub || '(nenhum)');
@@ -326,41 +342,50 @@ function diagSupabase() {
                'browser"). Use a service_role LEGADA (formato eyJ...).');
   }
 
-  // 1a) Teste service_role: chave no header apikey, so 1 linha.
-  if (cfg.serviceKey) {
-    var r = UrlFetchApp.fetch(cfg.url + '/rest/v1/' + cfg.tabela + '?select=pmp,price,created_at&limit=1', {
-      method: 'get',
-      headers: { apikey: cfg.serviceKey, Accept: 'application/json' },
-      muteHttpExceptions: true
-    });
-    Logger.log('--- Teste apikey service_role (limit=1) ---');
-    Logger.log('HTTP %s', r.getResponseCode());
-    Logger.log('Body: %s', r.getContentText().slice(0, 800));
+  var headers;
+  try {
+    headers = resolveAuthHeaders_(cfg, true);
+    headers.Accept = 'application/json';
+  } catch (e) {
+    Logger.log('Erro ao resolver autenticacao: %s', e && e.message ? e.message : e);
+    return;
+  }
+  var base = cfg.url + '/rest/v1/' + cfg.tabela;
+  var get = function (qs) {
+    return UrlFetchApp.fetch(base + qs, { method: 'get', headers: headers, muteHttpExceptions: true });
+  };
+
+  // A) Leitura crua, SEM nenhum filtro. Diz se a auth/RLS deixa ler a tabela.
+  var a = get('?select=pmp,slug,price,created_at&limit=3');
+  Logger.log('--- A) leitura SEM filtro (limit=3) --- HTTP %s', a.getResponseCode());
+  Logger.log('Body: %s', a.getContentText().slice(0, 700));
+  if (a.getResponseCode() === 200 && (a.getContentText() || '').trim() === '[]') {
+    Logger.log('>>> A veio VAZIA: a RLS nao deixa este papel ("%s") ler a tabela. ' +
+               'Defina SUPABASE_JWT_SUB com o uuid do usuario certo, ajuste a policy ' +
+               'de SELECT, ou use a service_role (Opcao A).', cfg.jwtRole);
   }
 
-  // 1b) Teste JWT assinado: publishable no apikey + JWT recem-assinado no Bearer.
-  if (cfg.jwtSecret && cfg.publishableKey) {
-    var jwt = mintJwt_(cfg, true);
-    Logger.log('--- Teste JWT assinado no servidor (limit=1) ---');
-    Logger.log('JWT (prefixo): %s', jwt.slice(0, 24) + '…');
-    var r2 = UrlFetchApp.fetch(cfg.url + '/rest/v1/' + cfg.tabela + '?select=pmp,price,created_at&limit=1', {
-      method: 'get',
-      headers: { apikey: cfg.publishableKey, Authorization: 'Bearer ' + jwt, Accept: 'application/json' },
-      muteHttpExceptions: true
-    });
-    Logger.log('HTTP %s', r2.getResponseCode());
-    Logger.log('Body: %s', r2.getContentText().slice(0, 800));
-    Logger.log('Obs.: HTTP 200 com Body "[]" => JWT valido, mas a RLS nao deixa o ' +
-               'papel "%s" ler a tabela (falta policy de SELECT).', cfg.jwtRole);
+  // B) order_success no periodo, SEM filtro de slug -> quais slugs existem de fato?
+  var b = get('?type=eq.order_success&created_at=gte.' + encodeURIComponent(cfg.desde) + '&select=slug&limit=100');
+  Logger.log('--- B) order_success desde %s, SEM filtro de slug --- HTTP %s', cfg.desde, b.getResponseCode());
+  try {
+    var rb = JSON.parse(b.getContentText() || '[]');
+    var slugs = {};
+    rb.forEach(function (r) { var s = r.slug || '(null)'; slugs[s] = (slugs[s] || 0) + 1; });
+    Logger.log('Linhas: %s | slugs distintos presentes: %s', rb.length, JSON.stringify(slugs));
+    Logger.log('>>> Se nenhum slug acima contem "%s", o filtro de produto esta errado ' +
+               '(ajuste PRODUTO_SLUG_LIKE em Script Properties).', cfg.slugLike.replace(/%/g, ''));
+  } catch (e) {
+    Logger.log('Body: %s', b.getContentText().slice(0, 700));
   }
 
-  // 2) Teste do caminho real (mesma query do dashboard, via getTransactions()).
+  // C) Consulta REAL do dashboard (via getTransactions()).
   try {
     var rows = getTransactions();
-    Logger.log('--- getTransactions() OK: %s linhas ---', rows.length);
+    Logger.log('--- C) getTransactions() OK: %s linhas ---', rows.length);
     Logger.log('Amostra: %s', JSON.stringify(rows.slice(0, 2)));
   } catch (e) {
-    Logger.log('--- getTransactions() LANCOU ERRO ---');
+    Logger.log('--- C) getTransactions() LANCOU ERRO ---');
     Logger.log(e && e.message ? e.message : e);
   }
 }
