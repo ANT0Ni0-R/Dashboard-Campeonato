@@ -211,3 +211,50 @@ function setSecrets_() {
     // , SUPABASE_URL: '', SUPABASE_TABELA: '', PRODUTO_SLUG_LIKE: '%legado%'
   });
 }
+
+// ===== DIAGNOSTICO =====
+// Selecione esta funcao no editor e clique em Executar. O resultado aparece no
+// "Registro de execucao". NAO imprime a secret key inteira (so prefixo/tamanho).
+function diagSupabase() {
+  var p = PropertiesService.getScriptProperties();
+  var secret = p.getProperty('SUPABASE_SECRET_KEY');
+  var pub    = p.getProperty('SUPABASE_PUBLISHABLE_KEY');
+  var token  = p.getProperty('SUPABASE_ACCESS_TOKEN');
+  var url    = p.getProperty('SUPABASE_URL') || DEFAULTS.SUPABASE_URL;
+  var tabela = p.getProperty('SUPABASE_TABELA') || DEFAULTS.SUPABASE_TABELA;
+
+  var mask = function (s) {
+    if (!s) return '(vazio)';
+    return s.slice(0, 12) + '… (len ' + s.length + ')';
+  };
+  Logger.log('URL: %s', url);
+  Logger.log('TABELA: %s', tabela);
+  Logger.log('SECRET_KEY: %s', mask(secret));
+  Logger.log('PUBLISHABLE_KEY: %s', mask(pub));
+  Logger.log('ACCESS_TOKEN: %s', mask(token));
+  Logger.log('Modo de auth que sera usado: %s',
+             secret ? '1 (secret key / service_role)' :
+             token  ? '2 (JWT longo)' : '3 (login legado — CAPTCHA)');
+
+  // 1) Teste cru: secret key no header apikey, sem filtros, so 1 linha.
+  if (secret) {
+    var r = UrlFetchApp.fetch(url + '/rest/v1/' + tabela + '?select=pmp,price,created_at&limit=1', {
+      method: 'get',
+      headers: { apikey: secret, Accept: 'application/json' },
+      muteHttpExceptions: true
+    });
+    Logger.log('--- Teste secret key (limit=1) ---');
+    Logger.log('HTTP %s', r.getResponseCode());
+    Logger.log('Body: %s', r.getContentText().slice(0, 800));
+  }
+
+  // 2) Teste do caminho real (mesma query do dashboard, via getTransactions()).
+  try {
+    var rows = getTransactions();
+    Logger.log('--- getTransactions() OK: %s linhas ---', rows.length);
+    Logger.log('Amostra: %s', JSON.stringify(rows.slice(0, 2)));
+  } catch (e) {
+    Logger.log('--- getTransactions() LANCOU ERRO ---');
+    Logger.log(e && e.message ? e.message : e);
+  }
+}
