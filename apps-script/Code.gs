@@ -27,18 +27,23 @@
  *     Settings > API Keys > aba "Legacy API keys". Ela mapeia para o papel
  *     `service_role`, ignora o RLS, nao expira e NAO tem o bloqueio por
  *     User-Agent. Vai no header `apikey`.
- *   - Alternativa com RLS preservado: publishable key (`sb_publishable_...`) no
- *     header `apikey` + um JWT longo de um usuario/role no `Authorization: Bearer`.
+ *   - Alternativa com RLS preservado (Opcao B): publishable key (`sb_publishable_...`)
+ *     no header `apikey` + um JWT de usuario/role no `Authorization: Bearer`. O JWT
+ *     pode ser ASSINADO PELO PROPRIO SERVIDOR a partir do JWT Secret do projeto
+ *     (`SUPABASE_JWT_SECRET`), que o `Code.gs` renova sozinho a cada ~50min — sem
+ *     login, sem CAPTCHA, sem token estatico para gerenciar.
  *
  * Qualquer chave/JWT acima e verificada SEM login, entao nenhuma passa por CAPTCHA.
  * Tudo fica SO em Script Properties — NUNCA neste arquivo nem versionado.
  *
  * Ordem de autenticacao (a 1a que estiver configurada vence):
- *   1) SUPABASE_SERVICE_ROLE_KEY -> header apikey (service_role legada). Recomendado.
+ *   1) SUPABASE_SERVICE_ROLE_KEY -> header apikey (service_role legada). Ignora RLS.
  *      (compat: tambem aceita o valor em SUPABASE_SECRET_KEY)
- *   2) SUPABASE_ACCESS_TOKEN     -> JWT longo no Authorization Bearer + publishable
- *                                   key no apikey. (Mantem o RLS.)
- *   3) Login legado email+senha (getAccessToken_) -> SUJEITO A CAPTCHA, tende a
+ *   2) SUPABASE_JWT_SECRET (+ PUBLISHABLE_KEY) -> servidor assina o JWT (HS256) e
+ *      renova sozinho. MANTEM o RLS (claim role, default `authenticated`). Opcao B.
+ *   3) SUPABASE_ACCESS_TOKEN     -> JWT longo estatico no Authorization Bearer +
+ *                                   publishable key no apikey. Mantem o RLS.
+ *   4) Login legado email+senha (getAccessToken_) -> SUJEITO A CAPTCHA, tende a
  *                                   falhar. Mantido so como fallback de transicao.
  *
  * Deploy: Implantar > Nova implantacao > Tipo: App da Web
@@ -53,11 +58,14 @@
  *   JavaScript.html-> motor do dashboard (app.js, com fetch via google.script.run)
  *
  * SEGREDOS (Project Settings > Script Properties):
- *   SUPABASE_SERVICE_ROLE_KEY (recomendado) -> service_role legada `eyJ...` (header apikey)
- *   SUPABASE_PUBLISHABLE_KEY  (opcional)    -> so usado nos modos 2 e 3 (header apikey)
- *   SUPABASE_ACCESS_TOKEN     (opcional)    -> JWT longo p/ modo 2 (Authorization Bearer)
- *   SUPABASE_AUTH_EMAIL       (legado)      -> e-mail do login email+senha (modo 3)
- *   SUPABASE_AUTH_PASSWORD    (legado)      -> senha do login email+senha (modo 3)
+ *   SUPABASE_SERVICE_ROLE_KEY (Opcao A)  -> service_role legada `eyJ...` (header apikey, ignora RLS)
+ *   SUPABASE_JWT_SECRET       (Opcao B)  -> JWT Secret do projeto; servidor assina o token (Bearer)
+ *   SUPABASE_PUBLISHABLE_KEY  (Opcao B)  -> publishable `sb_publishable_...` (header apikey)
+ *   SUPABASE_JWT_ROLE         (opcional) -> papel no JWT assinado (default: authenticated)
+ *   SUPABASE_JWT_SUB          (opcional) -> uuid do usuario, se a RLS usa auth.uid()
+ *   SUPABASE_ACCESS_TOKEN     (opcional) -> JWT longo estatico (Authorization Bearer)
+ *   SUPABASE_AUTH_EMAIL       (legado)   -> e-mail do login email+senha (modo 4)
+ *   SUPABASE_AUTH_PASSWORD    (legado)   -> senha do login email+senha (modo 4)
  *   SUPABASE_URL              (opcional)    -> default: https://ipalripfknzhrzddhvdx.supabase.co
  *   SUPABASE_TABELA           (opcional)    -> default: db_transactions_events
  *   PRODUTO_SLUG_LIKE         (opcional)    -> default: %legado%
@@ -109,6 +117,11 @@ function lerConfig_() {
     // service_role legada (eyJ...). Aceita o nome antigo SUPABASE_SECRET_KEY por compat.
     serviceKey:     p.getProperty('SUPABASE_SERVICE_ROLE_KEY') || p.getProperty('SUPABASE_SECRET_KEY'),
     publishableKey: p.getProperty('SUPABASE_PUBLISHABLE_KEY'),
+    // JWT Secret (assinatura HS256). Com ele o servidor ASSINA o proprio token e
+    // renova sozinho — sem login, sem CAPTCHA, sem token estatico para gerenciar.
+    jwtSecret:      p.getProperty('SUPABASE_JWT_SECRET'),
+    jwtRole:        p.getProperty('SUPABASE_JWT_ROLE') || 'authenticated',
+    jwtSub:         p.getProperty('SUPABASE_JWT_SUB'),   // uuid do usuario, se a RLS usa auth.uid()
     accessToken:    p.getProperty('SUPABASE_ACCESS_TOKEN'),
     email:          p.getProperty('SUPABASE_AUTH_EMAIL'),
     password:       p.getProperty('SUPABASE_AUTH_PASSWORD')
@@ -129,12 +142,27 @@ function getTransactions() {
              '&slug=ilike.' + slugFilter +
              '&created_at=gte.' + encodeURIComponent(cfg.desde);
 
-  // ---- MODO 1 (recomendado): service_role legada como apikey (sem login) ----
+  // ---- MODO 1: service_role legada como apikey (sem login; ignora RLS) ----
   if (cfg.serviceKey) {
     return parseRows_(restGet_(cfg.url, path, { apikey: cfg.serviceKey }));
   }
 
-  // ---- MODO 2: JWT longo no Bearer + publishable key no apikey (mantem RLS) ----
+  // ---- MODO 2 (Opcao B, mantem RLS): servidor ASSINA o JWT e renova sozinho ----
+  // publishable key no apikey + JWT recem-assinado (HS256) no Bearer.
+  if (cfg.jwtSecret) {
+    if (!cfg.publishableKey) {
+      throw new Error('SUPABASE_JWT_SECRET definido, mas falta SUPABASE_PUBLISHABLE_KEY (header apikey).');
+    }
+    var h = { apikey: cfg.publishableKey, Authorization: 'Bearer ' + mintJwt_(cfg, false) };
+    var rr = restGet_(cfg.url, path, h);
+    if (rr.getResponseCode() === 401) {
+      h.Authorization = 'Bearer ' + mintJwt_(cfg, true); // re-assina ignorando o cache
+      rr = restGet_(cfg.url, path, h);
+    }
+    return parseRows_(rr);
+  }
+
+  // ---- MODO 3: JWT longo estatico no Bearer + publishable key no apikey (mantem RLS) ----
   if (cfg.accessToken) {
     if (!cfg.publishableKey) {
       throw new Error('SUPABASE_ACCESS_TOKEN definido, mas falta SUPABASE_PUBLISHABLE_KEY (header apikey).');
@@ -145,9 +173,10 @@ function getTransactions() {
     }));
   }
 
-  // ---- MODO 3 (legado, sujeito a CAPTCHA): login email+senha por sessao ----
+  // ---- MODO 4 (legado, sujeito a CAPTCHA): login email+senha por sessao ----
   if (!cfg.publishableKey || !cfg.email || !cfg.password) {
-    throw new Error('Configure SUPABASE_SERVICE_ROLE_KEY (recomendado), ou SUPABASE_ACCESS_TOKEN ' +
+    throw new Error('Configure SUPABASE_JWT_SECRET + SUPABASE_PUBLISHABLE_KEY (Opcao B, mantem RLS), ' +
+                    'ou SUPABASE_SERVICE_ROLE_KEY (ignora RLS), ou SUPABASE_ACCESS_TOKEN ' +
                     '+ SUPABASE_PUBLISHABLE_KEY, ou os segredos de login legado ' +
                     '(SUPABASE_PUBLISHABLE_KEY + SUPABASE_AUTH_EMAIL + SUPABASE_AUTH_PASSWORD).');
   }
@@ -216,15 +245,56 @@ function getAccessToken_(cfg, forceRefresh) {
   return body.access_token;
 }
 
+// MODO 2 (Opcao B): assina um JWT HS256 com o JWT Secret do projeto e o cacheia.
+// O token vale 1h; o cache guarda por 50min, entao o servidor RE-ASSINA sozinho
+// ~10min antes de vencer. Nao ha login (logo, sem CAPTCHA) nem token estatico.
+// forceRefresh ignora o cache (usado apos um 401). Respeita o RLS pelo claim role.
+function mintJwt_(cfg, forceRefresh) {
+  var cache = CacheService.getScriptCache();
+  if (!forceRefresh) {
+    var cached = cache.get('sb_minted_jwt');
+    if (cached) return cached;
+  }
+
+  var now = Math.floor(Date.now() / 1000);
+  var header = { alg: 'HS256', typ: 'JWT' };
+  var payload = {
+    iss: 'supabase',
+    role: cfg.jwtRole,        // 'authenticated' por padrao (RLS aplica esse papel)
+    iat: now,
+    exp: now + 3600           // 1h de validade do token
+  };
+  if (cfg.jwtSub) {           // necessario se a policy de RLS usa auth.uid()
+    payload.sub = cfg.jwtSub;
+    payload.aud = 'authenticated';
+  }
+
+  var b64 = function (obj) {
+    return Utilities.base64EncodeWebSafe(JSON.stringify(obj)).replace(/=+$/, '');
+  };
+  var signingInput = b64(header) + '.' + b64(payload);
+  var sigBytes = Utilities.computeHmacSha256Signature(signingInput, cfg.jwtSecret);
+  var sig = Utilities.base64EncodeWebSafe(sigBytes).replace(/=+$/, '');
+  var token = signingInput + '.' + sig;
+
+  cache.put('sb_minted_jwt', token, 3000); // 50min: re-assina sozinho ao expirar o cache
+  return token;
+}
+
 // ===== UTILITARIO OPCIONAL =====
 // Preencha o valor, rode UMA vez no editor, e depois APAGUE o valor daqui.
 // (NUNCA versionar a chave: o Supabase revoga chaves achadas em repo publico.)
 function setSecrets_() {
   PropertiesService.getScriptProperties().setProperties({
-    // service_role LEGADA (eyJ...), em Settings > API Keys > aba "Legacy API keys".
+    // OPCAO B (mantem RLS): JWT Secret do projeto (Settings > API > JWT Settings).
+    // O servidor assina e renova o token sozinho. Precisa tambem da publishable key.
+    SUPABASE_JWT_SECRET: '',
+    SUPABASE_PUBLISHABLE_KEY: ''
+    // SUPABASE_JWT_SUB: ''   // uuid do usuario, so se a policy de RLS usa auth.uid()
+
+    // OPCAO A (ignora RLS): service_role LEGADA (eyJ...), aba "Legacy API keys".
     // NAO use a sb_secret_ nova aqui: o Apps Script e bloqueado por User-Agent.
-    SUPABASE_SERVICE_ROLE_KEY: ''
-    // , SUPABASE_URL: '', SUPABASE_TABELA: '', PRODUTO_SLUG_LIKE: '%legado%'
+    // SUPABASE_SERVICE_ROLE_KEY: ''
   });
 }
 
@@ -242,10 +312,12 @@ function diagSupabase() {
   Logger.log('TABELA: %s', cfg.tabela);
   Logger.log('SERVICE_ROLE_KEY (ou SECRET_KEY): %s', mask(cfg.serviceKey));
   Logger.log('PUBLISHABLE_KEY: %s', mask(cfg.publishableKey));
+  Logger.log('JWT_SECRET: %s  (role=%s, sub=%s)', mask(cfg.jwtSecret), cfg.jwtRole, cfg.jwtSub || '(nenhum)');
   Logger.log('ACCESS_TOKEN: %s', mask(cfg.accessToken));
   Logger.log('Modo de auth que sera usado: %s',
-             cfg.serviceKey   ? '1 (service_role / apikey)' :
-             cfg.accessToken  ? '2 (JWT longo)' : '3 (login legado — CAPTCHA)');
+             cfg.serviceKey   ? '1 (service_role / apikey, ignora RLS)' :
+             cfg.jwtSecret    ? '2 (JWT assinado no servidor, mantem RLS)' :
+             cfg.accessToken  ? '3 (JWT longo estatico)' : '4 (login legado — CAPTCHA)');
 
   // Avisa se a chave for uma sb_secret_ nova (nao funciona via Apps Script).
   if (cfg.serviceKey && cfg.serviceKey.indexOf('sb_secret_') === 0) {
@@ -254,16 +326,32 @@ function diagSupabase() {
                'browser"). Use a service_role LEGADA (formato eyJ...).');
   }
 
-  // 1) Teste cru: chave no header apikey, sem filtros, so 1 linha.
+  // 1a) Teste service_role: chave no header apikey, so 1 linha.
   if (cfg.serviceKey) {
     var r = UrlFetchApp.fetch(cfg.url + '/rest/v1/' + cfg.tabela + '?select=pmp,price,created_at&limit=1', {
       method: 'get',
       headers: { apikey: cfg.serviceKey, Accept: 'application/json' },
       muteHttpExceptions: true
     });
-    Logger.log('--- Teste apikey (limit=1) ---');
+    Logger.log('--- Teste apikey service_role (limit=1) ---');
     Logger.log('HTTP %s', r.getResponseCode());
     Logger.log('Body: %s', r.getContentText().slice(0, 800));
+  }
+
+  // 1b) Teste JWT assinado: publishable no apikey + JWT recem-assinado no Bearer.
+  if (cfg.jwtSecret && cfg.publishableKey) {
+    var jwt = mintJwt_(cfg, true);
+    Logger.log('--- Teste JWT assinado no servidor (limit=1) ---');
+    Logger.log('JWT (prefixo): %s', jwt.slice(0, 24) + '…');
+    var r2 = UrlFetchApp.fetch(cfg.url + '/rest/v1/' + cfg.tabela + '?select=pmp,price,created_at&limit=1', {
+      method: 'get',
+      headers: { apikey: cfg.publishableKey, Authorization: 'Bearer ' + jwt, Accept: 'application/json' },
+      muteHttpExceptions: true
+    });
+    Logger.log('HTTP %s', r2.getResponseCode());
+    Logger.log('Body: %s', r2.getContentText().slice(0, 800));
+    Logger.log('Obs.: HTTP 200 com Body "[]" => JWT valido, mas a RLS nao deixa o ' +
+               'papel "%s" ler a tabela (falta policy de SELECT).', cfg.jwtRole);
   }
 
   // 2) Teste do caminho real (mesma query do dashboard, via getTransactions()).

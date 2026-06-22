@@ -40,11 +40,30 @@ ja faz isso.
 6. Abrir a URL `...exec` (Copa) e `...exec?view=ranking` (Ranking) e confirmar que
    os dados carregam (status "Conectado").
 
-## Alternativa (se quiser manter RLS, sem service_role)
-Em vez da secret key, defina:
-- `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_...` (header apikey)
-- `SUPABASE_ACCESS_TOKEN` = um JWT de longa duracao de um usuario/role com leitura
+## Opcao B (manter o RLS) — servidor assina o JWT e renova sozinho
+Em vez da service_role (que ignora o RLS), o servidor assina o proprio token com
+o **JWT Secret** do projeto e o renova automaticamente (~50min), sem login, sem
+CAPTCHA e sem token estatico para gerenciar.
 
-O `Code.gs` usa esse modo automaticamente quando `SUPABASE_SECRET_KEY` nao esta
-definida. JWT tambem e verificado offline pelo PostgREST, entao tambem nao passa
-por CAPTCHA — mas exige gerar/renovar o token, enquanto a secret key nao expira.
+Defina em Script Properties:
+- `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_...` (header apikey)
+- `SUPABASE_JWT_SECRET` = o JWT Secret do projeto (Settings > API > **JWT Settings**)
+- `SUPABASE_JWT_SUB` = uuid do usuario — **so** se a policy de RLS usa `auth.uid()`
+- `SUPABASE_JWT_ROLE` = papel no token (opcional; default `authenticated`)
+
+Pre-requisitos a confirmar com o time:
+1. **RLS de leitura:** existe policy de `SELECT` na tabela para o papel do token
+   (`authenticated`, ou o usuario do `SUPABASE_JWT_SUB`)? Sem isso o `diagSupabase`
+   retorna `HTTP 200` mas com corpo `[]` (token valido, porem RLS bloqueia a leitura).
+2. **HS256 ativo:** o projeto ainda valida o JWT Secret simetrico (legado)? Se ele
+   migrou para assinatura **so** assimetrica, o token HS256 nao valida — nesse caso
+   use a Opcao A (service_role legada).
+
+> Importante: a Opcao B usa o **JWT Secret** (Settings > API > JWT Settings), que
+> NAO expira e NAO e a `sb_secret_` nova. Como o servidor assina sob demanda, nao
+> ha nada para colar manualmente a cada hora.
+
+## Alternativa: JWT longo estatico (sem dar o JWT Secret ao Apps Script)
+Se preferir nao guardar o JWT Secret aqui, o time gera **um** JWT de longa duracao
+e voce cola em `SUPABASE_ACCESS_TOKEN` (+ `SUPABASE_PUBLISHABLE_KEY`). Funciona
+igual, mas alguem precisa gerar um token novo quando esse expirar.
