@@ -16,22 +16,30 @@
  * O Supabase passou a exigir CAPTCHA nos endpoints de Auth (signup, login
  * email+senha, OTP, recover). Isso quebrou o login automatico (grant_type=
  * password) que esta versao usava. Como TODA a chamada ao Supabase acontece
- * aqui no servidor, a solucao recomendada NAO usa login nenhum:
+ * aqui no servidor, a solucao recomendada NAO usa login nenhum.
  *
- *   >>> Use a SECRET KEY do Supabase (formato `sb_secret_...`).
- *       Ela mapeia para o papel `service_role`, ignora o RLS, nao expira e
- *       NAO passa por CAPTCHA (nao ha login). E enviada no header `apikey`.
- *       E server-only por design: o Supabase recusa (401) secret key vinda de
- *       navegador e REVOGA automaticamente qualquer secret key encontrada em
- *       repositorio publico. Por isso ela mora SO em Script Properties --
- *       NUNCA neste arquivo nem em qualquer arquivo versionado.
+ * IMPORTANTE — qual chave usar a partir do Apps Script:
+ *   - A chave NOVA `sb_secret_...` NAO funciona aqui. O Supabase bloqueia secret
+ *     keys novas quando o `User-Agent` parece navegador (responde 401
+ *     "Forbidden use of secret API key in browser"), e o UrlFetchApp do Apps
+ *     Script manda um User-Agent "Mozilla/5.0..." que nao da para sobrescrever.
+ *   - Use a `service_role` LEGADA (JWT no formato `eyJ...`), em
+ *     Settings > API Keys > aba "Legacy API keys". Ela mapeia para o papel
+ *     `service_role`, ignora o RLS, nao expira e NAO tem o bloqueio por
+ *     User-Agent. Vai no header `apikey`.
+ *   - Alternativa com RLS preservado: publishable key (`sb_publishable_...`) no
+ *     header `apikey` + um JWT longo de um usuario/role no `Authorization: Bearer`.
+ *
+ * Qualquer chave/JWT acima e verificada SEM login, entao nenhuma passa por CAPTCHA.
+ * Tudo fica SO em Script Properties — NUNCA neste arquivo nem versionado.
  *
  * Ordem de autenticacao (a 1a que estiver configurada vence):
- *   1) SUPABASE_SECRET_KEY    -> header apikey (service_role). Recomendado.
- *   2) SUPABASE_ACCESS_TOKEN  -> JWT longo no Authorization Bearer + publishable
- *                                key no apikey. (Alternativa, se preferir manter RLS.)
+ *   1) SUPABASE_SERVICE_ROLE_KEY -> header apikey (service_role legada). Recomendado.
+ *      (compat: tambem aceita o valor em SUPABASE_SECRET_KEY)
+ *   2) SUPABASE_ACCESS_TOKEN     -> JWT longo no Authorization Bearer + publishable
+ *                                   key no apikey. (Mantem o RLS.)
  *   3) Login legado email+senha (getAccessToken_) -> SUJEITO A CAPTCHA, tende a
- *                                falhar. Mantido so como fallback de transicao.
+ *                                   falhar. Mantido so como fallback de transicao.
  *
  * Deploy: Implantar > Nova implantacao > Tipo: App da Web
  *   - Executar como: Eu
@@ -45,15 +53,15 @@
  *   JavaScript.html-> motor do dashboard (app.js, com fetch via google.script.run)
  *
  * SEGREDOS (Project Settings > Script Properties):
- *   SUPABASE_SECRET_KEY      (recomendado) -> secret key `sb_secret_...` (header apikey)
- *   SUPABASE_PUBLISHABLE_KEY (opcional)    -> so usado nos modos 2 e 3 (header apikey)
- *   SUPABASE_ACCESS_TOKEN    (opcional)    -> JWT longo p/ modo 2 (Authorization Bearer)
- *   SUPABASE_AUTH_EMAIL      (legado)      -> e-mail do login email+senha (modo 3)
- *   SUPABASE_AUTH_PASSWORD   (legado)      -> senha do login email+senha (modo 3)
- *   SUPABASE_URL             (opcional)    -> default: https://ipalripfknzhrzddhvdx.supabase.co
- *   SUPABASE_TABELA          (opcional)    -> default: db_transactions_events
- *   PRODUTO_SLUG_LIKE        (opcional)    -> default: %legado%
- *   CREATED_AT_GTE           (opcional)    -> default: 2026-06-16T00:00:00-03:00
+ *   SUPABASE_SERVICE_ROLE_KEY (recomendado) -> service_role legada `eyJ...` (header apikey)
+ *   SUPABASE_PUBLISHABLE_KEY  (opcional)    -> so usado nos modos 2 e 3 (header apikey)
+ *   SUPABASE_ACCESS_TOKEN     (opcional)    -> JWT longo p/ modo 2 (Authorization Bearer)
+ *   SUPABASE_AUTH_EMAIL       (legado)      -> e-mail do login email+senha (modo 3)
+ *   SUPABASE_AUTH_PASSWORD    (legado)      -> senha do login email+senha (modo 3)
+ *   SUPABASE_URL              (opcional)    -> default: https://ipalripfknzhrzddhvdx.supabase.co
+ *   SUPABASE_TABELA           (opcional)    -> default: db_transactions_events
+ *   PRODUTO_SLUG_LIKE         (opcional)    -> default: %legado%
+ *   CREATED_AT_GTE            (opcional)    -> default: 2026-06-16T00:00:00-03:00
  *
  * Dica: rode setSecrets_() UMA vez (preenchendo os valores) para gravar os
  * segredos via codigo, depois APAGUE os valores. Ou use a UI de Script Properties.
@@ -90,22 +98,28 @@ function include(name) {
   return HtmlService.createHtmlOutputFromFile(name).getContent();
 }
 
-// ===== CONSULTA O SUPABASE (chamado pelo front via google.script.run) =====
-// Retorna o array de transacoes (price, pmp, created_at, slug, id), igual ao
-// formato que o app.js ja espera.
-function getTransactions() {
+// Le e normaliza a config de Script Properties (reutilizado pelo diagnostico).
+function lerConfig_() {
   var p = PropertiesService.getScriptProperties();
-  var cfg = {
+  return {
     url:            p.getProperty('SUPABASE_URL') || DEFAULTS.SUPABASE_URL,
     tabela:         p.getProperty('SUPABASE_TABELA') || DEFAULTS.SUPABASE_TABELA,
     slugLike:       p.getProperty('PRODUTO_SLUG_LIKE') || DEFAULTS.PRODUTO_SLUG_LIKE,
     desde:          p.getProperty('CREATED_AT_GTE') || DEFAULTS.CREATED_AT_GTE,
-    secretKey:      p.getProperty('SUPABASE_SECRET_KEY'),
+    // service_role legada (eyJ...). Aceita o nome antigo SUPABASE_SECRET_KEY por compat.
+    serviceKey:     p.getProperty('SUPABASE_SERVICE_ROLE_KEY') || p.getProperty('SUPABASE_SECRET_KEY'),
     publishableKey: p.getProperty('SUPABASE_PUBLISHABLE_KEY'),
     accessToken:    p.getProperty('SUPABASE_ACCESS_TOKEN'),
     email:          p.getProperty('SUPABASE_AUTH_EMAIL'),
     password:       p.getProperty('SUPABASE_AUTH_PASSWORD')
   };
+}
+
+// ===== CONSULTA O SUPABASE (chamado pelo front via google.script.run) =====
+// Retorna o array de transacoes (price, pmp, created_at, slug, id), igual ao
+// formato que o app.js ja espera.
+function getTransactions() {
+  var cfg = lerConfig_();
 
   // ilike usa "*" como coringa; o config guarda o padrao com "%".
   var slugFilter = encodeURIComponent(cfg.slugLike.replace(/%/g, '*'));
@@ -115,9 +129,9 @@ function getTransactions() {
              '&slug=ilike.' + slugFilter +
              '&created_at=gte.' + encodeURIComponent(cfg.desde);
 
-  // ---- MODO 1 (recomendado): secret key como apikey (service_role, sem login) ----
-  if (cfg.secretKey) {
-    return parseRows_(restGet_(cfg.url, path, { apikey: cfg.secretKey }));
+  // ---- MODO 1 (recomendado): service_role legada como apikey (sem login) ----
+  if (cfg.serviceKey) {
+    return parseRows_(restGet_(cfg.url, path, { apikey: cfg.serviceKey }));
   }
 
   // ---- MODO 2: JWT longo no Bearer + publishable key no apikey (mantem RLS) ----
@@ -133,7 +147,7 @@ function getTransactions() {
 
   // ---- MODO 3 (legado, sujeito a CAPTCHA): login email+senha por sessao ----
   if (!cfg.publishableKey || !cfg.email || !cfg.password) {
-    throw new Error('Configure SUPABASE_SECRET_KEY (recomendado), ou SUPABASE_ACCESS_TOKEN ' +
+    throw new Error('Configure SUPABASE_SERVICE_ROLE_KEY (recomendado), ou SUPABASE_ACCESS_TOKEN ' +
                     '+ SUPABASE_PUBLISHABLE_KEY, ou os segredos de login legado ' +
                     '(SUPABASE_PUBLISHABLE_KEY + SUPABASE_AUTH_EMAIL + SUPABASE_AUTH_PASSWORD).');
   }
@@ -192,7 +206,7 @@ function getAccessToken_(cfg, forceRefresh) {
     var msg = body.error_description || body.msg || body.error || resp.getContentText();
     throw new Error('Falha no login Supabase (' + code + '): ' + msg +
                     ' — dica: o login email+senha agora exige CAPTCHA. Configure ' +
-                    'SUPABASE_SECRET_KEY em Script Properties (modo recomendado).');
+                    'SUPABASE_SERVICE_ROLE_KEY em Script Properties (modo recomendado).');
   }
 
   // Cache no maximo ~6h (limite do CacheService) e com margem antes do expirar.
@@ -204,46 +218,50 @@ function getAccessToken_(cfg, forceRefresh) {
 
 // ===== UTILITARIO OPCIONAL =====
 // Preencha o valor, rode UMA vez no editor, e depois APAGUE o valor daqui.
-// (NUNCA versionar a secret key: o Supabase revoga keys achadas em repo publico.)
+// (NUNCA versionar a chave: o Supabase revoga chaves achadas em repo publico.)
 function setSecrets_() {
   PropertiesService.getScriptProperties().setProperties({
-    SUPABASE_SECRET_KEY: ''   // sb_secret_... (Settings > API Keys > Secret keys)
+    // service_role LEGADA (eyJ...), em Settings > API Keys > aba "Legacy API keys".
+    // NAO use a sb_secret_ nova aqui: o Apps Script e bloqueado por User-Agent.
+    SUPABASE_SERVICE_ROLE_KEY: ''
     // , SUPABASE_URL: '', SUPABASE_TABELA: '', PRODUTO_SLUG_LIKE: '%legado%'
   });
 }
 
 // ===== DIAGNOSTICO =====
 // Selecione esta funcao no editor e clique em Executar. O resultado aparece no
-// "Registro de execucao". NAO imprime a secret key inteira (so prefixo/tamanho).
+// "Registro de execucao". NAO imprime as chaves inteiras (so prefixo/tamanho).
 function diagSupabase() {
-  var p = PropertiesService.getScriptProperties();
-  var secret = p.getProperty('SUPABASE_SECRET_KEY');
-  var pub    = p.getProperty('SUPABASE_PUBLISHABLE_KEY');
-  var token  = p.getProperty('SUPABASE_ACCESS_TOKEN');
-  var url    = p.getProperty('SUPABASE_URL') || DEFAULTS.SUPABASE_URL;
-  var tabela = p.getProperty('SUPABASE_TABELA') || DEFAULTS.SUPABASE_TABELA;
+  var cfg = lerConfig_();
 
   var mask = function (s) {
     if (!s) return '(vazio)';
     return s.slice(0, 12) + '… (len ' + s.length + ')';
   };
-  Logger.log('URL: %s', url);
-  Logger.log('TABELA: %s', tabela);
-  Logger.log('SECRET_KEY: %s', mask(secret));
-  Logger.log('PUBLISHABLE_KEY: %s', mask(pub));
-  Logger.log('ACCESS_TOKEN: %s', mask(token));
+  Logger.log('URL: %s', cfg.url);
+  Logger.log('TABELA: %s', cfg.tabela);
+  Logger.log('SERVICE_ROLE_KEY (ou SECRET_KEY): %s', mask(cfg.serviceKey));
+  Logger.log('PUBLISHABLE_KEY: %s', mask(cfg.publishableKey));
+  Logger.log('ACCESS_TOKEN: %s', mask(cfg.accessToken));
   Logger.log('Modo de auth que sera usado: %s',
-             secret ? '1 (secret key / service_role)' :
-             token  ? '2 (JWT longo)' : '3 (login legado — CAPTCHA)');
+             cfg.serviceKey   ? '1 (service_role / apikey)' :
+             cfg.accessToken  ? '2 (JWT longo)' : '3 (login legado — CAPTCHA)');
 
-  // 1) Teste cru: secret key no header apikey, sem filtros, so 1 linha.
-  if (secret) {
-    var r = UrlFetchApp.fetch(url + '/rest/v1/' + tabela + '?select=pmp,price,created_at&limit=1', {
+  // Avisa se a chave for uma sb_secret_ nova (nao funciona via Apps Script).
+  if (cfg.serviceKey && cfg.serviceKey.indexOf('sb_secret_') === 0) {
+    Logger.log('ATENCAO: a chave comeca com "sb_secret_" (secret key NOVA). Ela e ' +
+               'bloqueada no Apps Script (erro "Forbidden use of secret API key in ' +
+               'browser"). Use a service_role LEGADA (formato eyJ...).');
+  }
+
+  // 1) Teste cru: chave no header apikey, sem filtros, so 1 linha.
+  if (cfg.serviceKey) {
+    var r = UrlFetchApp.fetch(cfg.url + '/rest/v1/' + cfg.tabela + '?select=pmp,price,created_at&limit=1', {
       method: 'get',
-      headers: { apikey: secret, Accept: 'application/json' },
+      headers: { apikey: cfg.serviceKey, Accept: 'application/json' },
       muteHttpExceptions: true
     });
-    Logger.log('--- Teste secret key (limit=1) ---');
+    Logger.log('--- Teste apikey (limit=1) ---');
     Logger.log('HTTP %s', r.getResponseCode());
     Logger.log('Body: %s', r.getContentText().slice(0, 800));
   }
