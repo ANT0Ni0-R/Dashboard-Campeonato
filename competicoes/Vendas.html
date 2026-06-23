@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg-main: #060913;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-gold: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-blue: #60a5fa;
+      --border-color: rgba(51, 65, 85, 0.5);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-main);
+      background-image: radial-gradient(circle at center, #0e162d 0%, #060913 100%);
+      color: var(--text-primary);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      height: 100vh; overflow: hidden;
+    }
+    .page { height: 100vh; display: flex; flex-direction: column; padding: 1.4rem 2rem; }
+
+    /* Header */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-color);
+      padding: 0.8rem 2rem; border-radius: 16px; margin-bottom: 0.6rem;
+    }
+    .h-title-sec { display: flex; align-items: center; gap: 1.1rem; }
+    .h-logo { font-size: 1.8rem; }
+    .h-title {
+      font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.55rem;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-gold) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .h-sub { font-size: 0.74rem; color: var(--text-secondary); margin-top: 0.1rem; }
+    .h-meta { display: flex; align-items: center; gap: 1.4rem; }
+    .back-link {
+      font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.8rem;
+      color: var(--text-primary); text-decoration: none;
+      background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color);
+      border-radius: 10px; padding: 0.5rem 1rem; white-space: nowrap;
+    }
+    .back-link:hover { border-color: var(--accent-gold); }
+    .h-status { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; }
+    .h-dot-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-secondary); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+    .dot.err { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .dot.loading { background: var(--accent-gold); box-shadow: 0 0 6px var(--accent-gold); animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+    /* Barra de busca */
+    .search {
+      display: flex; align-items: center; gap: 0.7rem;
+      background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color);
+      border-radius: 10px; padding: 0.55rem 0.9rem; margin-bottom: 0.6rem;
+    }
+    .search input {
+      flex: 1; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.95rem;
+      color: var(--text-primary); background: rgba(6, 9, 19, 0.7);
+      border: 1px solid var(--border-color); border-radius: 8px; padding: 0.55rem 0.9rem;
+    }
+    .search input:focus { outline: none; border-color: var(--accent-gold); }
+    .search button {
+      font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.85rem;
+      border: none; border-radius: 8px; padding: 0.55rem 1.2rem; cursor: pointer; white-space: nowrap;
+    }
+    .btn-buscar { color: #0b1120; background: var(--accent-gold); }
+    .btn-buscar:hover { filter: brightness(1.08); }
+    .btn-limpar { color: var(--text-secondary); background: rgba(51,65,85,0.4); }
+    .btn-limpar:hover { color: var(--text-primary); }
+    .search .hint { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+
+    /* Tabela */
+    .table-wrap { flex: 1; overflow-y: auto; padding-right: 0.4rem; }
+    .table-wrap::-webkit-scrollbar { width: 6px; }
+    .table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .table-wrap::-webkit-scrollbar-thumb { background: rgba(51,65,85,0.6); border-radius: 3px; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 0.55rem 1rem; font-size: 0.72rem; color: var(--text-secondary);
+      text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky; top: 0; background: var(--bg-main); z-index: 2;
+    }
+    td { padding: 0.55rem 1rem; font-size: 0.9rem; border-bottom: 1px solid rgba(51,65,85,0.15); vertical-align: top; }
+    tr:hover td { background: rgba(30, 41, 59, 0.35); }
+
+    .c-data { color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .c-cliente .nome { font-family: 'Outfit', sans-serif; font-weight: 700; }
+    .c-cliente .contato { font-size: 0.74rem; color: var(--text-muted); }
+    .c-slug { font-family: monospace; color: var(--text-primary); word-break: break-all; max-width: 360px; }
+    .c-pmp { font-family: monospace; font-weight: 800; color: var(--accent-gold); }
+    .c-pmp .raw { display: block; font-weight: 400; color: var(--text-muted); font-size: 0.7rem; word-break: break-all; }
+    .c-pmp .none { color: #ef4444; }
+    .c-valor { font-family: monospace; font-weight: 800; color: var(--accent-green); text-align: right; white-space: nowrap; }
+
+    .msg { text-align: center; padding: 3rem; color: var(--text-secondary); font-size: 1rem; }
+    .msg.err { color: #ef4444; }
+    .msg small { display: block; color: var(--text-muted); font-size: 0.8rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="h-title-sec">
+      <span class="h-logo">🔎</span>
+      <div>
+        <div class="h-title">Consultar Vendas</div>
+        <div class="h-sub">Vendas (order_success) dos últimos 7 dias · busque por email ou telefone</div>
+      </div>
+    </div>
+    <div class="h-meta">
+      <div class="h-status">
+        <div class="h-dot-row"><span class="dot loading" id="dot"></span><span id="status-label">Carregando…</span></div>
+      </div>
+      <a class="back-link" href="<?= scriptUrl ?>">← Voltar ao pódio</a>
+    </div>
+  </div>
+
+  <div class="search">
+    <input id="termo" placeholder="email ou telefone do cliente (vazio = todas as vendas dos 7 dias)" autocomplete="off">
+    <button class="btn-buscar" onclick="buscar()">Buscar</button>
+    <button class="btn-limpar" onclick="limpar()">Limpar</button>
+    <span class="hint" id="hint"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:110px">Data</th>
+          <th>Cliente</th>
+          <th>Produto (slug)</th>
+          <th style="width:140px">PMP</th>
+          <th style="text-align:right; width:120px">Valor</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="5" class="msg">Carregando vendas…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+    });
+  }
+  function fmt(v) {
+    return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+  function dataHoraBR(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return esc(iso);
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  }
+  function setDot(state, label) {
+    document.getElementById('dot').className = 'dot' + (state === 'err' ? ' err' : state === 'loading' ? ' loading' : '');
+    document.getElementById('status-label').textContent = label;
+  }
+
+  function buscar() {
+    var termo = document.getElementById('termo').value.trim();
+    setDot('loading', 'Buscando…');
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="5" class="msg">Buscando…</td></tr>';
+    google.script.run
+      .withSuccessHandler(function (rows) { render(rows, termo); })
+      .withFailureHandler(function (e) {
+        setDot('err', 'Erro');
+        document.getElementById('hint').textContent = '';
+        document.getElementById('tbody').innerHTML =
+          '<tr><td colspan="5" class="msg err">' + esc((e && e.message) ? e.message : 'Erro ao consultar') +
+          '<small>Verifique a conexão com o Supabase.</small></td></tr>';
+      })
+      .listarVendas(termo);
+  }
+  function limpar() {
+    document.getElementById('termo').value = '';
+    buscar();
+  }
+
+  function render(rows, termo) {
+    var tbody = document.getElementById('tbody');
+    var hint = document.getElementById('hint');
+    rows = rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="msg">Nenhuma venda encontrada nos últimos 7 dias' + (termo ? ' para "' + esc(termo) + '"' : '') + '.</td></tr>';
+      hint.textContent = '';
+      setDot('ok', 'OK');
+      return;
+    }
+    hint.textContent = rows.length + ' venda(s)' + (rows.length >= 300 ? ' (limite 300 — refine a busca)' : '');
+    tbody.innerHTML = rows.map(function (r) {
+      var contato = [r.email, r.phone].filter(Boolean).map(esc).join(' · ');
+      var pmp = r.pmp_code
+        ? '<span>' + esc(r.pmp_code) + '</span>' + (r.pmp ? '<span class="raw">' + esc(r.pmp) + '</span>' : '')
+        : '<span class="none">sem PMP</span>' + (r.pmp ? '<span class="raw">' + esc(r.pmp) + '</span>' : '');
+      return '<tr>' +
+        '<td class="c-data">' + dataHoraBR(r.created_at) + '</td>' +
+        '<td class="c-cliente"><div class="nome">' + esc(r.nome || '—') + '</div>' +
+          (contato ? '<div class="contato">' + contato + '</div>' : '') + '</td>' +
+        '<td class="c-slug">' + esc(r.slug || '—') + '</td>' +
+        '<td class="c-pmp">' + pmp + '</td>' +
+        '<td class="c-valor">' + fmt(r.price) + '</td>' +
+      '</tr>';
+    }).join('');
+    setDot('ok', 'OK');
+  }
+
+  document.getElementById('termo').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') buscar();
+  });
+
+  buscar(); // carga inicial: todas as vendas dos últimos 7 dias
+</script>
+</body>
+</html>

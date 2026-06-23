@@ -165,63 +165,18 @@
       color: var(--text-muted);
     }
 
-    /* ---------- Menu superior + busca de vendas ---------- */
+    /* ---------- Menu superior ---------- */
     .topmenu { display: flex; justify-content: flex-end; margin-bottom: 1vh; flex-shrink: 0; }
     .menu-btn {
       font-family: var(--font-title); font-weight: 700;
       font-size: clamp(0.75rem, 1vw, 1rem);
-      color: var(--text-primary);
+      color: var(--text-primary); text-decoration: none;
       background: rgba(15, 23, 42, 0.7);
       border: 1px solid var(--border-color);
       border-radius: 10px; padding: 0.5rem 1rem; cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
     }
     .menu-btn:hover { border-color: var(--accent-gold); background: rgba(30, 41, 59, 0.9); }
-
-    .busca-overlay {
-      position: fixed; inset: 0; z-index: 50;
-      background: rgba(3, 6, 15, 0.82); backdrop-filter: blur(6px);
-      display: flex; align-items: flex-start; justify-content: center;
-      padding: 6vh 2vw; overflow-y: auto;
-    }
-    .busca-overlay[hidden] { display: none; }
-    .busca-card {
-      width: 100%; max-width: 980px;
-      background: #0e1424; border: 1px solid var(--border-color);
-      border-radius: 18px; padding: 1.6rem 1.8rem; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-    }
-    .busca-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; }
-    .busca-head h2 { font-family: var(--font-title); font-weight: 800; font-size: 1.4rem; color: var(--text-primary); }
-    .busca-sub { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.1rem; }
-    .busca-fechar { background: none; border: none; color: var(--text-secondary); font-size: 1.4rem; cursor: pointer; line-height: 1; }
-    .busca-fechar:hover { color: var(--text-primary); }
-    .busca-form { display: flex; gap: 0.7rem; margin-bottom: 1rem; }
-    .busca-form input {
-      flex: 1; font-family: var(--font-body); font-size: 1rem;
-      color: var(--text-primary); background: rgba(15, 23, 42, 0.9);
-      border: 1px solid var(--border-color); border-radius: 10px; padding: 0.7rem 1rem;
-    }
-    .busca-form input:focus { outline: none; border-color: var(--accent-gold); }
-    .busca-form button {
-      font-family: var(--font-title); font-weight: 700; font-size: 0.95rem;
-      color: #0b1120; background: var(--accent-gold);
-      border: none; border-radius: 10px; padding: 0.7rem 1.5rem; cursor: pointer;
-    }
-    .busca-form button:hover { filter: brightness(1.08); }
-    .busca-status { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.8rem; min-height: 1.2em; }
-    .busca-results { overflow-x: auto; }
-    .busca-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    .busca-table th {
-      text-align: left; font-family: var(--font-title); font-weight: 700;
-      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;
-      color: var(--text-secondary); padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border-color);
-    }
-    .busca-table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(51,65,85,0.3); vertical-align: top; }
-    .busca-table tr:hover td { background: rgba(30, 41, 59, 0.4); }
-    .busca-pmp { font-family: monospace; font-weight: 700; color: var(--accent-gold); }
-    .busca-pmp .raw { display: block; font-weight: 400; color: var(--text-muted); font-size: 0.72rem; word-break: break-all; }
-    .busca-slug { font-family: monospace; color: var(--text-primary); word-break: break-all; }
-    .busca-valor { font-family: monospace; font-weight: 700; color: var(--accent-green); white-space: nowrap; }
 
     /* ---------- Footer ---------- */
     footer {
@@ -242,7 +197,7 @@
 </head>
 <body>
   <nav class="topmenu">
-    <button class="menu-btn" onclick="abrirBusca()">🔎 Consultar vendas (7 dias)</button>
+    <a class="menu-btn" href="<?= scriptUrl ?>?page=vendas" target="_blank" rel="noopener">🔎 Consultar vendas (7 dias)</a>
   </nav>
 
   <header>
@@ -262,22 +217,6 @@
     <div class="lista-titulo" id="lista-titulo" style="display:none">Demais colocados</div>
     <div class="lista" id="lista"></div>
   </main>
-
-  <div class="busca-overlay" id="busca" hidden>
-    <div class="busca-card">
-      <div class="busca-head">
-        <h2>Consultar vendas</h2>
-        <button class="busca-fechar" onclick="fecharBusca()" title="Fechar (Esc)">✕</button>
-      </div>
-      <div class="busca-sub">Busca por email ou telefone nos últimos 7 dias. Retorna o produto (slug) e o PMP em que cada venda caiu.</div>
-      <div class="busca-form">
-        <input id="busca-input" placeholder="email ou telefone do cliente" autocomplete="off">
-        <button onclick="executarBusca()">Buscar</button>
-      </div>
-      <div class="busca-status" id="busca-status"></div>
-      <div class="busca-results" id="busca-results"></div>
-    </div>
-  </div>
 
   <footer>
     <div class="footer-janela" id="janela"></div>
@@ -373,61 +312,6 @@
                '</div>';
       }).join('');
     }
-
-    // ---------- Consulta de vendas (email/telefone, últimos 7 dias) ----------
-    function abrirBusca() {
-      document.getElementById('busca').hidden = false;
-      var i = document.getElementById('busca-input'); i.value = ''; i.focus();
-      document.getElementById('busca-status').textContent = '';
-      document.getElementById('busca-results').innerHTML = '';
-    }
-    function fecharBusca() { document.getElementById('busca').hidden = true; }
-    function executarBusca() {
-      var termo = document.getElementById('busca-input').value.trim();
-      var st = document.getElementById('busca-status');
-      var res = document.getElementById('busca-results');
-      res.innerHTML = '';
-      if (!termo) { st.textContent = 'Informe um email ou telefone.'; return; }
-      st.textContent = 'Buscando…';
-      google.script.run
-        .withSuccessHandler(mostrarResultados)
-        .withFailureHandler(function (e) { st.textContent = 'Erro: ' + ((e && e.message) ? e.message : e); })
-        .buscarVendas(termo);
-    }
-    function dataHoraBR(iso) {
-      var d = new Date(iso);
-      if (isNaN(d)) return esc(iso);
-      return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-    }
-    function mostrarResultados(rows) {
-      var st = document.getElementById('busca-status');
-      var res = document.getElementById('busca-results');
-      if (!rows || !rows.length) { st.textContent = 'Nenhuma venda encontrada nos últimos 7 dias.'; res.innerHTML = ''; return; }
-      st.textContent = rows.length + ' venda(s) encontrada(s):';
-      res.innerHTML =
-        '<table class="busca-table"><thead><tr>' +
-          '<th>Data</th><th>Produto (slug)</th><th>PMP</th><th>Cliente</th><th>Valor</th>' +
-        '</tr></thead><tbody>' +
-        rows.map(function (r) {
-          return '<tr>' +
-            '<td>' + dataHoraBR(r.created_at) + '</td>' +
-            '<td class="busca-slug">' + esc(r.slug) + '</td>' +
-            '<td class="busca-pmp">' + esc(r.pmp_code || '—') +
-              (r.pmp ? '<span class="raw">' + esc(r.pmp) + '</span>' : '') + '</td>' +
-            '<td>' + esc(r.nome || '') +
-              (r.email ? '<br><span class="raw" style="color:var(--text-muted);font-size:0.72rem">' + esc(r.email) + '</span>' : '') +
-              (r.phone ? '<br><span class="raw" style="color:var(--text-muted);font-size:0.72rem">' + esc(r.phone) + '</span>' : '') + '</td>' +
-            '<td class="busca-valor">' + formatBRL(r.price) + '</td>' +
-          '</tr>';
-        }).join('') +
-        '</tbody></table>';
-    }
-
-    document.addEventListener('keydown', function (e) {
-      var overlay = document.getElementById('busca');
-      if (e.key === 'Escape' && !overlay.hidden) fecharBusca();
-      if (e.key === 'Enter' && !overlay.hidden && document.activeElement === document.getElementById('busca-input')) executarBusca();
-    });
 
     function onOK(data) {
       setStatus(true);
