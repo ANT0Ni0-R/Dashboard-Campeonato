@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <base target="_top">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --font-title: 'Outfit', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --bg-main: #060913;
+      --bg-gradient: radial-gradient(circle at center, #0e162d 0%, #060913 100%);
+      --bg-card: rgba(15, 23, 42, 0.65);
+      --border-color: rgba(51, 65, 85, 0.5);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-gold: #fbbf24;
+      --accent-green: #22c55e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      background-image: var(--bg-gradient);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 2.2vh 2.4vw;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1.5rem;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 1.4vh 2vw;
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 1.1rem; min-width: 0; }
+    .logo-trofeu { font-size: 2.8rem; animation: float 3s ease-in-out infinite; }
+    .header-titulos { min-width: 0; }
+    h1 {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: clamp(1.8rem, 3vw, 3rem);
+      line-height: 1.05;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-gold) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .subtitulo {
+      font-size: clamp(0.85rem, 1.3vw, 1.25rem);
+      color: var(--text-secondary); font-weight: 500; margin-top: 0.2rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .premio {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(234, 179, 8, 0.12);
+      border: 1px solid rgba(234, 179, 8, 0.5);
+      border-radius: 12px;
+      padding: 0.6rem 1.1rem;
+      font-family: var(--font-title); font-weight: 700;
+      font-size: clamp(0.9rem, 1.3vw, 1.3rem);
+      color: var(--accent-gold);
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ---------- Conteudo ---------- */
+    main {
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: center; gap: 2vh;
+      padding-top: 2vh; min-height: 0;
+    }
+
+    /* ---------- Podio (2 - 1 - 3) ---------- */
+    .podium {
+      display: flex; justify-content: center; align-items: flex-end;
+      gap: 1.6vw; flex-shrink: 0;
+    }
+    .podium-place { display: flex; flex-direction: column; align-items: center; width: 24%; max-width: 340px; }
+    .place-1 { width: 28%; max-width: 400px; }
+    .podium-card {
+      display: flex; flex-direction: column; align-items: center; width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px 18px 0 0;
+      padding: 1.1rem 1rem 0.9rem;
+    }
+    .podium-name {
+      font-family: var(--font-title); font-weight: 700;
+      font-size: clamp(1.1rem, 1.8vw, 1.9rem);
+      margin-bottom: 0.7rem; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    .podium-avatar {
+      width: 100%; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden;
+      border: 3px solid var(--border-color); position: relative;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .podium-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+    .podium-avatar .initials {
+      font-family: var(--font-title); font-weight: 800;
+      font-size: clamp(2rem, 4vw, 4rem); color: var(--text-muted);
+    }
+    .podium-avatar img.loaded + .initials { display: none; }
+    .podium-gmv {
+      font-family: monospace; font-weight: 800;
+      font-size: clamp(1.2rem, 2vw, 2.2rem);
+      margin-top: 0.6rem; color: var(--accent-gold);
+    }
+    .podium-qtd { font-size: clamp(0.7rem, 1vw, 1rem); color: var(--text-secondary); margin-top: 0.15rem; }
+    .podium-bar {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      border-radius: 0 0 10px 10px; color: #0b1120;
+      font-family: var(--font-title); font-weight: 800;
+      box-shadow: inset 0 2px 6px rgba(255,255,255,0.25);
+    }
+    .podium-num { font-size: clamp(2.2rem, 4vw, 4rem); }
+
+    .place-1 .podium-bar { height: 15vh; background: linear-gradient(180deg, #fde68a, #facc15); }
+    .place-2 .podium-bar { height: 10vh; background: linear-gradient(180deg, #f1f5f9, #cbd5e1); }
+    .place-3 .podium-bar { height: 7vh;  background: linear-gradient(180deg, #fbbf24, #b45309); }
+    .place-1 .podium-avatar { border-color: #facc15; }
+    .place-1 .podium-card { border-color: rgba(250, 204, 21, 0.5); box-shadow: 0 0 32px rgba(250,204,21,0.2); }
+    .place-1 .podium-gmv { color: var(--accent-green); }
+    .place-2 .podium-avatar { border-color: #cbd5e1; }
+    .place-3 .podium-avatar { border-color: #b45309; }
+
+    /* ---------- Lista 4o em diante ---------- */
+    .lista { display: flex; flex-direction: column; gap: 0.7vh; max-width: 1100px; width: 100%; margin: 0 auto; overflow-y: auto; }
+    .lista-row {
+      display: flex; align-items: center; gap: 1.2rem;
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid transparent;
+      border-radius: 12px; padding: 0.8vh 1.4rem;
+    }
+    .lista-row.zero { opacity: 0.5; }
+    .lista-pos { font-family: var(--font-title); font-weight: 800; font-size: clamp(1rem, 1.5vw, 1.6rem); color: var(--text-secondary); width: 3rem; text-align: center; flex-shrink: 0; }
+    .lista-avatar {
+      width: clamp(40px, 4vw, 64px); height: clamp(40px, 4vw, 64px); border-radius: 10px; overflow: hidden;
+      border: 2px solid var(--border-color); flex-shrink: 0; position: relative;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lista-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+    .lista-avatar .initials { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.9rem, 1.3vw, 1.4rem); color: var(--text-muted); }
+    .lista-avatar img.loaded + .initials { display: none; }
+    .lista-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(1rem, 1.5vw, 1.7rem); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lista-gmv { font-family: monospace; font-weight: 800; font-size: clamp(1rem, 1.5vw, 1.7rem); color: var(--accent-gold); text-align: right; flex-shrink: 0; }
+
+    /* ---------- Footer ---------- */
+    footer {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; flex-shrink: 0; margin-top: 1.5vh;
+      font-size: clamp(0.7rem, 1vw, 1rem); color: var(--text-muted);
+    }
+    .footer-janela { color: var(--text-secondary); }
+    .footer-status { display: flex; align-items: center; gap: 0.5rem; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); animation: pulse 1.5s infinite alternate; }
+    .dot.erro { background: var(--accent-red, #ef4444); box-shadow: 0 0 8px #ef4444; }
+
+    .estado-vazio { text-align: center; color: var(--text-secondary); font-size: 1.4rem; padding: 8vh 0; }
+
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="logo-trofeu">🏆</div>
+      <div class="header-titulos">
+        <h1 id="titulo">Carregando…</h1>
+        <div class="subtitulo" id="subtitulo"></div>
+      </div>
+    </div>
+    <div class="premio" id="premio" style="display:none"><span>🎁</span><span id="premio-texto"></span></div>
+  </header>
+
+  <main id="main">
+    <div class="estado-vazio" id="vazio">Carregando ranking…</div>
+    <div class="podium" id="podium" style="display:none"></div>
+    <div class="lista" id="lista"></div>
+  </main>
+
+  <footer>
+    <div class="footer-janela" id="janela"></div>
+    <div class="footer-status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-texto">conectando…</span>
+      <span id="contagem"></span>
+    </div>
+  </footer>
+
+  <script>
+    var POLL_MS = 60000;
+    var proximo = 0;
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+      });
+    }
+    function iniciais(nome) {
+      var p = String(nome).trim().split(/\s+/);
+      return (((p[0] || '')[0] || '') + ((p[p.length - 1] || '')[0] || '')).toUpperCase();
+    }
+    function formatBRL(v) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
+    }
+    function dataBR(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      if (isNaN(d)) return esc(iso);
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+    }
+    function avatarHTML(c, cls) {
+      return '<div class="' + cls + '">' +
+             '<img src="' + esc(c.foto) + '" alt="" onload="this.className=\'loaded\'" onerror="this.remove()">' +
+             '<span class="initials">' + esc(iniciais(c.nome)) + '</span></div>';
+    }
+
+    function render(data) {
+      var cfg = data.config || {};
+      POLL_MS = (cfg.pollSegundos || 60) * 1000;
+
+      document.getElementById('titulo').textContent = cfg.titulo || 'Competicao';
+      document.getElementById('subtitulo').textContent = cfg.produto || '';
+      if (cfg.premio) {
+        document.getElementById('premio').style.display = '';
+        document.getElementById('premio-texto').textContent = cfg.premio;
+      }
+      var janela = '';
+      if (cfg.inicio || cfg.fim) janela = 'Periodo: ' + dataBR(cfg.inicio) + (cfg.fim ? ' — ' + dataBR(cfg.fim) : '');
+      document.getElementById('janela').textContent = janela;
+
+      var ranking = data.ranking || [];
+      var vazio = document.getElementById('vazio');
+      var podium = document.getElementById('podium');
+      var lista = document.getElementById('lista');
+
+      if (!ranking.length) {
+        vazio.style.display = ''; vazio.textContent = 'Sem participantes configurados.';
+        podium.style.display = 'none'; lista.innerHTML = '';
+        return;
+      }
+      vazio.style.display = 'none';
+      podium.style.display = '';
+
+      // Podio 2 - 1 - 3
+      var top3 = ranking.slice(0, 3);
+      var ordem = [ { c: top3[1], pos: 2 }, { c: top3[0], pos: 1 }, { c: top3[2], pos: 3 } ];
+      podium.innerHTML = ordem.map(function (o) {
+        if (!o.c) return '<div class="podium-place place-' + o.pos + '"></div>';
+        var c = o.c;
+        return '<div class="podium-place place-' + o.pos + '">' +
+                 '<div class="podium-card">' +
+                   '<div class="podium-name">' + esc(c.nome) + '</div>' +
+                   avatarHTML(c, 'podium-avatar') +
+                   '<div class="podium-gmv">' + formatBRL(c.gmv) + '</div>' +
+                   '<div class="podium-qtd">' + (c.qtd || 0) + ' venda' + (c.qtd === 1 ? '' : 's') + '</div>' +
+                 '</div>' +
+                 '<div class="podium-bar"><span class="podium-num">' + o.pos + '</span></div>' +
+               '</div>';
+      }).join('');
+
+      // Lista 4o em diante
+      lista.innerHTML = ranking.slice(3).map(function (c, i) {
+        var pos = i + 4;
+        return '<div class="lista-row' + (c.gmv <= 0 ? ' zero' : '') + '">' +
+                 '<div class="lista-pos">' + pos + 'º</div>' +
+                 avatarHTML(c, 'lista-avatar') +
+                 '<div class="lista-name">' + esc(c.nome) + '</div>' +
+                 '<div class="lista-gmv">' + formatBRL(c.gmv) + '</div>' +
+               '</div>';
+      }).join('');
+    }
+
+    function onOK(data) {
+      setStatus(true);
+      render(data);
+      proximo = Date.now() + POLL_MS;
+      setTimeout(carregar, POLL_MS);
+    }
+    function onErro(err) {
+      setStatus(false, (err && err.message) ? err.message : 'erro ao carregar');
+      proximo = Date.now() + POLL_MS;
+      setTimeout(carregar, POLL_MS);
+    }
+    function carregar() {
+      google.script.run.withSuccessHandler(onOK).withFailureHandler(onErro).getRanking();
+    }
+    function setStatus(ok, msg) {
+      var dot = document.getElementById('status-dot');
+      dot.className = 'dot' + (ok ? '' : ' erro');
+      document.getElementById('status-texto').textContent = ok ? 'ao vivo' : (msg || 'erro');
+    }
+    function tick() {
+      var s = Math.max(0, Math.round((proximo - Date.now()) / 1000));
+      document.getElementById('contagem').textContent = proximo ? '· atualiza em ' + s + 's' : '';
+    }
+
+    carregar();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
