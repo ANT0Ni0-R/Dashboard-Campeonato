@@ -45,26 +45,14 @@ var DEFAULTS = {
 };
 
 // ===== SERVE A PAGINA =====
-// Roteamento por parametro de URL:
-//   ...exec               -> podio da competicao (Index)
-//   ...exec?page=vendas   -> aba "Consultar vendas" (Vendas), lista dos ultimos 7 dias
-function doGet(e) {
-  var page = (e && e.parameter && e.parameter.page) || '';
-  var isVendas = (page === 'vendas');
-  var file  = isVendas ? 'Vendas' : 'Index';
-  var title = isVendas ? 'Consultar Vendas' : 'Competicao — Podio';
-
-  var t = HtmlService.createTemplateFromFile(file);
-  t.scriptUrl = getScriptUrl_();   // usado para navegar entre o podio e a aba de vendas
-  return t.evaluate()
-    .setTitle(title)
+// Pagina unica: o podio e a consulta de vendas sao views alternadas no mesmo HTML
+// (sem trocar de URL). getRanking() e listarVendas() sao chamados via google.script.run.
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index')
+    .evaluate()
+    .setTitle('Competicao — Podio')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-// URL publica do proprio Web App (para os links entre as paginas).
-function getScriptUrl_() {
-  return ScriptApp.getService().getUrl();
 }
 
 function include(name) {
