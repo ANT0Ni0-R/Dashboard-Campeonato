@@ -45,12 +45,26 @@ var DEFAULTS = {
 };
 
 // ===== SERVE A PAGINA =====
-function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
-    .setTitle('Competicao — Podio')
+// Roteamento por parametro de URL:
+//   ...exec               -> podio da competicao (Index)
+//   ...exec?page=vendas   -> aba "Consultar vendas" (Vendas), lista dos ultimos 7 dias
+function doGet(e) {
+  var page = (e && e.parameter && e.parameter.page) || '';
+  var isVendas = (page === 'vendas');
+  var file  = isVendas ? 'Vendas' : 'Index';
+  var title = isVendas ? 'Consultar Vendas' : 'Competicao — Podio';
+
+  var t = HtmlService.createTemplateFromFile(file);
+  t.scriptUrl = getScriptUrl_();   // usado para navegar entre o podio e a aba de vendas
+  return t.evaluate()
+    .setTitle(title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// URL publica do proprio Web App (para os links entre as paginas).
+function getScriptUrl_() {
+  return ScriptApp.getService().getUrl();
 }
 
 function include(name) {
@@ -165,33 +179,35 @@ function getRanking() {
   };
 }
 
-// ===== CONSULTA DE VENDAS (lookup por email/telefone, ultimos 7 dias) =====
-// Chamado pelo front (menu "Consultar vendas"). Busca as vendas de um cliente
-// nos ultimos 7 dias (qualquer produto, sem filtro de slug) e retorna o slug e o
-// PMP em que cada venda caiu — util para conferir atribuicao.
-function buscarVendas(termo) {
+// ===== CONSULTA DE VENDAS (aba "Consultar vendas", ultimos 7 dias) =====
+// Chamado pelo front (pagina Vendas) via google.script.run. Sem termo, devolve as
+// vendas mais recentes dos ultimos 7 dias (qualquer produto). Com termo, filtra por
+// email OU telefone. Retorna o slug e o PMP em que cada venda caiu — util para
+// conferir atribuicao.
+function listarVendas(termo) {
   termo = String(termo || '').trim();
-  if (!termo) throw new Error('Informe um email ou telefone.');
   var cfg = lerConfig_();
 
   var seteDias = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
-  // Monta o OR: por email (se tem "@" ou texto) e/ou por telefone (so digitos).
-  var cond = [];
-  if (termo.indexOf('@') >= 0) {
-    cond.push('email.ilike.*' + encodeURIComponent(termo) + '*');
-  } else {
-    var digitos = termo.replace(/\D/g, '');
-    if (digitos) cond.push('phone.ilike.*' + encodeURIComponent(digitos) + '*');
-    cond.push('email.ilike.*' + encodeURIComponent(termo) + '*');
-  }
-
   var path = '/rest/v1/' + cfg.tabela +
              '?type=eq.order_success' +
              '&select=created_at,slug,pmp,price,name,email,phone' +
-             '&created_at=gte.' + encodeURIComponent(seteDias) +
-             '&or=(' + cond.join(',') + ')' +
-             '&order=created_at.desc&limit=50';
+             '&created_at=gte.' + encodeURIComponent(seteDias);
+
+  if (termo) {
+    // OR: por email (se tem "@" ou texto) e/ou por telefone (so digitos).
+    var cond = [];
+    if (termo.indexOf('@') >= 0) {
+      cond.push('email.ilike.*' + encodeURIComponent(termo) + '*');
+    } else {
+      var digitos = termo.replace(/\D/g, '');
+      if (digitos) cond.push('phone.ilike.*' + encodeURIComponent(digitos) + '*');
+      cond.push('email.ilike.*' + encodeURIComponent(termo) + '*');
+    }
+    path += '&or=(' + cond.join(',') + ')';
+  }
+  path += '&order=created_at.desc&limit=300';
 
   var h = resolveAuthHeaders_(cfg, false);
   var resp = restGet_(cfg.url, path, h);
