@@ -27,146 +27,14 @@
       background: var(--bg-main);
       background-image: var(--bg-gradient);
       color: var(--text-primary);
-      min-height: 100vh;
-      padding: 2.2vh 2.4vw;
+      height: 100vh;
+      padding: 1.6vh 2vw;
       display: flex; flex-direction: column;
       overflow: hidden;
     }
 
-    /* ---------- Header ---------- */
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 1.5rem;
-      background: rgba(15, 23, 42, 0.4);
-      border: 1px solid var(--border-color);
-      border-radius: 18px;
-      padding: 1.4vh 2vw;
-      backdrop-filter: blur(12px);
-      flex-shrink: 0;
-    }
-    .header-left { display: flex; align-items: center; gap: 1.1rem; min-width: 0; }
-    .logo-trofeu { font-size: 2.8rem; animation: float 3s ease-in-out infinite; }
-    .header-titulos { min-width: 0; }
-    h1 {
-      font-family: var(--font-title);
-      font-weight: 800;
-      font-size: clamp(1.8rem, 3vw, 3rem);
-      line-height: 1.05;
-      background: linear-gradient(135deg, #fff 30%, var(--accent-gold) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .subtitulo {
-      font-size: clamp(0.85rem, 1.3vw, 1.25rem);
-      color: var(--text-secondary); font-weight: 500; margin-top: 0.2rem;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .premio {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      background: rgba(234, 179, 8, 0.12);
-      border: 1px solid rgba(234, 179, 8, 0.5);
-      border-radius: 12px;
-      padding: 0.6rem 1.1rem;
-      font-family: var(--font-title); font-weight: 700;
-      font-size: clamp(0.9rem, 1.3vw, 1.3rem);
-      color: var(--accent-gold);
-      white-space: nowrap; flex-shrink: 0;
-    }
-
-    /* ---------- Conteudo ---------- */
-    main {
-      flex: 1; display: flex; flex-direction: column;
-      justify-content: center; gap: 2vh;
-      padding-top: 2vh; min-height: 0;
-    }
-
-    /* ---------- Podio (2 - 1 - 3) ---------- */
-    .podium {
-      display: flex; justify-content: center; align-items: flex-end;
-      gap: 1.6vw; flex-shrink: 0;
-    }
-    .podium-place { display: flex; flex-direction: column; align-items: center; width: 24%; max-width: 340px; }
-    .place-1 { width: 28%; max-width: 400px; }
-    .podium-card {
-      display: flex; flex-direction: column; align-items: center; width: 100%;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 18px 18px 0 0;
-      padding: 1.1rem 1rem 0.9rem;
-    }
-    .podium-name {
-      font-family: var(--font-title); font-weight: 700;
-      font-size: clamp(1.1rem, 1.8vw, 1.9rem);
-      margin-bottom: 0.7rem; text-align: center;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    .podium-avatar {
-      width: 100%; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden;
-      border: 3px solid var(--border-color); position: relative;
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .podium-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-    .podium-avatar .initials {
-      font-family: var(--font-title); font-weight: 800;
-      font-size: clamp(2rem, 4vw, 4rem); color: var(--text-muted);
-    }
-    .podium-avatar img.loaded + .initials { display: none; }
-    .podium-gmv {
-      font-family: monospace; font-weight: 800;
-      font-size: clamp(1.2rem, 2vw, 2.2rem);
-      margin-top: 0.6rem; color: var(--accent-gold);
-    }
-    .podium-qtd { font-size: clamp(0.7rem, 1vw, 1rem); color: var(--text-secondary); margin-top: 0.15rem; }
-    .podium-bar {
-      width: 100%; display: flex; align-items: center; justify-content: center;
-      border-radius: 0 0 10px 10px; color: #0b1120;
-      font-family: var(--font-title); font-weight: 800;
-      box-shadow: inset 0 2px 6px rgba(255,255,255,0.25);
-    }
-    .podium-num { font-size: clamp(2.2rem, 4vw, 4rem); }
-
-    .place-1 .podium-bar { height: 15vh; background: linear-gradient(180deg, #fde68a, #facc15); }
-    .place-2 .podium-bar { height: 10vh; background: linear-gradient(180deg, #f1f5f9, #cbd5e1); }
-    .place-3 .podium-bar { height: 7vh;  background: linear-gradient(180deg, #fbbf24, #b45309); }
-    .place-1 .podium-avatar { border-color: #facc15; }
-    .place-1 .podium-card { border-color: rgba(250, 204, 21, 0.5); box-shadow: 0 0 32px rgba(250,204,21,0.2); }
-    .place-1 .podium-gmv { color: var(--accent-green); }
-    .place-2 .podium-avatar { border-color: #cbd5e1; }
-    .place-3 .podium-avatar { border-color: #b45309; }
-
-    /* ---------- Lista 4o em diante ---------- */
-    .lista { display: flex; flex-direction: column; gap: 0.7vh; max-width: 1100px; width: 100%; margin: 0 auto; overflow-y: auto; }
-    .lista-row {
-      display: flex; align-items: center; gap: 1.2rem;
-      background: rgba(30, 41, 59, 0.3);
-      border: 1px solid var(--border-color);
-      border-left: 4px solid transparent;
-      border-radius: 12px; padding: 0.8vh 1.4rem;
-    }
-    .lista-row.zero { opacity: 0.5; }
-    .lista-pos { font-family: var(--font-title); font-weight: 800; font-size: clamp(1rem, 1.5vw, 1.6rem); color: var(--text-secondary); width: 3rem; text-align: center; flex-shrink: 0; }
-    .lista-avatar {
-      width: clamp(40px, 4vw, 64px); height: clamp(40px, 4vw, 64px); border-radius: 10px; overflow: hidden;
-      border: 2px solid var(--border-color); flex-shrink: 0; position: relative;
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .lista-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-    .lista-avatar .initials { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.9rem, 1.3vw, 1.4rem); color: var(--text-muted); }
-    .lista-avatar img.loaded + .initials { display: none; }
-    .lista-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(1rem, 1.5vw, 1.7rem); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lista-gmv { font-family: monospace; font-weight: 800; font-size: clamp(1rem, 1.5vw, 1.7rem); color: var(--accent-gold); text-align: right; flex-shrink: 0; }
-
-    .lista-titulo {
-      max-width: 1100px; width: 100%; margin: 0 auto -0.2vh;
-      font-family: var(--font-title); font-weight: 700;
-      font-size: clamp(0.75rem, 1vw, 1rem); letter-spacing: 1px; text-transform: uppercase;
-      color: var(--text-muted);
-    }
-
     /* ---------- Menu superior ---------- */
-    .topmenu { display: flex; justify-content: flex-end; margin-bottom: 1vh; flex-shrink: 0; }
+    .topmenu { display: flex; justify-content: flex-end; margin-bottom: 0.8vh; flex-shrink: 0; }
     .menu-btn {
       font-family: var(--font-title); font-weight: 700;
       font-size: clamp(0.75rem, 1vw, 1rem);
@@ -178,18 +46,192 @@
     }
     .menu-btn:hover { border-color: var(--accent-gold); background: rgba(30, 41, 59, 0.9); }
 
+    /* ---------- Header ---------- */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1.5rem;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1vh 2vw;
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 1.1rem; min-width: 0; }
+    .logo-trofeu { font-size: clamp(1.8rem, 2.6vw, 2.6rem); animation: float 3s ease-in-out infinite; }
+    .header-titulos { min-width: 0; }
+    h1 {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: clamp(1.5rem, 2.6vw, 2.6rem);
+      line-height: 1.05;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-gold) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .subtitulo {
+      font-size: clamp(0.8rem, 1.2vw, 1.2rem);
+      color: var(--text-secondary); font-weight: 500; margin-top: 0.2rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .premio {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(234, 179, 8, 0.12);
+      border: 1px solid rgba(234, 179, 8, 0.5);
+      border-radius: 12px;
+      padding: 0.55rem 1.1rem;
+      font-family: var(--font-title); font-weight: 700;
+      font-size: clamp(0.85rem, 1.2vw, 1.25rem);
+      color: var(--accent-gold);
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ---------- Main / views ---------- */
+    main { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+
+    /* ===== VIEW: PÓDIO ===== */
+    #view-podio { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 1.4vh; padding-top: 1vh; overflow: hidden; }
+
+    .podium { display: flex; justify-content: center; align-items: flex-end; gap: 1.4vw; flex-shrink: 0; }
+    .podium-place { display: flex; flex-direction: column; align-items: center; width: 23%; max-width: 300px; }
+    .place-1 { width: 26%; max-width: 340px; }
+    .podium-card {
+      display: flex; flex-direction: column; align-items: center; width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px 16px 0 0;
+      padding: 0.9vh 0.8rem 0.8vh;
+    }
+    .podium-name {
+      font-family: var(--font-title); font-weight: 700;
+      font-size: clamp(1rem, 1.7vw, 1.8rem);
+      margin-bottom: 0.6vh; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+    .podium-avatar {
+      width: 100%; height: 20vh; max-height: 230px; border-radius: 12px; overflow: hidden;
+      border: 3px solid var(--border-color); position: relative;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .podium-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+    .podium-avatar .initials {
+      font-family: var(--font-title); font-weight: 800;
+      font-size: clamp(1.8rem, 3.4vw, 3.6rem); color: var(--text-muted);
+    }
+    .podium-avatar img.loaded + .initials { display: none; }
+    .podium-gmv {
+      font-family: monospace; font-weight: 800;
+      font-size: clamp(1.1rem, 1.9vw, 2rem);
+      margin-top: 0.6vh; color: var(--accent-gold);
+    }
+    .podium-qtd { font-size: clamp(0.65rem, 0.95vw, 0.95rem); color: var(--text-secondary); margin-top: 0.1rem; }
+    .podium-bar {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      border-radius: 0 0 10px 10px; color: #0b1120;
+      font-family: var(--font-title); font-weight: 800;
+      box-shadow: inset 0 2px 6px rgba(255,255,255,0.25);
+    }
+    .podium-num { font-size: clamp(1.8rem, 3.2vw, 3.4rem); }
+
+    .place-1 .podium-bar { height: 12vh; max-height: 110px; background: linear-gradient(180deg, #fde68a, #facc15); }
+    .place-2 .podium-bar { height: 8vh;  max-height: 76px;  background: linear-gradient(180deg, #f1f5f9, #cbd5e1); }
+    .place-3 .podium-bar { height: 5.5vh; max-height: 54px; background: linear-gradient(180deg, #fbbf24, #b45309); }
+    .place-1 .podium-avatar { border-color: #facc15; }
+    .place-1 .podium-card { border-color: rgba(250, 204, 21, 0.5); box-shadow: 0 0 28px rgba(250,204,21,0.18); }
+    .place-1 .podium-gmv { color: var(--accent-green); }
+    .place-2 .podium-avatar { border-color: #cbd5e1; }
+    .place-3 .podium-avatar { border-color: #b45309; }
+
+    .lista-titulo {
+      max-width: 1100px; width: 100%; margin: 0 auto -0.2vh;
+      font-family: var(--font-title); font-weight: 700;
+      font-size: clamp(0.7rem, 0.95vw, 0.95rem); letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .lista { display: flex; flex-direction: column; gap: 0.6vh; max-width: 1100px; width: 100%; margin: 0 auto; overflow-y: auto; min-height: 0; }
+    .lista-row {
+      display: flex; align-items: center; gap: 1.2rem;
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid transparent;
+      border-radius: 12px; padding: 0.7vh 1.4rem;
+    }
+    .lista-row.zero { opacity: 0.5; }
+    .lista-pos { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.95rem, 1.4vw, 1.5rem); color: var(--text-secondary); width: 3rem; text-align: center; flex-shrink: 0; }
+    .lista-avatar {
+      width: clamp(38px, 3.6vw, 58px); height: clamp(38px, 3.6vw, 58px); border-radius: 10px; overflow: hidden;
+      border: 2px solid var(--border-color); flex-shrink: 0; position: relative;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lista-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+    .lista-avatar .initials { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.85rem, 1.2vw, 1.3rem); color: var(--text-muted); }
+    .lista-avatar img.loaded + .initials { display: none; }
+    .lista-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(0.95rem, 1.4vw, 1.6rem); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lista-gmv { font-family: monospace; font-weight: 800; font-size: clamp(0.95rem, 1.4vw, 1.6rem); color: var(--accent-gold); text-align: right; flex-shrink: 0; }
+
+    .estado-vazio { text-align: center; color: var(--text-secondary); font-size: 1.4rem; padding: 8vh 0; }
+
+    /* ===== VIEW: VENDAS (mesma página) ===== */
+    #view-vendas { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 1vh; }
+    .vendas-bar {
+      display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+      background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color);
+      border-radius: 10px; padding: 0.6rem 0.9rem; margin-bottom: 0.7vh; flex-shrink: 0;
+    }
+    .vendas-bar input {
+      flex: 1; min-width: 220px; font-family: var(--font-body); font-size: 0.95rem;
+      color: var(--text-primary); background: rgba(6, 9, 19, 0.7);
+      border: 1px solid var(--border-color); border-radius: 8px; padding: 0.55rem 0.9rem;
+    }
+    .vendas-bar input:focus { outline: none; border-color: var(--accent-gold); }
+    .vendas-bar button {
+      font-family: var(--font-title); font-weight: 700; font-size: 0.85rem;
+      border: none; border-radius: 8px; padding: 0.55rem 1.1rem; cursor: pointer; white-space: nowrap;
+    }
+    .btn-buscar { color: #0b1120; background: var(--accent-gold); }
+    .btn-buscar:hover { filter: brightness(1.08); }
+    .btn-sec { color: var(--text-secondary); background: rgba(51,65,85,0.4); }
+    .btn-sec:hover { color: var(--text-primary); }
+    .btn-voltar { color: var(--text-primary); background: rgba(59,130,246,0.18); border: 1px solid rgba(59,130,246,0.4) !important; }
+    .vendas-hint { font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; }
+
+    .vendas-table-wrap { flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.4rem; }
+    .vendas-table-wrap::-webkit-scrollbar { width: 6px; }
+    .vendas-table-wrap::-webkit-scrollbar-thumb { background: rgba(51,65,85,0.6); border-radius: 3px; }
+    table.vendas { width: 100%; border-collapse: collapse; }
+    table.vendas th {
+      padding: 0.5rem 1rem; font-size: 0.72rem; color: var(--text-secondary);
+      text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky; top: 0; background: var(--bg-main); z-index: 2;
+    }
+    table.vendas td { padding: 0.5rem 1rem; font-size: 0.9rem; border-bottom: 1px solid rgba(51,65,85,0.15); vertical-align: top; }
+    table.vendas tr:hover td { background: rgba(30, 41, 59, 0.35); }
+    .v-data { color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .v-cli .nome { font-family: var(--font-title); font-weight: 700; }
+    .v-cli .contato { font-size: 0.74rem; color: var(--text-muted); }
+    .v-slug { font-family: monospace; color: var(--text-primary); word-break: break-all; max-width: 360px; }
+    .v-pmp { font-family: monospace; font-weight: 800; color: var(--accent-gold); }
+    .v-pmp .raw { display: block; font-weight: 400; color: var(--text-muted); font-size: 0.7rem; word-break: break-all; }
+    .v-pmp .none { color: #ef4444; }
+    .v-valor { font-family: monospace; font-weight: 800; color: var(--accent-green); text-align: right; white-space: nowrap; }
+    .vendas-msg { text-align: center; padding: 3rem; color: var(--text-secondary); }
+    .vendas-msg.err { color: #ef4444; }
+
     /* ---------- Footer ---------- */
     footer {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 1rem; flex-shrink: 0; margin-top: 1.5vh;
+      gap: 1rem; flex-shrink: 0; margin-top: 1vh;
       font-size: clamp(0.7rem, 1vw, 1rem); color: var(--text-muted);
     }
     .footer-janela { color: var(--text-secondary); }
     .footer-status { display: flex; align-items: center; gap: 0.5rem; }
     .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); animation: pulse 1.5s infinite alternate; }
-    .dot.erro { background: var(--accent-red, #ef4444); box-shadow: 0 0 8px #ef4444; }
+    .dot.erro { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
 
-    .estado-vazio { text-align: center; color: var(--text-secondary); font-size: 1.4rem; padding: 8vh 0; }
+    [hidden] { display: none !important; }
 
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
     @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
@@ -197,7 +239,7 @@
 </head>
 <body>
   <nav class="topmenu">
-    <a class="menu-btn" href="<?= scriptUrl ?>?page=vendas" target="_blank" rel="noopener">🔎 Consultar vendas (7 dias)</a>
+    <button class="menu-btn" id="btn-toggle" onclick="mostrarVendas()">🔎 Consultar vendas (7 dias)</button>
   </nav>
 
   <header>
@@ -211,11 +253,41 @@
     <div class="premio" id="premio" style="display:none"><span>🎁</span><span id="premio-texto"></span></div>
   </header>
 
-  <main id="main">
-    <div class="estado-vazio" id="vazio">Carregando ranking…</div>
-    <div class="podium" id="podium" style="display:none"></div>
-    <div class="lista-titulo" id="lista-titulo" style="display:none">Demais colocados</div>
-    <div class="lista" id="lista"></div>
+  <main>
+    <!-- VIEW: PÓDIO -->
+    <div id="view-podio">
+      <div class="estado-vazio" id="vazio">Carregando ranking…</div>
+      <div class="podium" id="podium" style="display:none"></div>
+      <div class="lista-titulo" id="lista-titulo" style="display:none">Demais colocados</div>
+      <div class="lista" id="lista"></div>
+    </div>
+
+    <!-- VIEW: VENDAS (mesma página) -->
+    <div id="view-vendas" hidden>
+      <div class="vendas-bar">
+        <input id="termo" placeholder="email ou telefone do cliente (vazio = todas as vendas dos 7 dias)" autocomplete="off">
+        <button class="btn-buscar" onclick="buscarVendas()">Buscar</button>
+        <button class="btn-sec" onclick="limparVendas()">Limpar</button>
+        <span class="vendas-hint" id="vendas-hint"></span>
+        <button class="btn-voltar" onclick="voltarPodio()">← Voltar ao pódio</button>
+      </div>
+      <div class="vendas-table-wrap">
+        <table class="vendas">
+          <thead>
+            <tr>
+              <th style="width:110px">Data</th>
+              <th>Cliente</th>
+              <th>Produto (slug)</th>
+              <th style="width:140px">PMP</th>
+              <th style="text-align:right; width:120px">Valor</th>
+            </tr>
+          </thead>
+          <tbody id="vendas-tbody">
+            <tr><td colspan="5" class="vendas-msg">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <footer>
@@ -249,12 +321,18 @@
       if (isNaN(d)) return esc(iso);
       return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
     }
+    function dataHoraBR(iso) {
+      var d = new Date(iso);
+      if (isNaN(d)) return esc(iso);
+      return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    }
     function avatarHTML(c, cls) {
       return '<div class="' + cls + '">' +
              '<img src="' + esc(c.foto) + '" alt="" onload="this.className=\'loaded\'" onerror="this.remove()">' +
              '<span class="initials">' + esc(iniciais(c.nome)) + '</span></div>';
     }
 
+    // ---------- PÓDIO ----------
     function render(data) {
       var cfg = data.config || {};
       POLL_MS = (cfg.pollSegundos || 60) * 1000;
@@ -277,12 +355,12 @@
       if (!ranking.length) {
         vazio.style.display = ''; vazio.textContent = 'Sem participantes configurados.';
         podium.style.display = 'none'; lista.innerHTML = '';
+        document.getElementById('lista-titulo').style.display = 'none';
         return;
       }
       vazio.style.display = 'none';
       podium.style.display = '';
 
-      // Podio 2 - 1 - 3
       var top3 = ranking.slice(0, 3);
       var ordem = [ { c: top3[1], pos: 2 }, { c: top3[0], pos: 1 }, { c: top3[2], pos: 3 } ];
       podium.innerHTML = ordem.map(function (o) {
@@ -299,7 +377,6 @@
                '</div>';
       }).join('');
 
-      // Lista 4o em diante
       var resto = ranking.slice(3);
       document.getElementById('lista-titulo').style.display = resto.length ? '' : 'none';
       lista.innerHTML = resto.map(function (c, i) {
@@ -313,29 +390,72 @@
       }).join('');
     }
 
-    function onOK(data) {
-      setStatus(true);
-      render(data);
-      proximo = Date.now() + POLL_MS;
-      setTimeout(carregar, POLL_MS);
-    }
-    function onErro(err) {
-      setStatus(false, (err && err.message) ? err.message : 'erro ao carregar');
-      proximo = Date.now() + POLL_MS;
-      setTimeout(carregar, POLL_MS);
-    }
-    function carregar() {
-      google.script.run.withSuccessHandler(onOK).withFailureHandler(onErro).getRanking();
-    }
+    function onOK(data) { setStatus(true); render(data); proximo = Date.now() + POLL_MS; setTimeout(carregar, POLL_MS); }
+    function onErro(err) { setStatus(false, (err && err.message) ? err.message : 'erro ao carregar'); proximo = Date.now() + POLL_MS; setTimeout(carregar, POLL_MS); }
+    function carregar() { google.script.run.withSuccessHandler(onOK).withFailureHandler(onErro).getRanking(); }
     function setStatus(ok, msg) {
-      var dot = document.getElementById('status-dot');
-      dot.className = 'dot' + (ok ? '' : ' erro');
+      document.getElementById('status-dot').className = 'dot' + (ok ? '' : ' erro');
       document.getElementById('status-texto').textContent = ok ? 'ao vivo' : (msg || 'erro');
     }
     function tick() {
       var s = Math.max(0, Math.round((proximo - Date.now()) / 1000));
       document.getElementById('contagem').textContent = proximo ? '· atualiza em ' + s + 's' : '';
     }
+
+    // ---------- VENDAS (mesma página) ----------
+    function mostrarVendas() {
+      document.getElementById('view-podio').hidden = true;
+      document.getElementById('view-vendas').hidden = false;
+      document.getElementById('btn-toggle').textContent = '🏆 Voltar ao pódio';
+      document.getElementById('btn-toggle').setAttribute('onclick', 'voltarPodio()');
+      var i = document.getElementById('termo'); i.focus();
+      buscarVendas();
+    }
+    function voltarPodio() {
+      document.getElementById('view-vendas').hidden = true;
+      document.getElementById('view-podio').hidden = false;
+      document.getElementById('btn-toggle').textContent = '🔎 Consultar vendas (7 dias)';
+      document.getElementById('btn-toggle').setAttribute('onclick', 'mostrarVendas()');
+    }
+    function limparVendas() { document.getElementById('termo').value = ''; buscarVendas(); }
+    function buscarVendas() {
+      var termo = document.getElementById('termo').value.trim();
+      var tbody = document.getElementById('vendas-tbody');
+      document.getElementById('vendas-hint').textContent = '';
+      tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg">Buscando…</td></tr>';
+      google.script.run
+        .withSuccessHandler(function (rows) { renderVendas(rows, termo); })
+        .withFailureHandler(function (e) {
+          tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg err">' + esc((e && e.message) ? e.message : 'Erro ao consultar') + '</td></tr>';
+        })
+        .listarVendas(termo);
+    }
+    function renderVendas(rows, termo) {
+      var tbody = document.getElementById('vendas-tbody');
+      var hint = document.getElementById('vendas-hint');
+      rows = rows || [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg">Nenhuma venda encontrada nos últimos 7 dias' + (termo ? ' para "' + esc(termo) + '"' : '') + '.</td></tr>';
+        hint.textContent = ''; return;
+      }
+      hint.textContent = rows.length + ' venda(s)' + (rows.length >= 300 ? ' (limite 300 — refine a busca)' : '');
+      tbody.innerHTML = rows.map(function (r) {
+        var contato = [r.email, r.phone].filter(Boolean).map(esc).join(' · ');
+        var pmp = r.pmp_code
+          ? '<span>' + esc(r.pmp_code) + '</span>' + (r.pmp ? '<span class="raw">' + esc(r.pmp) + '</span>' : '')
+          : '<span class="none">sem PMP</span>' + (r.pmp ? '<span class="raw">' + esc(r.pmp) + '</span>' : '');
+        return '<tr>' +
+          '<td class="v-data">' + dataHoraBR(r.created_at) + '</td>' +
+          '<td class="v-cli"><div class="nome">' + esc(r.nome || '—') + '</div>' +
+            (contato ? '<div class="contato">' + contato + '</div>' : '') + '</td>' +
+          '<td class="v-slug">' + esc(r.slug || '—') + '</td>' +
+          '<td class="v-pmp">' + pmp + '</td>' +
+          '<td class="v-valor">' + formatBRL(r.price) + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    document.getElementById('termo').addEventListener('keydown', function (e) { if (e.key === 'Enter') buscarVendas(); });
 
     carregar();
     setInterval(tick, 1000);

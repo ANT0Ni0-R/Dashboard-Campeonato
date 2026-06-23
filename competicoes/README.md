@@ -13,8 +13,7 @@ e `Participantes`) + Apps Script vinculado + Web App próprio. Para criar outra,
 | arquivo | papel |
 |---|---|
 | `Code.gs` | backend: lê a planilha, consulta o Supabase, monta o ranking e a consulta de vendas |
-| `Index.html` | front do pódio (TV, dark) servido pelo Web App |
-| `Vendas.html` | aba "Consultar vendas" (`?page=vendas`): lista as vendas dos últimos 7 dias, com busca por email/telefone |
+| `Index.html` | front (TV, dark): pódio + view "Consultar vendas" alternada na mesma página |
 | `appsscript.json` | manifesto (timezone, escopos, config do Web App) |
 | `Config-template.md` | colunas das abas `Config` / `Participantes` da planilha |
 | `fotos/<PMP>.jpg` | fotos dos Closers (servidas via `raw.githubusercontent.com`) |
@@ -34,14 +33,15 @@ e `Participantes`) + Apps Script vinculado + Web App próprio. Para criar outra,
 (`split('-')` → último segmento), soma `price` (GMV = price) por participante e
 ordena desc. Auth via **JWT assinado no servidor** (ver Segredos).
 
-## Aba "Consultar vendas"
+## View "Consultar vendas"
 
-O botão **🔎 Consultar vendas (7 dias)** no pódio abre, numa nova aba, a página
-`?page=vendas` (`Vendas.html`). Ela lista as vendas (`order_success`) dos últimos
-7 dias **de qualquer produto** e permite buscar por **email ou telefone**,
-mostrando para cada venda o **produto (slug)** e o **PMP** em que ela caiu — útil
-para conferir por que uma venda não entrou na competição. Backend:
-`listarVendas(termo)` no `Code.gs` (sem termo = todas dos 7 dias, limite 300).
+O botão **🔎 Consultar vendas (7 dias)** alterna, **na mesma página** (sem trocar de
+URL), do pódio para uma lista das vendas (`order_success`) dos últimos 7 dias **de
+qualquer produto**, com busca por **email ou telefone**. Cada linha mostra o
+**produto (slug)** e o **PMP** em que a venda caiu (vendas sem PMP válido ficam em
+vermelho) — útil para conferir por que uma venda não entrou na competição. O botão
+vira "🏆 Voltar ao pódio" para retornar. Backend: `listarVendas(termo)` no `Code.gs`
+(sem termo = todas dos 7 dias, limite 300).
 
 ## Setup de uma competição (1ª vez)
 
@@ -49,7 +49,6 @@ para conferir por que uma venda não entrou na competição. Backend:
 2. Na planilha: `Extensões > Apps Script`. Crie os arquivos e cole o conteúdo desta pasta:
    - `Code.gs` → `Code.gs`
    - `Index.html` → arquivo HTML chamado `Index`
-   - `Vendas.html` → arquivo HTML chamado `Vendas` (aba de consulta de vendas)
    - (opcional) `appsscript.json`: ative em `Project Settings > Mostrar arquivo de manifesto`.
 3. `Project Settings > Script Properties`, adicione os segredos:
    - `SUPABASE_JWT_SECRET` — JWT Secret do projeto (Supabase: `Settings > API > JWT Settings`).
