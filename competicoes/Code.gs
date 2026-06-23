@@ -165,6 +165,55 @@ function getRanking() {
   };
 }
 
+// ===== CONSULTA DE VENDAS (lookup por email/telefone, ultimos 7 dias) =====
+// Chamado pelo front (menu "Consultar vendas"). Busca as vendas de um cliente
+// nos ultimos 7 dias (qualquer produto, sem filtro de slug) e retorna o slug e o
+// PMP em que cada venda caiu — util para conferir atribuicao.
+function buscarVendas(termo) {
+  termo = String(termo || '').trim();
+  if (!termo) throw new Error('Informe um email ou telefone.');
+  var cfg = lerConfig_();
+
+  var seteDias = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+
+  // Monta o OR: por email (se tem "@" ou texto) e/ou por telefone (so digitos).
+  var cond = [];
+  if (termo.indexOf('@') >= 0) {
+    cond.push('email.ilike.*' + encodeURIComponent(termo) + '*');
+  } else {
+    var digitos = termo.replace(/\D/g, '');
+    if (digitos) cond.push('phone.ilike.*' + encodeURIComponent(digitos) + '*');
+    cond.push('email.ilike.*' + encodeURIComponent(termo) + '*');
+  }
+
+  var path = '/rest/v1/' + cfg.tabela +
+             '?type=eq.order_success' +
+             '&select=created_at,slug,pmp,price,name,email,phone' +
+             '&created_at=gte.' + encodeURIComponent(seteDias) +
+             '&or=(' + cond.join(',') + ')' +
+             '&order=created_at.desc&limit=50';
+
+  var h = resolveAuthHeaders_(cfg, false);
+  var resp = restGet_(cfg.url, path, h);
+  if (resp.getResponseCode() === 401) { h = resolveAuthHeaders_(cfg, true); resp = restGet_(cfg.url, path, h); }
+  var rows = parseRows_(resp);
+
+  return rows.map(function (t) {
+    var segs = String(t.pmp || '').split('-');
+    var code = (segs[segs.length - 1] || '').toUpperCase();
+    return {
+      created_at: t.created_at,
+      slug:       t.slug || '',
+      pmp:        t.pmp || '',
+      pmp_code:   code.length === 3 ? code : '',
+      nome:       t.name || '',
+      email:      t.email || '',
+      phone:      t.phone || '',
+      price:      Number(t.price) || 0
+    };
+  });
+}
+
 // ===== CONSULTA O SUPABASE (janela + slug) =====
 function fetchTransactions_(cfg) {
   // ilike usa "*" como coringa; o config guarda o padrao com "%".
