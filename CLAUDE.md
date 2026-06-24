@@ -1,5 +1,103 @@
 # Dashboard Campeonato — Contexto para Claude
 
+> Este arquivo é o **mapa do projeto**. Leia-o primeiro e use-o para navegar:
+> ele descreve arquitetura, arquivos, funções e dependências para que você
+> **não precise ler todo o código antes de programar**. Comece pelo
+> "Mapa de código" abaixo e só abra os arquivos relevantes à tarefa.
+
+---
+
+## Princípios de trabalho — pergunte ANTES de codar
+
+Antes de escrever qualquer linha de código, pare e responda explicitamente a
+estas 5 perguntas. Elas evitam retrabalho, duplicação e complexidade
+desnecessária — os erros mais caros desta base vieram de pular essas etapas.
+
+1. **Será que tem uma forma mais simples de fazer?**
+   Prefira a solução mais direta. Esta base é vanilla JS + Apps Script, sem
+   build, sem framework. Não introduza dependências, abstrações ou camadas
+   novas se uma função pequena resolve. Menos código = menos bug.
+
+2. **Será que alguém já fez isso antes?**
+   Verifique o histórico (`git log`), as seções "Erros cometidos" e "Pontos de
+   atenção" deste arquivo, e os READMEs (`apps-script/`, `competicoes/`,
+   `teste/`). Muito problema aqui já foi resolvido — não repita o erro nem
+   reinvente a solução.
+
+3. **Tem alguma documentação para isso?**
+   Antes de inferir comportamento, consulte: este CLAUDE.md, os READMEs das
+   subpastas, e a doc oficial da dependência (Supabase REST, Apps Script,
+   BigQuery, GitHub Pages). Não chute APIs externas — confirme.
+
+4. **Será que esse código já existe no projeto?**
+   Procure (`grep`) antes de criar. Há muita lógica reutilizável: cálculo de
+   GMV, parsing de PMP, formatação de moeda, fetch do Supabase, render de
+   pódio. Veja o "Mapa de código" abaixo e reutilize em vez de duplicar.
+
+5. **Será que eu deveria separar isso em mais de um arquivo?**
+   `app.js` já tem ~1370 linhas. Avalie se a mudança merece um módulo/arquivo
+   próprio em vez de inchar um arquivo existente. Equilibre: separar demais em
+   projeto sem bundler também atrapalha (cada arquivo vira um `<script>`).
+
+---
+
+## Mapa de código (leia isto em vez do projeto inteiro)
+
+### Estrutura de pastas
+
+| Caminho | Papel |
+|---|---|
+| `index.html` + `app.js` + `config.js` + `styles.css` | **Dashboard 1 — Copa (bracket)**. Produção via GitHub Pages. |
+| `apps-script/Code.gs` + `apps-script/Index.html` | **Dashboard 2 — Ranking Geral** (BigQuery). Colado manualmente no Apps Script. |
+| `competicoes/` | Variante reutilizável: pódio de GMV por competição (1 planilha = 1 competição). Backend lê Supabase via JWT server-side. Tem README próprio. |
+| `teste/` | Build isolada para validar conexão Supabase + auto-refresh, sem mexer na produção. Usa `../styles.css` e `../config.js`. |
+| `ranking.html` + `bq_fetch.py` | Ranking estático que consome `bq_data.json` gerado por `bq_fetch.py` (consulta BigQuery via ADC do gcloud). |
+| `db_transactions_events_rows.json` | Dados de exemplo (fallback offline do Dashboard 1). |
+| `fotos/`, `flags/`, `fotos_bandeiras/` | Assets servidos via raw.githubusercontent (repo precisa ser público). |
+
+### `app.js` — onde está cada coisa (~1370 linhas)
+
+Vanilla JS, sem módulos. Depende de `COMPETICAO` (global de `config.js`) e dos
+IDs do DOM em `index.html`. Funções principais:
+
+- **Ciclo/polling:** `startPolling`, `updateDashboard`, `forcarAtualizacao`, `updateSyncBar`, `updateSyncCountdown`
+- **Tempo/fase:** `getNow`, `determineActivePhase`, `phaseForMs`, `parseDate`, `isCopaDay`/`isCopaDayMs`, `getCongelamento`, `getApuracao`, `updateTimer`, `formatDuration`, `translatePhaseName`
+- **Dados:** `fetchTransactions` (REST Supabase, fallback JSON), `calcularGMV` (GMV = price + régua/ajustes de `config.js`), `calcularResultados` (núcleo: agrega por PMP, monta grupos/mata-mata/campeão)
+- **Render:** `renderDashboard` (dispatcher por fase), `createGruposContainer`, `renderBracket`, `buildPhaseSection`, `buildConfrontosFor`, `buildCampeaoRow`, `createCloserCard`, `createConfrontoBox`, `renderCopaDay`, `buildPodium`, `buildCopaList`, `renderDailyClosing`, `buildBigPlayerCard`, `renderSemis`, `buildSemiBlock`, `buildFinalProjection`, `renderFinal`, `buildFinalHalf`
+- **Layout:** `fitBracket` (scale do bracket 1500px fixo), `initDaySelector`, `buildCompetitionDays`
+- **UI util:** `formatCurrency`, `showLoading`, `showStatusDot`, `toggleApuracaoBanner`
+
+### `config.js` — fonte única de configuração do Dashboard 1
+
+Exporta o global `COMPETICAO`. Chaves: `fase_ativa_override`, `produto`
+(`slug_like`, `regua`, `excluir_ids`, `ajustar_precos`), `supabase`
+(`url`, `anon_key`, `tabela`, `poll_segundos`), `congelamento`, `vendedores`
+(11 PMPs), `fases` (grupos/quartas/semis/final com janelas em America/Sao_Paulo
+e `dia_copa`). Mexa em config aqui, **não** espalhe constantes pelo `app.js`.
+
+### `apps-script/Code.gs` — backend do Dashboard 2 (~397 linhas)
+
+- `doGet`/`include`: serve `Index.html`
+- `lerConfig_`, `resolveAuthHeaders_`, `getAccessToken_`, `mintJwt_`, `setSecrets_`: auth Supabase (secret key em Script Property — ver seção CAPTCHA)
+- `getTransactions`, `restGet_`, `parseRows_`: consulta de dados
+- `diagSupabase`: diagnóstico
+
+### Dependências (todas externas, nada de `npm install`)
+
+- **Front Copa:** zero libs. Fontes Google Fonts via `@import`; avatares fallback DiceBear. Supabase via `fetch` REST.
+- **Apps Script:** serviço avançado `BigQuery` (habilitar no editor) + `UrlFetchApp` para Supabase.
+- **`bq_fetch.py`:** `google-cloud-bigquery` (auth via ADC do gcloud).
+- **CI:** `.github/workflows/pages.yml` publica o `_site/` na `main`.
+
+### Fluxo de dados (Dashboard 1)
+
+`config.js` (COMPETICAO) → `fetchTransactions()` (Supabase REST, fallback
+`db_transactions_events_rows.json`) → `calcularResultados()` (agrega por PMP,
+GMV via `calcularGMV`) → `renderDashboard()` (dispatch por fase) → DOM. Loop a
+cada `poll_segundos` (60s) via `startPolling`.
+
+---
+
 ## Visão Geral
 
 Dois dashboards separados para um evento de vendas do Grupo Primo (lançamento "Legado", semana de 16–21/jun/2026):
