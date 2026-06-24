@@ -43,6 +43,21 @@ desnecessária — os erros mais caros desta base vieram de pular essas etapas.
 
 ## Fluxo de trabalho — sempre seguir
 
+### Subagentes — prefira o modelo mais barato que dê conta
+
+Ao delegar para subagentes (Agent tool), use **sempre que possível o modelo menos
+intensivo em tokens** que resolva a tarefa — economia de custo/tempo sem perder
+qualidade. Passe o modelo no parâmetro `model` do Agent tool (ex.: `model: "haiku"`).
+
+- **Haiku** (`claude-haiku-4-5`): exploração read-only, busca/`grep`, leitura de
+  arquivos, lookups simples, checagens mecânicas (ex.: `node --check`, conferir um valor).
+- **Sonnet** (`claude-sonnet-4-6`): tarefas intermediárias — edições localizadas,
+  refactors pequenos, resumos.
+- **Opus** (`claude-opus-4-8`): reserve para design/arquitetura, implementação complexa
+  e revisão crítica, onde o raciocínio mais forte compensa o custo.
+
+Na dúvida entre dois níveis, comece pelo mais barato e suba só se o resultado não bastar.
+
 ### Git
 
 - **Sempre subir as alterações para a branch `main`.** Todo desenvolvimento
