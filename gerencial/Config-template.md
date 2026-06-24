@@ -46,7 +46,9 @@ Mapa PMP -> Nome para exibir o ranking. Opcional (sem nome, mostra o PMP).
 | ciclano@grupo-primo.com | viewer |
 
 Allowlist de e-mails liberados. O `doGet` le `Session.getActiveUser().getEmail()` (visitante do
-mesmo Google Workspace) e bloqueia quem nao estiver nesta aba. E-mail vazio (fora do dominio) = negado.
+mesmo Google Workspace) e bloqueia quem nao estiver nesta aba (serve `AccessDenied.html`). As
+funcoes de dados tambem checam (`exigirAcesso_`). **Aba vazia / sem aba = allowlist desligada**
+(so o dominio do deploy filtra). E-mail vazio (fora do dominio) com allowlist preenchida = negado.
 
 ## Aba `Snapshot_BQ` (gerada pelo trigger — PR2)
 

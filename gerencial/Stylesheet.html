@@ -195,4 +195,15 @@
   .q-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.85rem; text-align: center; }
 
   @keyframes pulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+  /* ===== Telas pequenas: empilha os quadrantes e permite scroll ===== */
+  @media (max-width: 960px), (max-height: 560px) {
+    body { overflow: auto; height: auto; min-height: 100vh; }
+    .topbar { flex-wrap: wrap; }
+    #view-dash { grid-template-columns: 1fr; grid-template-rows: none;
+      grid-template-areas: "q1" "q3" "q2" "q4"; }
+    .q { min-height: 46vh; }
+    .kpi-scope { grid-template-columns: 1fr 1fr; }
+    .kpi-scope-label { writing-mode: horizontal-tb; transform: none; grid-column: 1 / -1; justify-content: flex-start; }
+  }
 </style>

@@ -30,6 +30,13 @@ var DEFAULTS = {
 
 // ===== SERVE A PAGINA =====
 function doGet() {
+  var email = emailAtivo_();
+  if (!emailAutorizado_(email)) {
+    var negado = HtmlService.createTemplateFromFile('AccessDenied');
+    negado.email = email;
+    return negado.evaluate().setTitle('Acesso negado')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+  }
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('Dashboard Gerencial')
@@ -39,6 +46,35 @@ function doGet() {
 
 function include(name) {
   return HtmlService.createHtmlOutputFromFile(name).getContent();
+}
+
+// ===== CONTROLE DE ACESSO (aba "Acessos") =====
+// Deploy "Executar como: usuario que acessa" + acesso ao dominio -> da o e-mail do visitante.
+function emailAtivo_() { return String(Session.getActiveUser().getEmail() || '').trim().toLowerCase(); }
+
+// Le a coluna A da aba "Acessos" (e-mails liberados). Vazio/sem aba -> allowlist nao configurada.
+function lerAcessos_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss && ss.getSheetByName('Acessos');
+  if (!sh) return [];
+  return sh.getDataRange().getValues().map(function (r) {
+    return String(r[0] || '').trim().toLowerCase();
+  }).filter(function (e) { return e && e.indexOf('@') >= 0 && e !== 'email'; });
+}
+
+// Autorizado se a allowlist estiver vazia (so o dominio filtra) OU o e-mail estiver nela.
+function emailAutorizado_(email) {
+  var lista = lerAcessos_();
+  if (!lista.length) return true;
+  return !!email && lista.indexOf(email) >= 0;
+}
+
+// Guard para as funcoes de dados (defesa em profundidade: google.script.run e chamavel direto).
+function exigirAcesso_() {
+  var email = emailAtivo_();
+  if (!emailAutorizado_(email)) {
+    throw new Error('Acesso negado' + (email ? ' para ' + email : ' (usuario nao identificado)') + '.');
+  }
 }
 
 // ===== CONFIG (aba "Config" da planilha + segredos) =====
@@ -117,6 +153,7 @@ function publicConfig_(cfg) {
 // ===== DASHBOARD REAL-TIME (Supabase) — chamado via google.script.run =====
 // periodo (opcional): { inicio, fim } ISO para sobrescrever a janela da aba Config (seletor de datas).
 function getDashboardSupabase(periodo) {
+  exigirAcesso_();
   var cfg = lerConfig_();
   if (periodo && periodo.inicio) cfg.inicio = periodo.inicio;
   if (periodo && periodo.fim)    cfg.fim = periodo.fim;
@@ -247,6 +284,7 @@ function fetchTransactions_(cfg) {
 
 // ===== CONSULTA DE VENDAS (ultimos 7 dias) — chamado via google.script.run =====
 function listarVendas(termo) {
+  exigirAcesso_();
   termo = String(termo || '').trim();
   var cfg = lerConfig_();
   var seteDias = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();

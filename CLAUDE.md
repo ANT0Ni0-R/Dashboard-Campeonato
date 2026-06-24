@@ -78,6 +78,7 @@ usuário.** Só mostre o resultado depois de rodar a revisão e tratar os achado
 | `index.html` + `app.js` + `config.js` + `styles.css` | **Dashboard 1 — Copa (bracket)**. Produção via GitHub Pages. |
 | `apps-script/Code.gs` + `apps-script/Index.html` | **Dashboard 2 — Ranking Geral** (BigQuery). Colado manualmente no Apps Script. |
 | `competicoes/` | Variante reutilizável: pódio de GMV por competição (1 planilha = 1 competição). Backend lê Supabase via JWT server-side. Tem README próprio. |
+| `gerencial/` | **Dashboard 3 — Gerencial** (Apps Script, 1 planilha por dashboard). Visão gerencial em 4 quadrantes com duas fontes espelhadas (Supabase real-time + BigQuery comissão por snapshot) + consulta de vendas. Menu fixo, tema dark/light, controle de acesso por aba `Acessos`. Tem README próprio. |
 | `teste/` | Build isolada para validar conexão Supabase + auto-refresh, sem mexer na produção. Usa `../styles.css` e `../config.js`. |
 | `ranking.html` + `bq_fetch.py` | Ranking estático que consome `bq_data.json` gerado por `bq_fetch.py` (consulta BigQuery via ADC do gcloud). |
 | `db_transactions_events_rows.json` | Dados de exemplo (fallback offline do Dashboard 1). |
@@ -109,6 +110,28 @@ e `dia_copa`). Mexa em config aqui, **não** espalhe constantes pelo `app.js`.
 - `lerConfig_`, `resolveAuthHeaders_`, `getAccessToken_`, `mintJwt_`, `setSecrets_`: auth Supabase (secret key em Script Property — ver seção CAPTCHA)
 - `getTransactions`, `restGet_`, `parseRows_`: consulta de dados
 - `diagSupabase`: diagnóstico
+
+### `gerencial/` — Dashboard 3 (gerencial, Apps Script)
+
+Escalável como `competicoes/` (1 Google Sheet por dashboard; abas `Config`,
+`Participantes`, `Acessos`, `Snapshot_BQ`). **Deploy:** "Executar como: usuário
+que acessa" + acesso ao **domínio** (lê o e-mail do visitante p/ a allowlist).
+
+- `Code.gs`: `doGet` (checa acesso → `Index` ou `AccessDenied`), `lerConfig_`/
+  `lerParticipantes_`, controle de acesso (`emailAtivo_`, `lerAcessos_`,
+  `emailAutorizado_`, `exigirAcesso_`), **Supabase real-time** (`fetchTransactions_`,
+  `aggregateRows_` — TVD = `pmp` contém "TVD"; `getDashboardSupabase`), `listarVendas`,
+  auth JWT (`resolveAuthHeaders_`/`mintJwt_`/`restGet_`/`parseRows_`), `diag`.
+- `BigQuery.gs`: **Comissão por snapshot**. `snapshotBigQuery` (trigger 30 min, roda
+  como dono) executa as queries (`sqlKpisBQ_`/`sqlRankingBQ_`/`sqlPorDiaBQ_`/
+  `sqlPorHoraBQ_`, TVD = `sales_channel='TVD'`) via `bqQuery_` e grava JSON na aba
+  `Snapshot_BQ`; `getDashboardBigQuery` só lê a aba (visitantes não tocam o BQ).
+  `criarTriggerSnapshot`/`testSnapshot`. Projeto/tabela **com hifens**.
+- `Index.html` + `Stylesheet.html` + `JavaScript.html`: menu fixo (título, status,
+  seletor de datas, 3 botões, tema dark/light), grid 4 quadrantes (KPIs, linha hora a
+  hora, ranking com scroll próprio, barras empilhadas TVD/Outros + linha de Share em
+  2º eixo). Charts: **Chart.js + datalabels via CDN**. Supabase e BigQuery devolvem o
+  **mesmo shape**, então o render é único.
 
 ### Dependências (todas externas, nada de `npm install`)
 

@@ -15,6 +15,7 @@ var SNAPSHOT_SHEET = 'Snapshot_BQ';
 
 // ===== ENTRY POINT do front: le o snapshot da aba e devolve no shape do dashboard =====
 function getDashboardBigQuery() {
+  exigirAcesso_();
   var cfg = lerConfig_();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss && ss.getSheetByName(SNAPSHOT_SHEET);
