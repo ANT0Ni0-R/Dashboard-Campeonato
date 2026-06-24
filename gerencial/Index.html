@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <base target="_top">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <!-- ===== Menu fixo ===== -->
+  <nav class="topbar">
+    <div class="brand">
+      <div class="logo">📊</div>
+      <div class="titles">
+        <h1 id="titulo">Carregando…</h1>
+        <div class="produto" id="produto"></div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="daterange" id="daterange">
+      <span>📅</span>
+      <input type="date" id="dt-inicio" aria-label="Data inicio">
+      <span>—</span>
+      <input type="date" id="dt-fim" aria-label="Data fim">
+    </div>
+
+    <div class="seg" id="seg-view" role="tablist">
+      <button class="active" data-mode="supabase">⚡ Real-time</button>
+      <button data-mode="bigquery">💰 Comissao</button>
+      <button data-mode="vendas">🔎 Consulta de vendas</button>
+    </div>
+
+    <div class="status">
+      <span class="dot load" id="status-dot"></span>
+      <span id="status-texto">conectando…</span>
+      <span id="status-contagem"></span>
+    </div>
+
+    <button class="icon-btn" id="btn-theme" title="Alternar tema" onclick="toggleTheme()">🌙</button>
+  </nav>
+
+  <main>
+    <!-- ===== VIEW: Dashboard (Real-time / Comissao) ===== -->
+    <div id="view-dash">
+      <!-- Q1: KPIs -->
+      <section class="q q1">
+        <div class="q-head"><span class="q-title">Indicadores</span><span class="q-title" id="kpi-fonte"></span></div>
+        <div class="q-body"><div class="kpi-wrap" id="kpi-wrap"></div></div>
+      </section>
+
+      <!-- Q3: Ranking -->
+      <section class="q q3">
+        <div class="q-head">
+          <span class="q-title">Ranking GMV por vendedor</span>
+          <div class="seg" id="seg-rank">
+            <button class="active" data-scope="total">Periodo</button>
+            <button data-scope="hoje">Hoje</button>
+          </div>
+        </div>
+        <div class="q-body"><div class="rank-list" id="rank-list"></div></div>
+      </section>
+
+      <!-- Q2: Evolucao hora a hora -->
+      <section class="q q2">
+        <div class="q-head">
+          <span class="q-title">GMV TVD hora a hora (hoje)</span>
+          <div class="seg" id="seg-hora">
+            <button class="active" data-mode="acumulado">Acumulado</button>
+            <button data-mode="spot">Spot</button>
+          </div>
+        </div>
+        <div class="q-body"><div class="chart-box"><canvas id="chart-hora"></canvas></div></div>
+      </section>
+
+      <!-- Q4: GMV por dia (TVD vs Outros) + Share -->
+      <section class="q q4">
+        <div class="q-head">
+          <span class="q-title">GMV por dia · TVD vs Outros + Share</span>
+          <div class="seg" id="seg-dia">
+            <button class="active" data-mode="spot">Spot</button>
+            <button data-mode="acumulado">Acumulado</button>
+          </div>
+        </div>
+        <div class="q-body"><div class="chart-box"><canvas id="chart-dia"></canvas></div></div>
+      </section>
+    </div>
+
+    <!-- ===== VIEW: Info (placeholder Comissao no PR1) ===== -->
+    <div id="view-info" hidden>
+      <div class="q" style="height:100%"><div class="q-empty" id="info-msg"></div></div>
+    </div>
+
+    <!-- ===== VIEW: Consulta de vendas ===== -->
+    <div id="view-vendas" hidden>
+      <div class="vendas-bar">
+        <input id="termo" placeholder="email ou telefone do cliente (vazio = todas as vendas dos 7 dias)" autocomplete="off">
+        <button class="btn-buscar" onclick="buscarVendas()">Buscar</button>
+        <button class="btn-sec" onclick="limparVendas()">Limpar</button>
+        <span class="vendas-hint" id="vendas-hint"></span>
+      </div>
+      <div class="vendas-wrap">
+        <table class="vendas">
+          <thead>
+            <tr>
+              <th style="width:120px">Data</th>
+              <th>Cliente</th>
+              <th>Produto (slug)</th>
+              <th style="width:150px">PMP</th>
+              <th style="text-align:right; width:120px">Valor</th>
+            </tr>
+          </thead>
+          <tbody id="vendas-tbody"><tr><td colspan="5" class="vendas-msg">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <?!= include('JavaScript'); ?>
+</body>
+</html>

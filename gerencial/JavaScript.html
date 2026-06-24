@@ -1,0 +1,346 @@
+<script>
+  // ===== Estado =====
+  var state = {
+    mode: 'supabase',          // supabase | bigquery | vendas
+    dash: null,                // ultimo payload do dashboard
+    rankScope: 'total',        // total | hoje
+    horaMode: 'acumulado',     // acumulado | spot
+    diaMode: 'spot',           // spot | acumulado
+    pollMs: 60000,
+    pollToken: 0,
+    proximo: 0,
+    periodo: null              // { inicio, fim } do seletor de datas
+  };
+  var charts = { hora: null, dia: null };
+
+  // ===== Util =====
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+    });
+  }
+  function iniciais(nome) {
+    var p = String(nome || '').trim().split(/\s+/);
+    return (((p[0] || '')[0] || '') + ((p[p.length - 1] || '')[0] || '')).toUpperCase();
+  }
+  function formatBRL(v) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v || 0);
+  }
+  function formatBRLk(v) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 }).format(v || 0);
+  }
+  function pct(v) { return (100 * (v || 0)).toFixed(1).replace('.', ',') + '%'; }
+  function dataHoraBR(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return esc(iso);
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  }
+  function diaLabel(ymd) {
+    var p = String(ymd).split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] : ymd;
+  }
+  function cumulativo(arr) {
+    var s = 0; return arr.map(function (v) { s += (v || 0); return s; });
+  }
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function themeColors() {
+    return {
+      text: cssVar('--text'), text2: cssVar('--text-2'), muted: cssVar('--text-muted'),
+      gold: cssVar('--gold'), green: cssVar('--green'), blue: cssVar('--blue'),
+      red: cssVar('--red'), grid: cssVar('--grid-line'), surface2: cssVar('--surface-2')
+    };
+  }
+
+  // ===== Tema =====
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    document.getElementById('btn-theme').textContent = (t === 'dark') ? '🌙' : '☀️';
+    try { localStorage.setItem('gerencial-theme', t); } catch (e) {}
+  }
+  function toggleTheme() {
+    var atual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(atual);
+    // recria os graficos com as novas cores so quando o dashboard esta visivel
+    if (state.dash && !document.getElementById('view-dash').hidden) renderDash(state.dash);
+  }
+
+  // ===== Status =====
+  function setStatus(estado, msg) {
+    var dot = document.getElementById('status-dot');
+    dot.className = 'dot' + (estado === 'ok' ? '' : estado === 'load' ? ' load' : ' erro');
+    document.getElementById('status-texto').textContent =
+      estado === 'ok' ? 'ao vivo' : estado === 'load' ? 'carregando…' : (msg || 'erro');
+  }
+  function tickContagem() {
+    var el = document.getElementById('status-contagem');
+    if (state.mode !== 'supabase' || !state.proximo) { el.textContent = ''; return; }
+    var s = Math.max(0, Math.round((state.proximo - Date.now()) / 1000));
+    el.textContent = '· ' + s + 's';
+  }
+
+  // ===== Troca de view =====
+  function setView(name) {
+    document.getElementById('view-dash').hidden = (name !== 'dash');
+    document.getElementById('view-info').hidden = (name !== 'info');
+    document.getElementById('view-vendas').hidden = (name !== 'vendas');
+    document.getElementById('daterange').style.visibility = (name === 'vendas') ? 'hidden' : 'visible';
+  }
+  function switchMode(mode) {
+    state.mode = mode;
+    state.pollToken++; // cancela polling anterior
+    document.querySelectorAll('#seg-view button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+    if (mode === 'vendas') { setView('vendas'); setStatus('ok'); buscarVendas(); return; }
+    if (mode === 'bigquery') { carregarBigQuery(); return; }
+    setView('dash'); carregarSupabase();
+  }
+
+  // ===== Carregamento Real-time (Supabase) =====
+  function carregarSupabase() {
+    var token = ++state.pollToken;
+    setStatus('load');
+    google.script.run
+      .withSuccessHandler(function (data) {
+        if (token !== state.pollToken) return;     // resposta obsoleta
+        setStatus('ok'); state.dash = data; renderDash(data);
+        state.pollMs = (data.config && data.config.pollSegundos ? data.config.pollSegundos : 60) * 1000;
+        state.proximo = Date.now() + state.pollMs;
+        setTimeout(function () { if (token === state.pollToken && state.mode === 'supabase') carregarSupabase(); }, state.pollMs);
+      })
+      .withFailureHandler(function (e) {
+        if (token !== state.pollToken) return;
+        setStatus('erro', (e && e.message) ? e.message : 'erro');
+        state.proximo = Date.now() + 60000;
+        setTimeout(function () { if (token === state.pollToken && state.mode === 'supabase') carregarSupabase(); }, 60000);
+      })
+      .getDashboardSupabase(state.periodo);
+  }
+
+  // ===== Carregamento Comissao (BigQuery) — snapshot chega no PR2 =====
+  function carregarBigQuery() {
+    setView('info');
+    setStatus('ok');
+    state.proximo = 0;
+    document.getElementById('info-msg').innerHTML =
+      '💰 <b>Visao Comissao (BigQuery)</b><br><br>' +
+      'Sera alimentada pelo snapshot do BigQuery (aba <code>Snapshot_BQ</code>, atualizado a cada 30 min).<br>' +
+      'Ativacao na proxima fase (PR2).';
+  }
+
+  // ===== Render do dashboard (Q1..Q4) =====
+  function renderDash(data) {
+    var cfg = data.config || {};
+    document.getElementById('titulo').textContent = cfg.titulo || 'Dashboard';
+    document.getElementById('produto').textContent = cfg.produto || '';
+    document.getElementById('kpi-fonte').textContent = data.fonte || '';
+    if (cfg.inicio) prefillData('dt-inicio', cfg.inicio);
+    if (cfg.fim) prefillData('dt-fim', cfg.fim);
+
+    renderKpis(data.kpis || { hoje: {}, total: {} });
+    renderRanking(data.ranking || []);
+    renderChartHora(data.porHora || []);
+    renderChartDia(data.porDia || []);
+  }
+  function prefillData(id, iso) {
+    var el = document.getElementById(id);
+    if (!el.value && iso) el.value = String(iso).slice(0, 10);
+  }
+
+  // ----- Q1: KPIs -----
+  function renderKpis(kpis) {
+    var wrap = document.getElementById('kpi-wrap');
+    wrap.innerHTML = scopeHTML('HOJE', kpis.hoje || {}, 'hoje') + scopeHTML('GERAL', kpis.total || {}, 'geral');
+  }
+  function scopeHTML(label, k, cls) {
+    return '<div class="kpi-scope ' + cls + '">' +
+      '<div class="kpi-scope-label">' + label + '</div>' +
+      card('GMV Total', formatBRL(k.gmv_total), 'Vendas: <b>' + (k.vendas_total || 0) + '</b>', '') +
+      card('GMV TVD', formatBRL(k.gmv_tvd), 'Vendas TVD: <b>' + (k.vendas_tvd || 0) + '</b>', 'tvd') +
+      card('Share TVD', pct(k.share_tvd), 'em GMV', 'share') +
+      card('Ticket Medio', formatBRL(k.ticket_total), 'TVD: <b>' + formatBRL(k.ticket_tvd) + '</b>', '') +
+    '</div>';
+  }
+  function card(label, main, sub, cls) {
+    return '<div class="kpi-card ' + cls + '">' +
+      '<div class="kpi-label">' + label + '</div>' +
+      '<div class="kpi-main">' + main + '</div>' +
+      '<div class="kpi-sub">' + sub + '</div></div>';
+  }
+
+  // ----- Q3: Ranking -----
+  function renderRanking(ranking) {
+    var scope = state.rankScope;
+    var lista = ranking.map(function (r) {
+      return { code: r.code, nome: r.nome, foto: r.foto,
+        gmv: scope === 'hoje' ? r.gmv_hoje : r.gmv,
+        vendas: scope === 'hoje' ? r.vendas_hoje : r.vendas };
+    }).sort(function (a, b) { return b.gmv - a.gmv || a.nome.localeCompare(b.nome); });
+
+    var el = document.getElementById('rank-list');
+    if (!lista.length) { el.innerHTML = '<div class="q-empty">Sem vendas TVD no periodo.</div>'; return; }
+    el.innerHTML = lista.map(function (r, i) {
+      var pcls = i < 3 ? ' p' + (i + 1) : '';
+      return '<div class="rank-row' + pcls + (r.gmv <= 0 ? ' zero' : '') + '">' +
+        '<div class="rank-pos">' + (i + 1) + 'º</div>' +
+        '<div class="rank-av"><img src="' + esc(r.foto) + '" alt="" onload="this.className=\'loaded\'" onerror="this.remove()"><span class="ini">' + esc(iniciais(r.nome)) + '</span></div>' +
+        '<div class="rank-name">' + esc(r.nome) + '</div>' +
+        '<div class="rank-vendas">' + (r.vendas || 0) + 'v</div>' +
+        '<div class="rank-gmv">' + formatBRL(r.gmv) + '</div></div>';
+    }).join('');
+  }
+
+  // ----- Q2: linha hora a hora -----
+  function renderChartHora(porHora) {
+    var c = themeColors();
+    var labels = porHora.map(function (x) { return String(x.hora).padStart(2, '0') + 'h'; });
+    var base = porHora.map(function (x) { return x.gmv_tvd || 0; });
+    var vals = state.horaMode === 'acumulado' ? cumulativo(base) : base;
+
+    if (charts.hora) charts.hora.destroy();
+    var ctx = document.getElementById('chart-hora').getContext('2d');
+    charts.hora = new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: [{
+        label: 'GMV TVD', data: vals, borderColor: c.green, backgroundColor: c.green + '33',
+        fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, borderWidth: 2,
+        datalabels: { display: 'auto', align: 'top', anchor: 'end', color: c.text2,
+          font: { size: 9, weight: 'bold' }, formatter: function (v) { return v > 0 ? formatBRLk(v) : ''; } }
+      }]},
+      options: baseOpts(c, { y: rsAxis(c) })
+    });
+  }
+
+  // ----- Q4: barras empilhadas + linha share -----
+  function renderChartDia(porDia) {
+    var c = themeColors();
+    var labels = porDia.map(function (x) { return diaLabel(x.dia); });
+    var acc = state.diaMode === 'acumulado';
+    var tvd = porDia.map(function (x) { return x.gmv_tvd || 0; });
+    var out = porDia.map(function (x) { return x.gmv_outros || 0; });
+    if (acc) { tvd = cumulativo(tvd); out = cumulativo(out); }
+    var share = tvd.map(function (v, i) { var tot = v + out[i]; return tot > 0 ? v / tot : 0; });
+
+    if (charts.dia) charts.dia.destroy();
+    var ctx = document.getElementById('chart-dia').getContext('2d');
+    charts.dia = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: labels, datasets: [
+        { type: 'bar', label: 'TVD', data: tvd, backgroundColor: c.green, stack: 'g', yAxisID: 'y',
+          datalabels: { display: 'auto', color: '#0b1120', font: { size: 9, weight: 'bold' },
+            formatter: function (v) { return v > 0 ? formatBRLk(v) : ''; } } },
+        { type: 'bar', label: 'Outros', data: out, backgroundColor: c.muted, stack: 'g', yAxisID: 'y',
+          datalabels: { display: false } },
+        { type: 'line', label: 'Share TVD', data: share, borderColor: c.gold, backgroundColor: c.gold,
+          yAxisID: 'y1', tension: 0.3, pointRadius: 3, borderWidth: 2,
+          datalabels: { display: 'auto', align: 'top', anchor: 'end', color: c.gold,
+            font: { size: 9, weight: 'bold' }, formatter: function (v) { return pct(v); } } }
+      ]},
+      options: baseOpts(c, { y: rsAxis(c, true), y1: shareAxis(c) })
+    });
+  }
+
+  // ----- Opcoes/eixos compartilhados -----
+  function baseOpts(c, scales) {
+    var xStacked = !!(scales.y && scales.y.stacked);
+    return {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 14, right: 6 } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { color: c.text2, boxWidth: 10, font: { size: 10 } } },
+        datalabels: { display: false },
+        tooltip: { callbacks: { label: function (it) {
+          var v = it.parsed.y;
+          return it.dataset.label + ': ' + (it.dataset.yAxisID === 'y1' ? pct(v) : formatBRL(v));
+        }}}
+      },
+      scales: Object.assign({ x: { stacked: xStacked, grid: { color: c.grid }, ticks: { color: c.text2, font: { size: 10 } } } }, scales)
+    };
+  }
+  function rsAxis(c, stacked) {
+    return { stacked: !!stacked, position: 'left', grid: { color: c.grid },
+      ticks: { color: c.text2, font: { size: 10 }, callback: function (v) { return formatBRLk(v); } } };
+  }
+  function shareAxis(c) {
+    return { position: 'right', min: 0, max: 1, grid: { drawOnChartArea: false },
+      ticks: { color: c.gold, font: { size: 10 }, callback: function (v) { return Math.round(v * 100) + '%'; } } };
+  }
+
+  // ===== Consulta de vendas =====
+  function buscarVendas() {
+    var termo = (document.getElementById('termo').value || '').trim();
+    var tbody = document.getElementById('vendas-tbody');
+    document.getElementById('vendas-hint').textContent = '';
+    tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg">Buscando…</td></tr>';
+    google.script.run
+      .withSuccessHandler(function (rows) { renderVendas(rows, termo); })
+      .withFailureHandler(function (e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg err">' + esc((e && e.message) ? e.message : 'Erro ao consultar') + '</td></tr>';
+      })
+      .listarVendas(termo);
+  }
+  function limparVendas() { document.getElementById('termo').value = ''; buscarVendas(); }
+  function renderVendas(rows, termo) {
+    var tbody = document.getElementById('vendas-tbody');
+    var hint = document.getElementById('vendas-hint');
+    rows = rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg">Nenhuma venda nos ultimos 7 dias' + (termo ? ' para "' + esc(termo) + '"' : '') + '.</td></tr>';
+      hint.textContent = ''; return;
+    }
+    hint.textContent = rows.length + ' venda(s)' + (rows.length >= 300 ? ' (limite 300 — refine a busca)' : '');
+    tbody.innerHTML = rows.map(function (r) {
+      var contato = [r.email, r.phone].filter(Boolean).map(esc).join(' · ');
+      var pmp = r.pmp_code
+        ? esc(r.pmp_code) + (r.tvd ? '<span class="tag">TVD</span>' : '')
+        : '<span class="none">sem PMP</span>';
+      return '<tr>' +
+        '<td class="v-data">' + dataHoraBR(r.created_at) + '</td>' +
+        '<td class="v-cli"><div class="nome">' + esc(r.nome || '—') + '</div>' + (contato ? '<div class="contato">' + contato + '</div>' : '') + '</td>' +
+        '<td class="v-slug">' + esc(r.slug || '—') + '</td>' +
+        '<td class="v-pmp">' + pmp + '</td>' +
+        '<td class="v-valor">' + formatBRL(r.price) + '</td></tr>';
+    }).join('');
+  }
+
+  // ===== Wiring =====
+  function bindSeg(id, prop, after) {
+    document.querySelectorAll('#' + id + ' button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#' + id + ' button').forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        state[prop] = b.dataset.mode || b.dataset.scope;
+        if (after) after();
+      });
+    });
+  }
+  function onDateChange() {
+    var ini = document.getElementById('dt-inicio').value;
+    var fim = document.getElementById('dt-fim').value;
+    state.periodo = (ini || fim) ? {
+      inicio: ini ? ini + 'T00:00:00-03:00' : '',
+      fim: fim ? fim + 'T23:59:59-03:00' : ''
+    } : null;
+    if (state.mode === 'supabase') carregarSupabase();
+  }
+
+  function init() {
+    try { applyTheme(localStorage.getItem('gerencial-theme') || 'dark'); } catch (e) { applyTheme('dark'); }
+    if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
+
+    document.querySelectorAll('#seg-view button').forEach(function (b) {
+      b.addEventListener('click', function () { switchMode(b.dataset.mode); });
+    });
+    bindSeg('seg-rank', 'rankScope', function () { if (state.dash) renderRanking(state.dash.ranking || []); });
+    bindSeg('seg-hora', 'horaMode', function () { if (state.dash) renderChartHora(state.dash.porHora || []); });
+    bindSeg('seg-dia', 'diaMode', function () { if (state.dash) renderChartDia(state.dash.porDia || []); });
+    document.getElementById('dt-inicio').addEventListener('change', onDateChange);
+    document.getElementById('dt-fim').addEventListener('change', onDateChange);
+    document.getElementById('termo').addEventListener('keydown', function (e) { if (e.key === 'Enter') buscarVendas(); });
+
+    setInterval(tickContagem, 1000);
+    carregarSupabase();
+  }
+  init();
+</script>
