@@ -24,6 +24,7 @@ do Supabase ficam em Script Properties (nunca na planilha).
 | `bq_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request` | tabela do BigQuery (PR2) |
 | `bq_product_like` | `%legado%` | filtro do produto no **BigQuery** (`product_name LIKE`) (PR2) |
 | `canal_tvd` | `TVD` | valor de `sales_channel` que identifica o time de vendas no BigQuery (PR2) |
+| `pmp_aliases` | `JCK:JKC` | correcao de PMP trocado na origem (link de pagamento). Funde no ranking/foto/atribuicao. Formato `DE:PARA,DE:PARA`. Vazio = default `JCK:JKC` |
 
 > **TVD no Supabase:** uma venda e do time de vendas (TVD) quando o campo `pmp` **contem "TVD"**.
 > "Outros" = `pmp` sem "TVD". No BigQuery, TVD = `sales_channel = 'TVD'` (= `canal_tvd`).
@@ -38,17 +39,21 @@ do Supabase ficam em Script Properties (nunca na planilha).
 
 Mapa PMP -> Nome para exibir o ranking. Opcional (sem nome, mostra o PMP).
 
-## Aba `Acessos` (Email | Nivel) — controle de acesso (PR3)
+## Aba `Acessos` (Email | Nivel | PMP) — controle de acesso + closer logado
 
-| Email | Nivel |
-|---|---|
-| fulano@grupo-primo.com | admin |
-| ciclano@grupo-primo.com | viewer |
+| Email | Nivel | PMP |
+|---|---|---|
+| fulano@grupo-primo.com | admin | |
+| ciclano@grupo-primo.com | viewer | JKC |
 
 Allowlist de e-mails liberados. O `doGet` le `Session.getActiveUser().getEmail()` (visitante do
 mesmo Google Workspace) e bloqueia quem nao estiver nesta aba (serve `AccessDenied.html`). As
 funcoes de dados tambem checam (`exigirAcesso_`). **Aba vazia / sem aba = allowlist desligada**
 (so o dominio do deploy filtra). E-mail vazio (fora do dominio) com allowlist preenchida = negado.
+
+A coluna **`PMP`** (3a coluna, opcional) mapeia o e-mail -> PMP do closer. Na **Consulta de vendas**
+ela separa "Minhas vendas" (vendas desse PMP) das "Vendas Gerais do lancamento" (as demais). Sem
+PMP cadastrado, "Minhas vendas" fica vazia com um aviso e todas as vendas aparecem em "Gerais".
 
 ## Aba `Snapshot_BQ` (gerada pelo trigger — PR2)
 

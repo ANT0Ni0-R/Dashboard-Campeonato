@@ -105,6 +105,7 @@ function lerConfig_() {
     premio:        kv['premio'] || '',
     slugLike:      kv['slug_like'] || '%',
     participantes: participantes,
+    aliasPmp:      parseAliasPmp_(kv['pmp_aliases']),
     inicio:        kv['inicio'] || '',
     fim:           kv['fim'] || '',
     pollSegundos:  Number(kv['poll_segundos'] || 60) || 60,
@@ -183,12 +184,14 @@ function aggregateRows_(rows, cfg, nomes) {
     acumulaKpi_(kpiTotal, price, tvd);
     if (ehHoje) acumulaKpi_(kpiHoje, price, tvd);
 
-    if (!dias[dia]) dias[dia] = { dia: dia, gmv_tvd: 0, gmv_outros: 0 };
-    if (tvd) dias[dia].gmv_tvd += price; else dias[dia].gmv_outros += price;
+    if (!dias[dia]) dias[dia] = { dia: dia, gmv_tvd: 0, gmv_total: 0, sellers: {} };
+    dias[dia].gmv_total += price;
 
     if (tvd) {
-      var code = sellerCode_(t.pmp);
+      dias[dia].gmv_tvd += price;
+      var code = canonCode_(sellerCode_(t.pmp), cfg.aliasPmp);
       if (code) {
+        dias[dia].sellers[code] = (dias[dia].sellers[code] || 0) + price;  // empilhado por vendedor
         if (!rankAcc[code]) rankAcc[code] = { code: code, nome: nomes[code] || code, gmv: 0, vendas: 0, gmv_hoje: 0, vendas_hoje: 0 };
         rankAcc[code].gmv += price; rankAcc[code].vendas += 1;
         if (ehHoje) { rankAcc[code].gmv_hoje += price; rankAcc[code].vendas_hoje += 1; }
@@ -232,15 +235,14 @@ function montaRanking_(rankAcc, cfg) {
 function montaPorDia_(dias) {
   return Object.keys(dias).sort().map(function (d) {
     var x = dias[d];
-    var tot = x.gmv_tvd + x.gmv_outros;
-    x.share_tvd = tot > 0 ? x.gmv_tvd / tot : 0;
-    return x;
+    x.share_tvd = x.gmv_total > 0 ? x.gmv_tvd / x.gmv_total : 0;
+    return x;  // { dia, gmv_tvd, gmv_total, share_tvd, sellers: {code: gmv} }
   });
 }
+// Eixo fixo 0h-23h (nao cresce com a hora atual) -> grafico estavel o dia inteiro.
 function montaPorHora_(horas) {
-  var atual = Number(Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'HH'));
   var out = [];
-  for (var h = 0; h <= atual; h++) out.push({ hora: h, gmv_tvd: horas[h] || 0 });
+  for (var h = 0; h < 24; h++) out.push({ hora: h, gmv_tvd: horas[h] || 0 });
   return out;
 }
 
@@ -250,6 +252,23 @@ function sellerCode_(pmp) {
   var segs = String(pmp || '').split('-');
   var code = (segs[segs.length - 1] || '').toUpperCase();
   return code.length === 3 ? code : '';
+}
+
+// Aliases de PMP (aba Config "pmp_aliases", formato "JCK:JKC,XXX:YYY"). Default corrige JCK->JKC
+// (link de pagamento criado com o codigo trocado). Usado p/ unificar ranking, foto e atribuicao.
+function parseAliasPmp_(raw) {
+  var map = {};
+  String(raw || '').split(/[,;]+/).forEach(function (par) {
+    var kv = par.split(':');
+    var de = (kv[0] || '').trim().toUpperCase(), para = (kv[1] || '').trim().toUpperCase();
+    if (de && para) map[de] = para;
+  });
+  if (!Object.keys(map).length) map.JCK = 'JKC';
+  return map;
+}
+function canonCode_(code, aliasMap) {
+  code = String(code || '').toUpperCase();
+  return (aliasMap && aliasMap[code]) || code;
 }
 function hojeSP_() { return Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd'); }
 function diaSP_(iso) {
@@ -282,16 +301,36 @@ function fetchTransactions_(cfg) {
   return parseRows_(resp);
 }
 
-// ===== CONSULTA DE VENDAS (ultimos 7 dias) — chamado via google.script.run =====
+// PMP do closer logado: aba "Acessos" (Email | Nivel | PMP) -> PMP canonico do e-mail do visitante.
+function meuPmp_(cfg) {
+  var email = emailAtivo_();
+  if (!email) return '';
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss && ss.getSheetByName('Acessos');
+  if (!sh) return '';
+  var values = sh.getDataRange().getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0] || '').trim().toLowerCase() === email) {
+      var pmp = String(values[i][2] || '').trim().toUpperCase();
+      return pmp.length === 3 ? canonCode_(pmp, cfg.aliasPmp) : '';
+    }
+  }
+  return '';
+}
+
+// ===== CONSULTA DE VENDAS (ultimos 7 dias, SO o produto do dash) — via google.script.run =====
+// Retorna { meuPmp, vendas: [...] }; o front separa "Minhas vendas" (pmp_code == meuPmp) de "Gerais".
 function listarVendas(termo) {
   exigirAcesso_();
   termo = String(termo || '').trim();
   var cfg = lerConfig_();
   var seteDias = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  var slugFilter = encodeURIComponent(String(cfg.slugLike).replace(/%/g, '*'));
 
   var path = '/rest/v1/' + cfg.tabela +
              '?type=eq.order_success' +
              '&select=created_at,slug,pmp,price,name,email,phone' +
+             '&slug=ilike.' + slugFilter +            // so o produto ativo do dash
              '&created_at=gte.' + encodeURIComponent(seteDias);
 
   if (termo) {
@@ -305,26 +344,29 @@ function listarVendas(termo) {
     }
     path += '&or=(' + cond.join(',') + ')';
   }
-  path += '&order=created_at.desc&limit=300';
+  path += '&order=created_at.desc&limit=500';
 
   var h = resolveAuthHeaders_(cfg, false);
   var resp = restGet_(cfg.url, path, h);
   if (resp.getResponseCode() === 401) { h = resolveAuthHeaders_(cfg, true); resp = restGet_(cfg.url, path, h); }
   var rows = parseRows_(resp);
 
-  return rows.map(function (t) {
-    return {
-      created_at: t.created_at,
-      slug:       t.slug || '',
-      pmp:        t.pmp || '',
-      pmp_code:   sellerCode_(t.pmp),
-      tvd:        isTvd_(t.pmp),
-      nome:       t.name || '',
-      email:      t.email || '',
-      phone:      t.phone || '',
-      price:      Number(t.price) || 0
-    };
-  });
+  return {
+    meuPmp: meuPmp_(cfg),
+    vendas: rows.map(function (t) {
+      return {
+        created_at: t.created_at,
+        slug:       t.slug || '',
+        pmp:        t.pmp || '',
+        pmp_code:   canonCode_(sellerCode_(t.pmp), cfg.aliasPmp),
+        tvd:        isTvd_(t.pmp),
+        nome:       t.name || '',
+        email:      t.email || '',
+        phone:      t.phone || '',
+        price:      Number(t.price) || 0
+      };
+    })
+  };
 }
 
 // ===== AUTH / REST / JWT (Supabase) =====

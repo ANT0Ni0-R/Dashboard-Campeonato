@@ -127,13 +127,13 @@
     letter-spacing: 1px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; }
   .kpi-scope.hoje .kpi-scope-label { color: var(--gold); }
   .kpi-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 0.6vh 0.7vw; display: flex; flex-direction: column; justify-content: center; gap: 0.1rem; min-width: 0; overflow: hidden; }
+    padding: 0.5vh 0.8vw; display: flex; flex-direction: column; justify-content: center; gap: 0.15rem; min-width: 0; overflow: hidden; }
   .kpi-main, .kpi-sub, .kpi-label { overflow: hidden; text-overflow: ellipsis; }
-  .kpi-label { font-size: clamp(0.55rem, 0.72vw, 0.74rem); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-  .kpi-main { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.95rem, 1.5vw, 1.7rem); line-height: 1.05; color: var(--gold); white-space: nowrap; }
+  .kpi-label { font-size: clamp(0.58rem, 0.78vw, 0.8rem); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .kpi-main { font-family: var(--font-title); font-weight: 800; font-size: clamp(1.15rem, 2.2vw, 2.5rem); line-height: 1.02; color: var(--gold); white-space: nowrap; }
   .kpi-card.tvd .kpi-main { color: var(--green); }
   .kpi-card.share .kpi-main { color: var(--blue); }
-  .kpi-sub { font-size: clamp(0.58rem, 0.78vw, 0.82rem); color: var(--text-2); white-space: nowrap; }
+  .kpi-sub { font-size: clamp(0.62rem, 0.82vw, 0.88rem); color: var(--text-2); white-space: nowrap; }
   .kpi-sub b { color: var(--text); font-weight: 700; }
 
   /* ===== Q3 Ranking ===== */
@@ -172,6 +172,13 @@
   [data-theme="light"] .btn-buscar { color: #fff; }
   .btn-sec { color: var(--text-2); background: var(--surface-2); }
   .vendas-hint { font-size: 0.72rem; color: var(--text-muted); }
+  .vendas-split { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1vh; }
+  .vendas-block { display: flex; flex-direction: column; min-height: 0; }
+  .vendas-block.minhas { flex: 0 1 auto; max-height: 38%; }
+  .vendas-block.gerais { flex: 1; }
+  .vendas-block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5vh; flex-shrink: 0; }
+  .vendas-block-head > span:first-child { font-family: var(--font-title); font-weight: 700; font-size: 0.92rem;
+    color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
   .vendas-wrap { flex: 1; min-height: 0; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
   .vendas-wrap::-webkit-scrollbar { width: 6px; }
   .vendas-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

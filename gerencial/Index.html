@@ -78,7 +78,7 @@
       <!-- Q4: GMV por dia (TVD vs Outros) + Share -->
       <section class="q q4">
         <div class="q-head">
-          <span class="q-title">GMV por dia · TVD vs Outros + Share</span>
+          <span class="q-title">GMV por dia · TVD por vendedor + Share</span>
           <div class="seg" id="seg-dia">
             <button class="active" data-mode="spot">Spot</button>
             <button data-mode="acumulado">Acumulado</button>
@@ -96,24 +96,40 @@
     <!-- ===== VIEW: Consulta de vendas ===== -->
     <div id="view-vendas" hidden>
       <div class="vendas-bar">
-        <input id="termo" placeholder="email ou telefone do cliente (vazio = todas as vendas dos 7 dias)" autocomplete="off">
+        <input id="termo" placeholder="email ou telefone do cliente (vazio = todas as vendas do produto, 7 dias)" autocomplete="off">
         <button class="btn-buscar" onclick="buscarVendas()">Buscar</button>
         <button class="btn-sec" onclick="limparVendas()">Limpar</button>
         <span class="vendas-hint" id="vendas-hint"></span>
       </div>
-      <div class="vendas-wrap">
-        <table class="vendas">
-          <thead>
-            <tr>
-              <th style="width:120px">Data</th>
-              <th>Cliente</th>
-              <th>Produto (slug)</th>
-              <th style="width:150px">PMP</th>
-              <th style="text-align:right; width:120px">Valor</th>
-            </tr>
-          </thead>
-          <tbody id="vendas-tbody"><tr><td colspan="5" class="vendas-msg">—</td></tr></tbody>
-        </table>
+
+      <div class="vendas-split">
+        <!-- Minhas vendas (PMP do closer logado) -->
+        <section class="vendas-block minhas">
+          <div class="vendas-block-head"><span id="minhas-title">Minhas vendas</span><span class="vendas-hint" id="minhas-hint"></span></div>
+          <div class="vendas-wrap">
+            <table class="vendas">
+              <thead><tr>
+                <th style="width:120px">Data</th><th>Cliente</th><th>Produto (slug)</th>
+                <th style="width:150px">PMP</th><th style="text-align:right; width:120px">Valor</th>
+              </tr></thead>
+              <tbody id="minhas-tbody"><tr><td colspan="5" class="vendas-msg">—</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Vendas Gerais do lancamento (todas menos as minhas) -->
+        <section class="vendas-block gerais">
+          <div class="vendas-block-head"><span>Vendas Gerais do lancamento</span><span class="vendas-hint" id="gerais-hint"></span></div>
+          <div class="vendas-wrap">
+            <table class="vendas">
+              <thead><tr>
+                <th style="width:120px">Data</th><th>Cliente</th><th>Produto (slug)</th>
+                <th style="width:150px">PMP</th><th style="text-align:right; width:120px">Valor</th>
+              </tr></thead>
+              <tbody id="gerais-tbody"><tr><td colspan="5" class="vendas-msg">—</td></tr></tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </div>
   </main>
