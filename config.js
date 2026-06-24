@@ -1,11 +1,27 @@
+<script>
+// ===========================================================
+//  ASSETS (fotos + bandeiras)
+//  O Apps Script nao serve arquivos locais. Estes assets sao carregados de um
+//  repositorio PUBLICO via raw.githubusercontent. Mantenha as fotos/ e flags/
+//  num repo publico (pode ser um repo separado so de assets) para que estas
+//  URLs funcionem mesmo com o repo de codigo privado.
+//
+//  >>> ANTES de tornar o repo de codigo privado, troque ASSETS_BASE para o
+//      repo publico de assets, ex.:
+//      'https://raw.githubusercontent.com/ant0ni0-r/dashboard-campeonato-assets/main'
+// ===========================================================
+const ASSETS_BASE = 'https://raw.githubusercontent.com/ant0ni0-r/dashboard-campeonato/main';
+const DEFAULT_FLAG = ASSETS_BASE + '/flags/brasil.svg';
+
 const COMPETICAO = {
   // fase_ativa_override: "grupos" | "quartas" | "semis" | "final" | null
   // Usar null para derivar automaticamente do relógio da máquina (America/Sao_Paulo)
   fase_ativa_override: null,
 
   produto: {
-    // Slug de busca do produto (case-insensitive via ILIKE no Supabase).
-    // "%legado%" -> filtra a coluna `slug` por qualquer ocorrência de "legado".
+    // Slug de busca do produto. O filtro real (ilike no slug) roda no servidor
+    // (Code.gs / Script Property PRODUTO_SLUG_LIKE). Aqui o valor serve apenas
+    // para exibir o nome do produto no cabecalho.
     slug_like: "%legado%",
     regua: [
       { ate: null, mult: 1 }
@@ -14,20 +30,17 @@ const COMPETICAO = {
     // Comparacao case-insensitive.
     // 6a31f4d2cc1cfab5a1fe7e7b = cristianeamanda@hotmail.com
     // 6a32aec05a20e4c3d73c6f57 = lmfalconi@gmail.com
-    excluir_ids: ["6a31f4d2cc1cfab5a1fe7e7b", "6a32aec05a20e4c3d73c6f57"],
+    excluir_ids: ["6a31f4d2cc1cfab5a1fe7e7b", "6a32aec05a20e4c3d73c6f57", '6a3a85e1f3732f6e3f4233b7', '6a3ab149d864301a520f9954'],
     // Override de price/GMV por `id` (case-insensitive, chaves em minusculas).
     // Aplicado por transacao, antes da regua de GMV.
     // 6a313a63b98a6054e251eab7 = masterbrushsouza@gmail.com
-    ajustar_precos: { "6a313a63b98a6054e251eab7": 4741.51 }
+    ajustar_precos: { "6a313a63b98a6054e251eab7": 4741.51 , '6a35722c65b156eeb39d85f9': 4741.51}
   },
 
   supabase: {
-    url: "https://ipalripfknzhrzddhvdx.supabase.co",
-    // A anon_key NAO fica versionada. No deploy (GitHub Pages), o workflow
-    // substitui o placeholder abaixo pelo valor do secret SUPABASE_ANON_KEY.
-    // Localmente o placeholder permanece e o app cai no fallback JSON.
-    anon_key: "__SUPABASE_ANON_KEY__",
-    tabela: "db_transactions_events",
+    // As credenciais do Supabase agora ficam no SERVIDOR (Apps Script Script
+    // Properties), nunca aqui. O front busca os dados via google.script.run.
+    // Apenas o intervalo de polling permanece no cliente.
     poll_segundos: 60
   },
 
@@ -106,3 +119,12 @@ const COMPETICAO = {
     }
   }
 };
+
+// Normaliza as URLs de fotos/bandeiras: caminhos relativos viram URLs absolutas
+// no repositorio publico de assets (ASSETS_BASE). URLs ja absolutas sao mantidas.
+Object.keys(COMPETICAO.vendedores).forEach(function (code) {
+  var v = COMPETICAO.vendedores[code];
+  if (v.foto && v.foto.indexOf('http') !== 0) v.foto = ASSETS_BASE + '/' + v.foto;
+  if (v.bandeira && v.bandeira.indexOf('http') !== 0) v.bandeira = ASSETS_BASE + '/' + v.bandeira;
+});
+</script>
