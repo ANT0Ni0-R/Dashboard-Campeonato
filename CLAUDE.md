@@ -78,6 +78,9 @@ Após concluir qualquer implementação, revise o código em busca de:
 - Qualquer uso do tipo **`any`** no TypeScript (substitua por tipos reais).
 - Componentes com mais de **3 propriedades** que poderiam ser agrupadas num objeto.
 - **Ausência de tratamento de erros** em operações assíncronas.
+- **Gráficos sem data labels.** Todo gráfico (Chart.js + `chartjs-plugin-datalabels`)
+  **sempre** deve exibir os valores como rótulos de dados — não deixe o leitor depender
+  só do eixo/tooltip. Quando os rótulos se sobrepõem, use `display: 'auto'`.
 
 **Execute `/code-review` (skill code-review) antes de apresentar o código ao
 usuário.** Só mostre o resultado depois de rodar a revisão e tratar os achados.
@@ -147,10 +150,17 @@ como: usuário que acessa" + acesso ao **domínio** (lê o e-mail do visitante p
   `getDashboardBigQuery` só lê a aba (visitantes não tocam o BQ).
   `criarTriggerSnapshot`/`testSnapshot`. Projeto/tabela **com hifens**.
 - `Index.html` + `Stylesheet.html` + `JavaScript.html`: menu fixo (título, status,
-  seletor de datas, 3 botões, tema dark/light), grid 4 quadrantes (KPIs, linha hora a
-  hora 0h-23h, ranking com scroll próprio, **barras TVD empilhadas por vendedor** +
-  linha de Share em 2º eixo desenhada por cima via `order`). Charts: **Chart.js +
-  datalabels via CDN**. Supabase e BigQuery devolvem o **mesmo shape**, render único.
+  seletor de datas, 3 botões, tema dark/light), grid 4 quadrantes. **Q1 KPIs:** 4 cores
+  distintas (Total=gold, TVD=green, Share=blue, Ticket=violet), HOJE em destaque vs GERAL
+  (opacidade), valor auto-ajustado por `fitKpis()` (encolhe a fonte até caber, sem `...`).
+  **Q2:** linha hora a hora 0h-23h fixo, com folga maior no topo (`grace`/`padTop`). **Q3
+  ranking:** pódio dos 3 primeiros (`podiumHTML`, ordem 2-1-3) + lista dos demais
+  (`listaHTML`, scroll próprio) — reusa o padrão do `app.js` (`buildPodium`/`buildCopaList`).
+  **Q4:** dois gráficos alinhados na vertical (`chart-dia-share` em cima só com a linha de
+  Share; `chart-dia` embaixo com as **barras TVD empilhadas por vendedor**), eixos Y de
+  largura fixa (`afterFit s.width=56`) para alinhar as categorias — Share não cruza as
+  barras. Charts: **Chart.js + datalabels via CDN** (todo gráfico exibe data labels).
+  Supabase e BigQuery devolvem o **mesmo shape**, render único.
 
 ### Dependências (todas externas, nada de `npm install`)
 
