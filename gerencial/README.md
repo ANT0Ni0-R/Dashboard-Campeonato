@@ -15,8 +15,8 @@ quadrantes** que cabem numa unica tela:
 
 | | esquerda | direita |
 |---|---|---|
-| **topo** | Q1 — KPIs (Hoje x Geral) | Q3 — Ranking GMV por vendedor (scroll proprio) |
-| **base** | Q2 — GMV TVD hora a hora, eixo fixo 0h-23h (acumulado/spot) | Q4 — GMV/dia TVD **empilhado por vendedor** + linha de Share (spot/acumulado) |
+| **topo** | Q1 — KPIs (Hoje em destaque x Geral), 4 cores, valor auto-ajustado | Q3 — Ranking: **podio dos 3 + lista** dos demais (scroll proprio) |
+| **base** | Q2 — GMV TVD hora a hora, eixo fixo 0h-23h (acumulado/spot) | Q4 — **dois graficos alinhados**: linha de Share em cima, barras TVD **empilhadas por vendedor** embaixo (spot/acumulado) |
 
 **Modelo escalavel:** cada dashboard e **uma Google Sheet** (abas `Config`, `Participantes`,
 `Acessos`, `Snapshot_BQ`) + Apps Script vinculado + Web App proprio. Para criar outro, **duplica-se

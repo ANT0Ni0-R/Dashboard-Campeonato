@@ -17,6 +17,7 @@
     --gold: #fbbf24;
     --green: #22c55e;
     --blue: #3b82f6;
+    --violet: #a855f7;
     --red: #ef4444;
     --grid-line: rgba(148, 163, 184, 0.14);
     --p1: #facc15; --p2: #cbd5e1; --p3: #d08a3a;
@@ -35,6 +36,7 @@
     --gold: #c2820c;
     --green: #16a34a;
     --blue: #2563eb;
+    --violet: #7c3aed;
     --red: #dc2626;
     --grid-line: rgba(15, 23, 42, 0.08);
     --p1: #e0a915; --p2: #9aa6b6; --p3: #b9772b;
@@ -118,6 +120,10 @@
     letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
   .q-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
   .chart-box { position: relative; flex: 1; min-height: 0; }
+  /* Q4: faixa de cima (Share) sobre as barras, alinhadas pela largura fixa do eixo Y. */
+  .chart-split { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .chart-split .chart-box.share { flex: 0 0 32%; }
+  .chart-split .chart-box.bars { flex: 1; }
 
   /* ===== Q1 KPIs ===== */
   .kpi-wrap { flex: 1; min-height: 0; display: grid; grid-template-rows: 1fr 1fr; gap: 0.7vh; }
@@ -126,38 +132,66 @@
     font-family: var(--font-title); font-weight: 800; font-size: clamp(0.6rem, 0.8vw, 0.85rem);
     letter-spacing: 1px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; }
   .kpi-scope.hoje .kpi-scope-label { color: var(--gold); }
+  /* HOJE em destaque; GERAL discreto (menos peso visual). */
+  .kpi-scope.hoje .kpi-card { border-color: rgba(251, 191, 36, 0.30); box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.10); }
+  .kpi-scope.geral { opacity: 0.7; }
   .kpi-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 0.5vh 0.8vw; display: flex; flex-direction: column; justify-content: center; gap: 0.15rem; min-width: 0; overflow: hidden; }
-  .kpi-main, .kpi-sub, .kpi-label { overflow: hidden; text-overflow: ellipsis; }
+  .kpi-sub, .kpi-label { overflow: hidden; text-overflow: ellipsis; }
   .kpi-label { font-size: clamp(0.58rem, 0.78vw, 0.8rem); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-  .kpi-main { font-family: var(--font-title); font-weight: 800; font-size: clamp(1.15rem, 2.2vw, 2.5rem); line-height: 1.02; color: var(--gold); white-space: nowrap; }
+  /* font-size e ajustada por fitKpis() em JS para caber sem cortar; o clamp e so o estado inicial. */
+  .kpi-main { font-family: var(--font-title); font-weight: 800; font-size: clamp(1.15rem, 2.2vw, 2.5rem); line-height: 1.02; color: var(--gold); white-space: nowrap; overflow: hidden; }
   .kpi-card.tvd .kpi-main { color: var(--green); }
   .kpi-card.share .kpi-main { color: var(--blue); }
+  .kpi-card.ticket .kpi-main { color: var(--violet); }
   .kpi-sub { font-size: clamp(0.62rem, 0.82vw, 0.88rem); color: var(--text-2); white-space: nowrap; }
   .kpi-sub b { color: var(--text); font-weight: 700; }
 
-  /* ===== Q3 Ranking ===== */
-  .rank-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5vh; padding-right: 0.3rem; }
-  .rank-list::-webkit-scrollbar { width: 6px; }
-  .rank-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  .rank-row { display: flex; align-items: center; gap: 0.7rem; background: var(--surface-3);
-    border: 1px solid var(--border); border-left: 3px solid transparent; border-radius: 10px; padding: 0.55vh 0.7rem; flex-shrink: 0; }
-  .rank-row.zero { opacity: 0.5; }
-  .rank-row.p1 { border-left-color: var(--p1); background: linear-gradient(90deg, rgba(250,204,21,0.16), var(--surface-3) 60%); }
-  .rank-row.p2 { border-left-color: var(--p2); background: linear-gradient(90deg, rgba(203,213,225,0.16), var(--surface-3) 60%); }
-  .rank-row.p3 { border-left-color: var(--p3); background: linear-gradient(90deg, rgba(208,138,58,0.16), var(--surface-3) 60%); }
-  .rank-pos { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.8rem, 1.1vw, 1.2rem); width: 1.8rem; text-align: center; flex-shrink: 0; color: var(--text-2); }
-  .rank-row.p1 .rank-pos { color: var(--p1); } .rank-row.p2 .rank-pos { color: var(--p2); } .rank-row.p3 .rank-pos { color: var(--p3); }
-  .rank-av { width: clamp(28px, 2.6vw, 40px); height: clamp(28px, 2.6vw, 40px); border-radius: 8px; overflow: hidden;
-    border: 1px solid var(--border); flex-shrink: 0; position: relative; background: var(--surface-2);
-    display: flex; align-items: center; justify-content: center; }
-  .rank-av img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
-  .rank-av .ini { font-family: var(--font-title); font-weight: 800; font-size: 0.7rem; color: var(--text-muted); }
-  .rank-av img.loaded + .ini { display: none; }
-  .rank-name { flex: 1; min-width: 0; font-family: var(--font-title); font-weight: 700;
-    font-size: clamp(0.78rem, 1vw, 1.05rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rank-vendas { font-size: clamp(0.6rem, 0.78vw, 0.8rem); color: var(--text-muted); flex-shrink: 0; }
-  .rank-gmv { font-family: monospace; font-weight: 800; font-size: clamp(0.8rem, 1.05vw, 1.1rem); color: var(--gold); text-align: right; flex-shrink: 0; min-width: 5rem; }
+  /* ===== Q3 Ranking — podio (top 3) + lista (demais) ===== */
+  .rank-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.8vh; }
+
+  .podium { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5vw; align-items: end; }
+  .podium-place { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .podium-place.zero { opacity: 0.5; }
+  .podium-card { width: 100%; background: var(--surface-3); border: 1px solid var(--border);
+    border-radius: 10px 10px 0 0; padding: 0.6vh 0.4vw 0.5vh; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .podium-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(0.7rem, 0.95vw, 1rem);
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 0.35rem; }
+  .podium-avatar { width: clamp(36px, 4vw, 60px); height: clamp(36px, 4vw, 60px); border-radius: 10px; overflow: hidden;
+    border: 2px solid var(--border); position: relative; background: var(--surface-2); display: flex; align-items: center; justify-content: center; }
+  .podium-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .podium-avatar .ini { font-family: var(--font-title); font-weight: 800; font-size: 0.9rem; color: var(--text-muted); }
+  .podium-avatar img.loaded + .ini { display: none; }
+  .podium-gmv { font-family: monospace; font-weight: 800; font-size: clamp(0.72rem, 0.95vw, 1.05rem); color: var(--gold); margin-top: 0.35rem; }
+  .podium-vendas { font-size: clamp(0.58rem, 0.74vw, 0.78rem); color: var(--text-muted); }
+  .podium-bar { width: 100%; display: flex; align-items: flex-start; justify-content: center;
+    border-radius: 0 0 4px 4px; color: #0b1120; font-family: var(--font-title); font-weight: 800; padding-top: 2px; }
+  .podium-num { font-size: clamp(0.9rem, 1.3vw, 1.5rem); }
+  .place-1 .podium-bar { height: clamp(20px, 3vh, 34px); background: linear-gradient(180deg, #fde68a, var(--p1)); }
+  .place-2 .podium-bar { height: clamp(14px, 2.2vh, 24px); background: linear-gradient(180deg, #f1f5f9, var(--p2)); }
+  .place-3 .podium-bar { height: clamp(10px, 1.6vh, 18px); background: linear-gradient(180deg, #fbbf24, var(--p3)); }
+  .place-1 .podium-card { border-color: rgba(250,204,21,0.5); box-shadow: 0 0 18px rgba(250,204,21,0.15); }
+  .place-1 .podium-avatar { border-color: var(--p1); }
+  .place-2 .podium-avatar { border-color: var(--p2); }
+  .place-3 .podium-avatar { border-color: var(--p3); }
+  .place-1 .podium-gmv { color: var(--green); }
+
+  .copa-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5vh; padding-right: 0.3rem; }
+  .copa-list::-webkit-scrollbar { width: 6px; }
+  .copa-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .copa-list-row { display: flex; align-items: center; gap: 0.7rem; background: var(--surface-3);
+    border: 1px solid var(--border); border-radius: 10px; padding: 0.5vh 0.7rem; flex-shrink: 0; }
+  .copa-list-row.zero { opacity: 0.5; }
+  .copa-list-pos { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.75rem, 1vw, 1.05rem); width: 1.8rem; text-align: center; flex-shrink: 0; color: var(--text-2); }
+  .copa-list-avatar { width: clamp(26px, 2.4vw, 36px); height: clamp(26px, 2.4vw, 36px); border-radius: 7px; overflow: hidden;
+    border: 1px solid var(--border); flex-shrink: 0; position: relative; background: var(--surface-2); display: flex; align-items: center; justify-content: center; }
+  .copa-list-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .copa-list-avatar .ini { font-family: var(--font-title); font-weight: 800; font-size: 0.65rem; color: var(--text-muted); }
+  .copa-list-avatar img.loaded + .ini { display: none; }
+  .copa-list-name { flex: 1; min-width: 0; font-family: var(--font-title); font-weight: 700;
+    font-size: clamp(0.76rem, 1vw, 1.02rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .copa-list-vendas { font-size: clamp(0.6rem, 0.78vw, 0.8rem); color: var(--text-muted); flex-shrink: 0; }
+  .copa-list-gmv { font-family: monospace; font-weight: 800; font-size: clamp(0.78rem, 1.05vw, 1.1rem); color: var(--gold); text-align: right; flex-shrink: 0; min-width: 5rem; }
 
   /* ===== View: Consulta de vendas ===== */
   #view-vendas { height: 100%; display: flex; flex-direction: column; }
@@ -172,10 +206,8 @@
   [data-theme="light"] .btn-buscar { color: #fff; }
   .btn-sec { color: var(--text-2); background: var(--surface-2); }
   .vendas-hint { font-size: 0.72rem; color: var(--text-muted); }
-  .vendas-split { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1vh; }
-  .vendas-block { display: flex; flex-direction: column; min-height: 0; }
-  .vendas-block.minhas { flex: 0 1 auto; max-height: 38%; }
-  .vendas-block.gerais { flex: 1; }
+  .vendas-split { flex: 1; min-height: 0; display: flex; flex-direction: row; gap: 1vw; }
+  .vendas-block { display: flex; flex-direction: column; min-height: 0; min-width: 0; flex: 1; }
   .vendas-block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5vh; flex-shrink: 0; }
   .vendas-block-head > span:first-child { font-family: var(--font-title); font-weight: 700; font-size: 0.92rem;
     color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -212,5 +244,7 @@
     .q { min-height: 46vh; }
     .kpi-scope { grid-template-columns: 1fr 1fr; }
     .kpi-scope-label { writing-mode: horizontal-tb; transform: none; grid-column: 1 / -1; justify-content: flex-start; }
+    .vendas-split { flex-direction: column; }
+    .vendas-block { min-height: 40vh; }
   }
 </style>
