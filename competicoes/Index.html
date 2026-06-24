@@ -90,26 +90,26 @@
     main { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 
     /* ===== VIEW: PÓDIO ===== */
-    #view-podio { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 1.4vh; padding-top: 1vh; overflow: hidden; }
+    #view-podio { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 1.8vh; padding-top: 1vh; overflow: hidden; }
 
-    .podium { display: flex; justify-content: center; align-items: flex-end; gap: 1.4vw; flex-shrink: 0; }
-    .podium-place { display: flex; flex-direction: column; align-items: center; width: 23%; max-width: 300px; }
-    .place-1 { width: 26%; max-width: 340px; }
+    .podium { display: flex; justify-content: center; align-items: flex-end; gap: 1.6vw; flex-shrink: 0; }
+    .podium-place { display: flex; flex-direction: column; align-items: center; width: 25%; max-width: 360px; }
+    .place-1 { width: 28%; max-width: 400px; }
     .podium-card {
       display: flex; flex-direction: column; align-items: center; width: 100%;
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 16px 16px 0 0;
-      padding: 0.9vh 0.8rem 0.8vh;
+      padding: 1.1vh 0.9rem 1vh;
     }
     .podium-name {
       font-family: var(--font-title); font-weight: 700;
-      font-size: clamp(1rem, 1.7vw, 1.8rem);
-      margin-bottom: 0.6vh; text-align: center;
+      font-size: clamp(1.1rem, 1.9vw, 2rem);
+      margin-bottom: 0.7vh; text-align: center;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
     }
     .podium-avatar {
-      width: 100%; height: 20vh; max-height: 230px; border-radius: 12px; overflow: hidden;
+      width: 100%; height: 27vh; max-height: 320px; border-radius: 12px; overflow: hidden;
       border: 3px solid var(--border-color); position: relative;
       background: linear-gradient(135deg, #1e293b, #0f172a);
       display: flex; align-items: center; justify-content: center;
@@ -122,21 +122,21 @@
     .podium-avatar img.loaded + .initials { display: none; }
     .podium-gmv {
       font-family: monospace; font-weight: 800;
-      font-size: clamp(1.1rem, 1.9vw, 2rem);
-      margin-top: 0.6vh; color: var(--accent-gold);
+      font-size: clamp(1.25rem, 2.1vw, 2.25rem);
+      margin-top: 0.7vh; color: var(--accent-gold);
     }
-    .podium-qtd { font-size: clamp(0.65rem, 0.95vw, 0.95rem); color: var(--text-secondary); margin-top: 0.1rem; }
+    .podium-qtd { font-size: clamp(0.7rem, 1.05vw, 1.05rem); color: var(--text-secondary); margin-top: 0.15rem; }
     .podium-bar {
       width: 100%; display: flex; align-items: center; justify-content: center;
       border-radius: 0 0 10px 10px; color: #0b1120;
       font-family: var(--font-title); font-weight: 800;
       box-shadow: inset 0 2px 6px rgba(255,255,255,0.25);
     }
-    .podium-num { font-size: clamp(1.8rem, 3.2vw, 3.4rem); }
+    .podium-num { font-size: clamp(2rem, 3.6vw, 3.8rem); }
 
-    .place-1 .podium-bar { height: 12vh; max-height: 110px; background: linear-gradient(180deg, #fde68a, #facc15); }
-    .place-2 .podium-bar { height: 8vh;  max-height: 76px;  background: linear-gradient(180deg, #f1f5f9, #cbd5e1); }
-    .place-3 .podium-bar { height: 5.5vh; max-height: 54px; background: linear-gradient(180deg, #fbbf24, #b45309); }
+    .place-1 .podium-bar { height: 13.5vh; max-height: 130px; background: linear-gradient(180deg, #fde68a, #facc15); }
+    .place-2 .podium-bar { height: 9.5vh;  max-height: 94px;  background: linear-gradient(180deg, #f1f5f9, #cbd5e1); }
+    .place-3 .podium-bar { height: 7vh; max-height: 68px; background: linear-gradient(180deg, #fbbf24, #b45309); }
     .place-1 .podium-avatar { border-color: #facc15; }
     .place-1 .podium-card { border-color: rgba(250, 204, 21, 0.5); box-shadow: 0 0 28px rgba(250,204,21,0.18); }
     .place-1 .podium-gmv { color: var(--accent-green); }
@@ -149,18 +149,18 @@
       font-size: clamp(0.7rem, 0.95vw, 0.95rem); letter-spacing: 1px; text-transform: uppercase;
       color: var(--text-muted);
     }
-    .lista { display: flex; flex-direction: column; gap: 0.6vh; max-width: 1100px; width: 100%; margin: 0 auto; overflow-y: auto; min-height: 0; }
+    .lista { display: flex; flex-direction: column; gap: 0.85vh; max-width: 1180px; width: 100%; margin: 0 auto; overflow-y: auto; min-height: 0; }
     .lista-row {
-      display: flex; align-items: center; gap: 1.2rem;
+      display: flex; align-items: center; gap: 1.3rem;
       background: rgba(30, 41, 59, 0.3);
       border: 1px solid var(--border-color);
       border-left: 4px solid transparent;
-      border-radius: 12px; padding: 0.7vh 1.4rem;
+      border-radius: 12px; padding: 1vh 1.6rem;
     }
     .lista-row.zero { opacity: 0.5; }
-    .lista-pos { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.95rem, 1.4vw, 1.5rem); color: var(--text-secondary); width: 3rem; text-align: center; flex-shrink: 0; }
+    .lista-pos { font-family: var(--font-title); font-weight: 800; font-size: clamp(1.05rem, 1.55vw, 1.65rem); color: var(--text-secondary); width: 3.2rem; text-align: center; flex-shrink: 0; }
     .lista-avatar {
-      width: clamp(38px, 3.6vw, 58px); height: clamp(38px, 3.6vw, 58px); border-radius: 10px; overflow: hidden;
+      width: clamp(46px, 4.2vw, 70px); height: clamp(46px, 4.2vw, 70px); border-radius: 10px; overflow: hidden;
       border: 2px solid var(--border-color); flex-shrink: 0; position: relative;
       background: linear-gradient(135deg, #1e293b, #0f172a);
       display: flex; align-items: center; justify-content: center;
@@ -168,8 +168,8 @@
     .lista-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
     .lista-avatar .initials { font-family: var(--font-title); font-weight: 800; font-size: clamp(0.85rem, 1.2vw, 1.3rem); color: var(--text-muted); }
     .lista-avatar img.loaded + .initials { display: none; }
-    .lista-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(0.95rem, 1.4vw, 1.6rem); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lista-gmv { font-family: monospace; font-weight: 800; font-size: clamp(0.95rem, 1.4vw, 1.6rem); color: var(--accent-gold); text-align: right; flex-shrink: 0; }
+    .lista-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(1.05rem, 1.55vw, 1.75rem); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lista-gmv { font-family: monospace; font-weight: 800; font-size: clamp(1.05rem, 1.55vw, 1.75rem); color: var(--accent-gold); text-align: right; flex-shrink: 0; }
 
     .estado-vazio { text-align: center; color: var(--text-secondary); font-size: 1.4rem; padding: 8vh 0; }
 
