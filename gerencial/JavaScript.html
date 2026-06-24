@@ -117,15 +117,28 @@
       .getDashboardSupabase(state.periodo);
   }
 
-  // ===== Carregamento Comissao (BigQuery) — snapshot chega no PR2 =====
+  // ===== Carregamento Comissao (BigQuery) — le o snapshot da planilha =====
   function carregarBigQuery() {
-    setView('info');
-    setStatus('ok');
+    setView('dash');
+    setStatus('load');
     state.proximo = 0;
-    document.getElementById('info-msg').innerHTML =
-      '💰 <b>Visao Comissao (BigQuery)</b><br><br>' +
-      'Sera alimentada pelo snapshot do BigQuery (aba <code>Snapshot_BQ</code>, atualizado a cada 30 min).<br>' +
-      'Ativacao na proxima fase (PR2).';
+    var token = ++state.pollToken;
+    google.script.run
+      .withSuccessHandler(function (data) {
+        if (token !== state.pollToken) return;
+        state.dash = data; renderDash(data);
+        var dot = document.getElementById('status-dot'); dot.className = 'dot';
+        var t = data.snapshotEm ? dataHoraBR(data.snapshotEm) : '';
+        document.getElementById('status-texto').textContent = t ? 'snapshot ' + t : 'snapshot';
+      })
+      .withFailureHandler(function (e) {
+        if (token !== state.pollToken) return;
+        setView('info');
+        document.getElementById('info-msg').innerHTML =
+          '💰 <b>Comissao (BigQuery)</b><br><br>' + esc((e && e.message) ? e.message : 'Snapshot indisponivel.');
+        setStatus('erro', 'sem snapshot');
+      })
+      .getDashboardBigQuery();
   }
 
   // ===== Render do dashboard (Q1..Q4) =====
