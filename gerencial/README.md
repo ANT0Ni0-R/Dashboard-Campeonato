@@ -6,8 +6,9 @@ pagina (sem trocar de URL):
 - **⚡ Real-time (Supabase):** KPIs, graficos e ranking agregados ao vivo (polling configuravel).
 - **💰 Comissao (BigQuery):** a mesma visao, lendo o snapshot do BigQuery gravado numa aba do
   Sheets a cada 30 min (trigger `snapshotBigQuery`).
-- **🔎 Consulta de vendas:** tabela das vendas (`order_success`) dos ultimos 7 dias via Supabase,
-  com busca por email/telefone.
+- **🔎 Consulta de vendas:** vendas (`order_success`) do **produto do dash** nos ultimos 7 dias via
+  Supabase, em duas tabelas — **Minhas vendas** (PMP do closer logado) e **Vendas Gerais do
+  lancamento** (as demais) — com busca por email/telefone.
 
 Identidade visual Grupo Primo (dark por padrao) com **modo claro** alternavel. Layout em **4
 quadrantes** que cabem numa unica tela:
@@ -15,7 +16,7 @@ quadrantes** que cabem numa unica tela:
 | | esquerda | direita |
 |---|---|---|
 | **topo** | Q1 — KPIs (Hoje x Geral) | Q3 — Ranking GMV por vendedor (scroll proprio) |
-| **base** | Q2 — GMV TVD hora a hora (acumulado/spot) | Q4 — GMV/dia TVD vs Outros + linha de Share (spot/acumulado) |
+| **base** | Q2 — GMV TVD hora a hora, eixo fixo 0h-23h (acumulado/spot) | Q4 — GMV/dia TVD **empilhado por vendedor** + linha de Share (spot/acumulado) |
 
 **Modelo escalavel:** cada dashboard e **uma Google Sheet** (abas `Config`, `Participantes`,
 `Acessos`, `Snapshot_BQ`) + Apps Script vinculado + Web App proprio. Para criar outro, **duplica-se
@@ -39,7 +40,11 @@ a planilha**. Segredos do Supabase ficam em Script Properties (nunca na planilha
   sem "TVD". O codigo do vendedor (ranking) e o ultimo segmento de 3 letras do `pmp`.
 - **BigQuery (comissao):** TVD = `sales_channel = 'TVD'` (`canal_tvd` na aba Config). _(PR2)_
 
-GMV = `price` (produto sem recorrencia). `Share TVD = GMV TVD / GMV Total`.
+GMV = `price` (produto sem recorrencia). `Share TVD = GMV TVD / GMV Total` (mesma metrica no Q4).
+
+**Alias de PMP:** a aba `Config` aceita `pmp_aliases` (`DE:PARA`, default `JCK:JKC`) para corrigir
+um PMP criado errado na origem — funde o codigo no ranking, na foto e na atribuicao (Supabase em JS;
+BigQuery via `CASE` no SQL, somando os dois codigos).
 
 ## Setup (1a vez)
 
@@ -98,6 +103,9 @@ recadastre os 3 segredos em Script Properties (nao sao copiados) e faca um **nov
 - **PR1:** shell + menu + tema dark/light + visao Real-time (Supabase) + Consulta de vendas.
 - **PR2 (este):** snapshot BigQuery (`snapshotBigQuery` + trigger 30 min + aba `Snapshot_BQ`) e a visao Comissao.
 - **PR3:** controle de acesso (aba `Acessos` + checagem no `doGet`) e refino visual/responsivo.
+- **Melhorias:** KPIs maiores; Q2 com eixo fixo 0h-23h; Q4 empilhado por vendedor com Share por
+  cima; alias de PMP (`JCK`->`JKC`); Consulta de vendas filtrada pelo produto e dividida em
+  "Minhas vendas" x "Vendas Gerais" (coluna `PMP` na aba `Acessos`).
 
 ## Troubleshooting
 

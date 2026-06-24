@@ -56,6 +56,7 @@ function montaSnapshotBQ_(cfg, nomes) {
   var k = bqQuery_(cfg, sqlKpisBQ_(cfg, ini, fim))[0] || {};
   var ranking = bqQuery_(cfg, sqlRankingBQ_(cfg, ini, fim));
   var dia = bqQuery_(cfg, sqlPorDiaBQ_(cfg, ini, fim));
+  var diaSeller = bqQuery_(cfg, sqlPorDiaSellerBQ_(cfg, ini, fim));
   var hora = bqQuery_(cfg, sqlPorHoraBQ_(cfg));
 
   return {
@@ -64,7 +65,7 @@ function montaSnapshotBQ_(cfg, nomes) {
       total: kpiBQ_(k.gmv_total, k.vendas_total, k.gmv_tvd, k.vendas_tvd)
     },
     ranking: rankingBQ_(ranking, cfg, nomes),
-    porDia: porDiaBQ_(dia),
+    porDia: porDiaBQ_(dia, diaSeller),
     porHora: porHoraBQ_(hora)
   };
 }
@@ -92,19 +93,26 @@ function rankingBQ_(rows, cfg, nomes) {
     };
   });
 }
-function porDiaBQ_(rows) {
-  return (rows || []).map(function (x) {
-    var tvd = Number(x.gmv_tvd) || 0, outros = Number(x.gmv_outros) || 0;
-    var tot = tvd + outros;
-    return { dia: x.dia, gmv_tvd: tvd, gmv_outros: outros, share_tvd: tot > 0 ? tvd / tot : 0 };
+// Funde os totais do dia com o GMV por vendedor -> mesmo shape do Supabase (montaPorDia_).
+function porDiaBQ_(diaRows, sellerRows) {
+  var byDia = {};
+  (diaRows || []).forEach(function (x) {
+    var tvd = Number(x.gmv_tvd) || 0, tot = Number(x.gmv_total) || 0;
+    byDia[x.dia] = { dia: x.dia, gmv_tvd: tvd, gmv_total: tot, share_tvd: tot > 0 ? tvd / tot : 0, sellers: {} };
   });
+  (sellerRows || []).forEach(function (r) {
+    var d = byDia[r.dia];
+    if (!d) return;
+    var code = String(r.seller_pmp || '').toUpperCase();
+    if (code) d.sellers[code] = (d.sellers[code] || 0) + (Number(r.gmv) || 0);
+  });
+  return Object.keys(byDia).sort().map(function (d) { return byDia[d]; });
 }
 function porHoraBQ_(rows) {
   var map = {};
   (rows || []).forEach(function (x) { map[Number(x.hora)] = Number(x.gmv_tvd) || 0; });
-  var atual = Number(Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'HH'));
   var out = [];
-  for (var h = 0; h <= atual; h++) out.push({ hora: h, gmv_tvd: map[h] || 0 });
+  for (var h = 0; h < 24; h++) out.push({ hora: h, gmv_tvd: map[h] || 0 });  // eixo fixo 0h-23h
   return out;
 }
 
@@ -130,8 +138,9 @@ function sqlKpisBQ_(cfg, ini, fim) {
 }
 function sqlRankingBQ_(cfg, ini, fim) {
   var hoje = "CURRENT_DATE('America/Sao_Paulo')";
+  var canon = canonSqlExpr_(cfg);
   return 'SELECT\n' +
-    '  seller_pmp,\n' +
+    '  ' + canon + ' AS seller_pmp,\n' +
     '  ANY_VALUE(seller_name) AS seller_name,\n' +
     '  SUM(gmv) AS gmv,\n' +
     '  SUM(net_transactions) AS vendas,\n' +
@@ -141,18 +150,33 @@ function sqlRankingBQ_(cfg, ini, fim) {
     'WHERE ' + bqFiltrosBase_(cfg, ini, fim) + '\n' +
     '  AND sales_channel = ' + sqlStr_(cfg.canalTvd) + '\n' +
     '  AND seller_pmp IS NOT NULL\n' +
-    'GROUP BY seller_pmp\n' +
+    'GROUP BY ' + canon + '\n' +
     'ORDER BY gmv DESC';
 }
+// Totais por dia: gmv_tvd e gmv_total (todos os canais) -> denominador do share.
 function sqlPorDiaBQ_(cfg, ini, fim) {
   var t = sqlStr_(cfg.canalTvd);
   return 'SELECT\n' +
     "  FORMAT_DATE('%Y-%m-%d', transaction_dt) AS dia,\n" +
     '  SUM(IF(sales_channel = ' + t + ', gmv, 0)) AS gmv_tvd,\n' +
-    '  SUM(IF(sales_channel = ' + t + ', 0, gmv)) AS gmv_outros\n' +
+    '  SUM(gmv) AS gmv_total\n' +
     'FROM `' + cfg.bqTable + '`\n' +
     'WHERE ' + bqFiltrosBase_(cfg, ini, fim) + '\n' +
     'GROUP BY dia\n' +
+    'ORDER BY dia';
+}
+// GMV TVD por (dia, vendedor canonico) -> barras empilhadas por vendedor no Q4.
+function sqlPorDiaSellerBQ_(cfg, ini, fim) {
+  var canon = canonSqlExpr_(cfg);
+  return 'SELECT\n' +
+    "  FORMAT_DATE('%Y-%m-%d', transaction_dt) AS dia,\n" +
+    '  ' + canon + ' AS seller_pmp,\n' +
+    '  SUM(gmv) AS gmv\n' +
+    'FROM `' + cfg.bqTable + '`\n' +
+    'WHERE ' + bqFiltrosBase_(cfg, ini, fim) + '\n' +
+    '  AND sales_channel = ' + sqlStr_(cfg.canalTvd) + '\n' +
+    '  AND seller_pmp IS NOT NULL\n' +
+    'GROUP BY dia, ' + canon + '\n' +
     'ORDER BY dia';
 }
 function sqlPorHoraBQ_(cfg) {
@@ -170,6 +194,16 @@ function sqlPorHoraBQ_(cfg) {
 
 // Literal SQL seguro (escapa aspas simples). Use so para valores de config (planilha do dono).
 function sqlStr_(v) { return "'" + String(v == null ? '' : v).replace(/'/g, "''") + "'"; }
+
+// Expressao canonica do PMP (funde aliases ainda no BQ, ex.: JCK -> JKC) p/ ranking e por-vendedor.
+// aliasPmp vem da aba Config (parseAliasPmp_ em Code.gs). Sem aliases, devolve a propria coluna.
+function canonSqlExpr_(cfg) {
+  var alias = cfg.aliasPmp || {};
+  var keys = Object.keys(alias);
+  if (!keys.length) return 'seller_pmp';
+  var whens = keys.map(function (de) { return 'WHEN ' + sqlStr_(de) + ' THEN ' + sqlStr_(alias[de]); });
+  return 'CASE seller_pmp ' + whens.join(' ') + ' ELSE seller_pmp END';
+}
 
 // ===== Executor de query no BigQuery (servico avancado) =====
 function bqQuery_(cfg, sql) {

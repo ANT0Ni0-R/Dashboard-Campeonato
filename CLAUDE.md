@@ -43,6 +43,21 @@ desnecessária — os erros mais caros desta base vieram de pular essas etapas.
 
 ## Fluxo de trabalho — sempre seguir
 
+### Subagentes — prefira o modelo mais barato que dê conta
+
+Ao delegar para subagentes (Agent tool), use **sempre que possível o modelo menos
+intensivo em tokens** que resolva a tarefa — economia de custo/tempo sem perder
+qualidade. Passe o modelo no parâmetro `model` do Agent tool (ex.: `model: "haiku"`).
+
+- **Haiku** (`claude-haiku-4-5`): exploração read-only, busca/`grep`, leitura de
+  arquivos, lookups simples, checagens mecânicas (ex.: `node --check`, conferir um valor).
+- **Sonnet** (`claude-sonnet-4-6`): tarefas intermediárias — edições localizadas,
+  refactors pequenos, resumos.
+- **Opus** (`claude-opus-4-8`): reserve para design/arquitetura, implementação complexa
+  e revisão crítica, onde o raciocínio mais forte compensa o custo.
+
+Na dúvida entre dois níveis, comece pelo mais barato e suba só se o resultado não bastar.
+
 ### Git
 
 - **Sempre subir as alterações para a branch `main`.** Todo desenvolvimento
@@ -114,24 +129,28 @@ e `dia_copa`). Mexa em config aqui, **não** espalhe constantes pelo `app.js`.
 ### `gerencial/` — Dashboard 3 (gerencial, Apps Script)
 
 Escalável como `competicoes/` (1 Google Sheet por dashboard; abas `Config`,
-`Participantes`, `Acessos`, `Snapshot_BQ`). **Deploy:** "Executar como: usuário
-que acessa" + acesso ao **domínio** (lê o e-mail do visitante p/ a allowlist).
+`Participantes`, `Acessos` (Email|Nivel|**PMP**), `Snapshot_BQ`). **Deploy:** "Executar
+como: usuário que acessa" + acesso ao **domínio** (lê o e-mail do visitante p/ a allowlist).
 
 - `Code.gs`: `doGet` (checa acesso → `Index` ou `AccessDenied`), `lerConfig_`/
   `lerParticipantes_`, controle de acesso (`emailAtivo_`, `lerAcessos_`,
   `emailAutorizado_`, `exigirAcesso_`), **Supabase real-time** (`fetchTransactions_`,
-  `aggregateRows_` — TVD = `pmp` contém "TVD"; `getDashboardSupabase`), `listarVendas`,
+  `aggregateRows_` — TVD = `pmp` contém "TVD"; `montaPorHora_` eixo fixo 0h-23h;
+  `montaPorDia_` com `sellers` por dia p/ o Q4 empilhado; `getDashboardSupabase`),
+  `listarVendas` (filtra pelo produto, separa minhas x gerais via `meuPmp_`),
+  alias de PMP (`parseAliasPmp_`/`canonCode_`, default `JCK→JKC`),
   auth JWT (`resolveAuthHeaders_`/`mintJwt_`/`restGet_`/`parseRows_`), `diag`.
 - `BigQuery.gs`: **Comissão por snapshot**. `snapshotBigQuery` (trigger 30 min, roda
-  como dono) executa as queries (`sqlKpisBQ_`/`sqlRankingBQ_`/`sqlPorDiaBQ_`/
-  `sqlPorHoraBQ_`, TVD = `sales_channel='TVD'`) via `bqQuery_` e grava JSON na aba
-  `Snapshot_BQ`; `getDashboardBigQuery` só lê a aba (visitantes não tocam o BQ).
+  como dono) executa as queries (`sqlKpisBQ_`/`sqlRankingBQ_`/`sqlPorDiaBQ_` +
+  `sqlPorDiaSellerBQ_` (TVD por dia×vendedor)/`sqlPorHoraBQ_`, TVD = `sales_channel='TVD'`,
+  alias via `canonSqlExpr_`) por `bqQuery_` e grava JSON na aba `Snapshot_BQ`;
+  `getDashboardBigQuery` só lê a aba (visitantes não tocam o BQ).
   `criarTriggerSnapshot`/`testSnapshot`. Projeto/tabela **com hifens**.
 - `Index.html` + `Stylesheet.html` + `JavaScript.html`: menu fixo (título, status,
   seletor de datas, 3 botões, tema dark/light), grid 4 quadrantes (KPIs, linha hora a
-  hora, ranking com scroll próprio, barras empilhadas TVD/Outros + linha de Share em
-  2º eixo). Charts: **Chart.js + datalabels via CDN**. Supabase e BigQuery devolvem o
-  **mesmo shape**, então o render é único.
+  hora 0h-23h, ranking com scroll próprio, **barras TVD empilhadas por vendedor** +
+  linha de Share em 2º eixo desenhada por cima via `order`). Charts: **Chart.js +
+  datalabels via CDN**. Supabase e BigQuery devolvem o **mesmo shape**, render único.
 
 ### Dependências (todas externas, nada de `npm install`)
 

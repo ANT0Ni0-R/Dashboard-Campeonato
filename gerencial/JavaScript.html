@@ -224,31 +224,54 @@
     });
   }
 
-  // ----- Q4: barras empilhadas + linha share -----
+  // Paleta para os vendedores no Q4 (ciclica). Cores distintas e legiveis nos dois temas.
+  var SELLER_COLORS = ['#22c55e', '#3b82f6', '#fbbf24', '#a855f7', '#ef4444', '#14b8a6',
+    '#f97316', '#ec4899', '#84cc16', '#6366f1', '#06b6d4', '#eab308'];
+
+  // ----- Q4: barras TVD empilhadas POR VENDEDOR + linha de Share por cima -----
   function renderChartDia(porDia) {
     var c = themeColors();
     var labels = porDia.map(function (x) { return diaLabel(x.dia); });
     var acc = state.diaMode === 'acumulado';
+
+    // Vendedores: uniao das chaves "sellers", ordenada pelo GMV TVD total (desc).
+    var totByCode = {};
+    porDia.forEach(function (d) {
+      var s = d.sellers || {};
+      Object.keys(s).forEach(function (code) { totByCode[code] = (totByCode[code] || 0) + (s[code] || 0); });
+    });
+    var codes = Object.keys(totByCode).sort(function (a, b) { return totByCode[b] - totByCode[a] || a.localeCompare(b); });
+
+    // Nomes para a legenda (a partir do ranking ja carregado).
+    var nameByCode = {};
+    ((state.dash && state.dash.ranking) || []).forEach(function (r) { nameByCode[r.code] = r.nome; });
+
+    // Um dataset de barra por vendedor (empilhado). order > 0 = desenhado atras da linha.
+    var barDs = codes.map(function (code, i) {
+      var serie = porDia.map(function (d) { return (d.sellers && d.sellers[code]) || 0; });
+      if (acc) serie = cumulativo(serie);
+      return { type: 'bar', label: nameByCode[code] || code, data: serie,
+        backgroundColor: SELLER_COLORS[i % SELLER_COLORS.length], stack: 'g', yAxisID: 'y',
+        order: 1, datalabels: { display: false } };
+    });
+
+    // Share TVD = GMV TVD / GMV total do dia (recalculado no acumulado).
     var tvd = porDia.map(function (x) { return x.gmv_tvd || 0; });
-    var out = porDia.map(function (x) { return x.gmv_outros || 0; });
-    if (acc) { tvd = cumulativo(tvd); out = cumulativo(out); }
-    var share = tvd.map(function (v, i) { var tot = v + out[i]; return tot > 0 ? v / tot : 0; });
+    var tot = porDia.map(function (x) { return x.gmv_total || 0; });
+    if (acc) { tvd = cumulativo(tvd); tot = cumulativo(tot); }
+    var share = tvd.map(function (v, i) { return tot[i] > 0 ? v / tot[i] : 0; });
+
+    // order: 0 (menor) = desenhado por ultimo = SEMPRE por cima das barras.
+    var shareDs = { type: 'line', label: 'Share TVD', data: share, borderColor: c.gold,
+      backgroundColor: c.gold, yAxisID: 'y1', tension: 0.3, pointRadius: 3, borderWidth: 2, order: 0,
+      datalabels: { display: 'auto', align: 'top', anchor: 'end', color: c.gold,
+        font: { size: 9, weight: 'bold' }, formatter: function (v) { return pct(v); } } };
 
     if (charts.dia) charts.dia.destroy();
     var ctx = document.getElementById('chart-dia').getContext('2d');
     charts.dia = new Chart(ctx, {
       type: 'bar',
-      data: { labels: labels, datasets: [
-        { type: 'bar', label: 'TVD', data: tvd, backgroundColor: c.green, stack: 'g', yAxisID: 'y',
-          datalabels: { display: 'auto', color: '#0b1120', font: { size: 9, weight: 'bold' },
-            formatter: function (v) { return v > 0 ? formatBRLk(v) : ''; } } },
-        { type: 'bar', label: 'Outros', data: out, backgroundColor: c.muted, stack: 'g', yAxisID: 'y',
-          datalabels: { display: false } },
-        { type: 'line', label: 'Share TVD', data: share, borderColor: c.gold, backgroundColor: c.gold,
-          yAxisID: 'y1', tension: 0.3, pointRadius: 3, borderWidth: 2,
-          datalabels: { display: 'auto', align: 'top', anchor: 'end', color: c.gold,
-            font: { size: 9, weight: 'bold' }, formatter: function (v) { return pct(v); } } }
-      ]},
+      data: { labels: labels, datasets: barDs.concat([shareDs]) },
       options: baseOpts(c, { y: rsAxis(c, true), y1: shareAxis(c) })
     });
   }
@@ -258,7 +281,7 @@
     var xStacked = !!(scales.y && scales.y.stacked);
     return {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 14, right: 6 } },
+      layout: { padding: { top: 18, right: 6 } },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: true, position: 'bottom', labels: { color: c.text2, boxWidth: 10, font: { size: 10 } } },
@@ -272,7 +295,7 @@
     };
   }
   function rsAxis(c, stacked) {
-    return { stacked: !!stacked, position: 'left', grid: { color: c.grid },
+    return { stacked: !!stacked, position: 'left', beginAtZero: true, grace: '12%', grid: { color: c.grid },
       ticks: { color: c.text2, font: { size: 10 }, callback: function (v) { return formatBRLk(v); } } };
   }
   function shareAxis(c) {
@@ -280,41 +303,62 @@
       ticks: { color: c.gold, font: { size: 10 }, callback: function (v) { return Math.round(v * 100) + '%'; } } };
   }
 
-  // ===== Consulta de vendas =====
+  // ===== Consulta de vendas (duas tabelas: minhas x gerais) =====
   function buscarVendas() {
     var termo = (document.getElementById('termo').value || '').trim();
-    var tbody = document.getElementById('vendas-tbody');
+    ['minhas-tbody', 'gerais-tbody'].forEach(function (id) {
+      document.getElementById(id).innerHTML = '<tr><td colspan="5" class="vendas-msg">Buscando…</td></tr>';
+    });
     document.getElementById('vendas-hint').textContent = '';
-    tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg">Buscando…</td></tr>';
+    document.getElementById('minhas-hint').textContent = '';
+    document.getElementById('gerais-hint').textContent = '';
     google.script.run
-      .withSuccessHandler(function (rows) { renderVendas(rows, termo); })
+      .withSuccessHandler(function (resp) { renderVendas(resp, termo); })
       .withFailureHandler(function (e) {
-        tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg err">' + esc((e && e.message) ? e.message : 'Erro ao consultar') + '</td></tr>';
+        var msg = '<tr><td colspan="5" class="vendas-msg err">' + esc((e && e.message) ? e.message : 'Erro ao consultar') + '</td></tr>';
+        document.getElementById('minhas-tbody').innerHTML = msg;
+        document.getElementById('gerais-tbody').innerHTML = msg;
       })
       .listarVendas(termo);
   }
   function limparVendas() { document.getElementById('termo').value = ''; buscarVendas(); }
-  function renderVendas(rows, termo) {
-    var tbody = document.getElementById('vendas-tbody');
-    var hint = document.getElementById('vendas-hint');
-    rows = rows || [];
+
+  function renderVendas(resp, termo) {
+    var meuPmp = (resp && resp.meuPmp) || '';
+    var rows = (resp && resp.vendas) || [];
+    var minhas = meuPmp ? rows.filter(function (r) { return r.pmp_code === meuPmp; }) : [];
+    var gerais = meuPmp ? rows.filter(function (r) { return r.pmp_code !== meuPmp; }) : rows;
+
+    document.getElementById('vendas-hint').textContent =
+      rows.length + ' venda(s)' + (rows.length >= 500 ? ' (limite 500 — refine a busca)' : '');
+    document.getElementById('minhas-title').textContent = meuPmp ? ('Minhas vendas (' + esc(meuPmp) + ')') : 'Minhas vendas';
+    document.getElementById('minhas-hint').textContent = meuPmp ? (minhas.length + ' venda(s)') : '';
+    document.getElementById('gerais-hint').textContent = gerais.length + ' venda(s)';
+
+    renderVendasTabela('minhas-tbody', minhas, termo,
+      meuPmp ? '' : 'Seu PMP nao esta cadastrado na aba Acessos (coluna PMP).');
+    renderVendasTabela('gerais-tbody', gerais, termo, '');
+  }
+  function renderVendasTabela(tbodyId, rows, termo, emptyMsg) {
+    var tbody = document.getElementById(tbodyId);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg">Nenhuma venda nos ultimos 7 dias' + (termo ? ' para "' + esc(termo) + '"' : '') + '.</td></tr>';
-      hint.textContent = ''; return;
+      var msg = emptyMsg || ('Nenhuma venda nos ultimos 7 dias' + (termo ? ' para "' + esc(termo) + '"' : '') + '.');
+      tbody.innerHTML = '<tr><td colspan="5" class="vendas-msg">' + esc(msg) + '</td></tr>';
+      return;
     }
-    hint.textContent = rows.length + ' venda(s)' + (rows.length >= 300 ? ' (limite 300 — refine a busca)' : '');
-    tbody.innerHTML = rows.map(function (r) {
-      var contato = [r.email, r.phone].filter(Boolean).map(esc).join(' · ');
-      var pmp = r.pmp_code
-        ? esc(r.pmp_code) + (r.tvd ? '<span class="tag">TVD</span>' : '')
-        : '<span class="none">sem PMP</span>';
-      return '<tr>' +
-        '<td class="v-data">' + dataHoraBR(r.created_at) + '</td>' +
-        '<td class="v-cli"><div class="nome">' + esc(r.nome || '—') + '</div>' + (contato ? '<div class="contato">' + contato + '</div>' : '') + '</td>' +
-        '<td class="v-slug">' + esc(r.slug || '—') + '</td>' +
-        '<td class="v-pmp">' + pmp + '</td>' +
-        '<td class="v-valor">' + formatBRL(r.price) + '</td></tr>';
-    }).join('');
+    tbody.innerHTML = rows.map(vendaRowHTML).join('');
+  }
+  function vendaRowHTML(r) {
+    var contato = [r.email, r.phone].filter(Boolean).map(esc).join(' · ');
+    var pmp = r.pmp_code
+      ? esc(r.pmp_code) + (r.tvd ? '<span class="tag">TVD</span>' : '')
+      : '<span class="none">sem PMP</span>';
+    return '<tr>' +
+      '<td class="v-data">' + dataHoraBR(r.created_at) + '</td>' +
+      '<td class="v-cli"><div class="nome">' + esc(r.nome || '—') + '</div>' + (contato ? '<div class="contato">' + contato + '</div>' : '') + '</td>' +
+      '<td class="v-slug">' + esc(r.slug || '—') + '</td>' +
+      '<td class="v-pmp">' + pmp + '</td>' +
+      '<td class="v-valor">' + formatBRL(r.price) + '</td></tr>';
   }
 
   // ===== Wiring =====
