@@ -41,6 +41,34 @@ desnecessária — os erros mais caros desta base vieram de pular essas etapas.
 
 ---
 
+## Fluxo de trabalho — sempre seguir
+
+### Git
+
+- **Sempre subir as alterações para a branch `main`.** Todo desenvolvimento
+  deve terminar fundido na `main` — é o que faz o GitHub Pages republicar a
+  Copa e o que mantém as fotos/raw URLs válidas. Use mensagens de commit em
+  ASCII puro (acentos via heredoc podem dar exit code 144).
+- **Sempre revisar este `CLAUDE.md` depois das alterações.** Ao terminar uma
+  implementação, atualize o mapa de código, as seções de atenção e os erros
+  cometidos para que ele continue refletindo o projeto. Documentação
+  desatualizada é pior que nenhuma.
+
+### Revisão pós-implementação (obrigatória)
+
+Após concluir qualquer implementação, revise o código em busca de:
+
+- Funções com mais de **30 linhas** (provavelmente fazendo coisas demais — quebre).
+- Lógica duplicada mais de **duas vezes** (extraia para uma função utilitária).
+- Qualquer uso do tipo **`any`** no TypeScript (substitua por tipos reais).
+- Componentes com mais de **3 propriedades** que poderiam ser agrupadas num objeto.
+- **Ausência de tratamento de erros** em operações assíncronas.
+
+**Execute `/code-review` (skill code-review) antes de apresentar o código ao
+usuário.** Só mostre o resultado depois de rodar a revisão e tratar os achados.
+
+---
+
 ## Mapa de código (leia isto em vez do projeto inteiro)
 
 ### Estrutura de pastas
