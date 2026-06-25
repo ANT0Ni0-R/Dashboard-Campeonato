@@ -27,7 +27,7 @@ var DEFAULTS = {
   BQ_TABLE:        'grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request',
   CANAL_TVD:       'TVD',
   // --- Funil (snapshot proprio; tabelas do CRM/leads/mensagens) ---
-  FUNIL_GROUP_NAME:    'O Legado',
+  FUNIL_GROUP_LIKE:    '%legado%',   // group_name vem com sufixo de turma (ex.: "... [TDV 2]")
   FUNIL_CAMPANHA:      'BAR0001',
   BQ_DEALS_HISTORY:    'grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_history_cleaned',
   BQ_DEALS_CLEANED:    'grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_cleaned',
@@ -153,7 +153,7 @@ function lerConfig_() {
     bqProductLike: kv['bq_product_like'] || '%',
     canalTvd:      kv['canal_tvd'] || DEFAULTS.CANAL_TVD,
     // --- Funil (tabelas/filtros do snapshot de ativacao) ---
-    funilGroupName:  kv['funil_group_name'] || DEFAULTS.FUNIL_GROUP_NAME,
+    funilGroupLike:  kv['funil_group_like'] || DEFAULTS.FUNIL_GROUP_LIKE,
     funilCampanha:   kv['funil_campanha'] || DEFAULTS.FUNIL_CAMPANHA,
     bqDealsHistory:  kv['bq_deals_history_table'] || DEFAULTS.BQ_DEALS_HISTORY,
     bqDealsCleaned:  kv['bq_deals_cleaned_table'] || DEFAULTS.BQ_DEALS_CLEANED,
