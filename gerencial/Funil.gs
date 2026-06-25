@@ -107,9 +107,20 @@ function funilStagesInSql_() {
   return FUNIL_STAGES_ATIVADO.map(function (s) { return sqlStr_(s); }).join(', ');
 }
 
-// Origem do lead a partir do JSON "fields" do clint_deals_cleaned.
+// Origem do lead. Prioridade: fields.origem_do_lead (campo usado no legado) -> origin_name
+// (preenchido nas tabelas atuais quando fields vem vazio) -> '(sem origem)'.
+// JSON_VALUE em coluna ausente/sem a chave retorna NULL, entao o COALESCE cai no proximo.
 function funilOrigemExpr_() {
-  return "COALESCE(NULLIF(TRIM(JSON_VALUE(fields, '$.origem_do_lead')), ''), '(sem origem)')";
+  return "COALESCE(" +
+    "NULLIF(TRIM(JSON_VALUE(fields, '$.origem_do_lead')), ''), " +
+    "NULLIF(TRIM(origin_name), ''), " +
+    "'(sem origem)')";
+}
+
+// Filtro do grupo do lancamento. Os nomes vem com sufixo de turma (ex.: "... [TDV 2]"),
+// entao usamos LIKE (case-insensitive) em vez de igualdade exata.
+function funilGrupoWhere_(cfg) {
+  return 'LOWER(group_name) LIKE LOWER(' + sqlStr_(cfg.funilGroupLike) + ')';
 }
 
 // Base do pipeline (deals do grupo) por origem, com TOTAL via ROLLUP.
@@ -118,7 +129,7 @@ function sqlFunilBase_(cfg) {
     '  ' + funilOrigemExpr_() + ' AS origem,\n' +
     '  COUNT(DISTINCT deal_id) AS total\n' +
     'FROM `' + cfg.bqDealsCleaned + '`\n' +
-    'WHERE group_name = ' + sqlStr_(cfg.funilGroupName) + '\n' +
+    'WHERE ' + funilGrupoWhere_(cfg) + '\n' +
     'GROUP BY ROLLUP(origem)';
 }
 
@@ -129,7 +140,7 @@ function sqlFunilAtivados_(cfg, ini, fim) {
     '  SELECT\n' +
     '    deal_id,\n' +
     '    UPPER(user_pmp) AS pmp,\n' +
-    "    DATETIME(entered_stage_at, 'America/Sao_Paulo') AS ts,\n" +
+    '    entered_stage_at AS ts,\n' +  // DATETIME ja em BRT — sem conversao de fuso
     '    ROW_NUMBER() OVER (PARTITION BY deal_id ORDER BY entered_stage_at, deal_stage) AS rn\n' +
     '  FROM `' + cfg.bqDealsHistory + '`\n' +
     '  WHERE LOWER(TRIM(deal_stage)) IN (' + funilStagesInSql_() + ')\n' +
@@ -140,7 +151,7 @@ function sqlFunilAtivados_(cfg, ini, fim) {
     'base AS (\n' +
     '  SELECT deal_id, ' + funilOrigemExpr_() + ' AS origem\n' +
     '  FROM `' + cfg.bqDealsCleaned + '`\n' +
-    '  WHERE group_name = ' + sqlStr_(cfg.funilGroupName) + '\n' +
+    '  WHERE ' + funilGrupoWhere_(cfg) + '\n' +
     ')\n' +
     'SELECT\n' +
     "  FORMAT_DATE('%Y-%m-%d', DATE(f.ts)) AS dia,\n" +
@@ -174,10 +185,10 @@ function sqlFunilVendas_(cfg, ini, fim) {
     'leads AS (\n' +
     '  SELECT\n' +
     '    ' + funilOrigemExpr_() + ' AS origem,\n' +
-    '    LOWER(TRIM(lead_email)) AS email,\n' +
-    "    RIGHT(REGEXP_REPLACE(CAST(lead_phone AS STRING), r'[^0-9]', ''), 11) AS phone11\n" +
+    '    LOWER(TRIM(contact_email)) AS email,\n' +
+    "    RIGHT(REGEXP_REPLACE(CAST(contact_phone AS STRING), r'[^0-9]', ''), 11) AS phone11\n" +
     '  FROM `' + cfg.bqDealsCleaned + '`\n' +
-    '  WHERE group_name = ' + sqlStr_(cfg.funilGroupName) + '\n' +
+    '  WHERE ' + funilGrupoWhere_(cfg) + '\n' +
     '),\n' +
     'venda_origem AS (\n' +
     '  SELECT v.dia, v.pmp, v.email, v.phone11,\n' +
@@ -200,7 +211,7 @@ function sqlFunilConversaoGeral_(cfg, ini, fim) {
   var t = sqlStr_(cfg.canalTvd);
   return 'WITH leads_u AS (\n' +
     '  SELECT LOWER(TRIM(lead_email)) AS email,\n' +
-    "    ANY_VALUE(RIGHT(REGEXP_REPLACE(CAST(lead_phone AS STRING), r'[^0-9]', ''), 11)) AS phone11\n" +
+    "    ANY_VALUE(RIGHT(REGEXP_REPLACE(CAST(lead_phone_number AS STRING), r'[^0-9]', ''), 11)) AS phone11\n" +
     '  FROM `' + cfg.bqLeads + '`\n' +
     '  WHERE campanha = ' + sqlStr_(cfg.funilCampanha) + '\n' +
     '    AND lead_email IS NOT NULL\n' +
@@ -230,7 +241,7 @@ function funilTmrBaseCte_(cfg, ini, fim) {
     '  SELECT DISTINCT h.deal_id, c.contact_id, ' + funilOrigemExpr_() + ' AS origem\n' +
     '  FROM `' + cfg.bqDealsHistory + '` h\n' +
     '  JOIN `' + cfg.bqDealsCleaned + '` c USING (deal_id)\n' +
-    '  WHERE c.group_name = ' + sqlStr_(cfg.funilGroupName) + '\n' +
+    '  WHERE LOWER(c.group_name) LIKE LOWER(' + sqlStr_(cfg.funilGroupLike) + ')\n' +
     '    AND LOWER(TRIM(h.deal_stage)) IN (' + funilStagesInSql_() + ')\n' +
     '),\n' +
     'dono AS (\n' +  // pmp do dono do deal (primeira ativacao)
@@ -391,7 +402,7 @@ function criarTriggerFunil() {
 function testFunil() {
   var cfg = lerConfig_();
   var ini = String(cfg.inicio || '').slice(0, 10), fim = String(cfg.fim || '').slice(0, 10);
-  Logger.log('FUNIL janela %s -> %s | grupo %s | campanha %s', ini, fim, cfg.funilGroupName, cfg.funilCampanha);
+  Logger.log('FUNIL janela %s -> %s | grupo LIKE %s | campanha %s', ini, fim, cfg.funilGroupLike, cfg.funilCampanha);
   var passos = [
     ['base', function () { return sqlFunilBase_(cfg); }],
     ['ativados', function () { return sqlFunilAtivados_(cfg, ini, fim); }],
