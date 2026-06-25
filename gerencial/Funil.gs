@@ -123,6 +123,18 @@ function funilGrupoWhere_(cfg) {
   return 'LOWER(group_name) LIKE LOWER(' + sqlStr_(cfg.funilGroupLike) + ')';
 }
 
+// Telefone normalizado p/ cruzamento: so digitos, ultimos 11; NULL se < 10 digitos (evita lixo).
+// Neutraliza o DDI '55' (leads vem com 13, transactions sem DDI). Igual a phoneNorm_ da referencia.
+function phoneNorm_(col) {
+  var digits = "REGEXP_REPLACE(CAST(" + col + " AS STRING), r'[^0-9]', '')";
+  return "(CASE WHEN LENGTH(" + digits + ") >= 10 THEN RIGHT(" + digits + ", 11) END)";
+}
+
+// Chave de comprador distinto: e-mail normalizado OU telefone (ultimos 11 digitos).
+function funilBuyerKey_(emailCol, phoneCol) {
+  return "COALESCE(NULLIF(LOWER(TRIM(" + emailCol + ")), ''), " + phoneNorm_(phoneCol) + ")";
+}
+
 // Base do pipeline (deals do grupo) por origem, com TOTAL via ROLLUP.
 function sqlFunilBase_(cfg) {
   return 'SELECT\n' +
@@ -165,147 +177,173 @@ function sqlFunilAtivados_(cfg, ini, fim) {
     'GROUP BY dia, hora, pmp, origem';
 }
 
-// Fato de vendas (comprador distinto) por dia x pmp x origem do lead (match e-mail/telefone).
-// Sem match com lead -> origem '(sem match)'. Somar n por pmp = vendas do vendedor.
+// Fato de vendas (comprador distinto) por dia x pmp x origem do lead (match real e-mail/telefone).
+// Espelha sqlFunilVendasPmpOrigem da referencia, com a dimensao `dia` extra. Sem match -> '(sem match)'.
 function sqlFunilVendas_(cfg, ini, fim) {
   var t = sqlStr_(cfg.canalTvd);
-  return 'WITH vendas AS (\n' +
-    '  SELECT\n' +
-    "    FORMAT_DATE('%Y-%m-%d', transaction_dt) AS dia,\n" +
-    '    UPPER(seller_pmp) AS pmp,\n' +
-    '    LOWER(TRIM(email)) AS email,\n' +
-    "    RIGHT(REGEXP_REPLACE(CAST(phone AS STRING), r'[^0-9]', ''), 11) AS phone11\n" +
-    '  FROM `' + cfg.bqTable + '`\n' +
-    '  WHERE NOT COALESCE(is_refunded, FALSE)\n' +
-    '    AND sales_channel = ' + t + '\n' +
-    '    AND seller_pmp IS NOT NULL\n' +
-    '    AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-    '    AND transaction_dt BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
-    '),\n' +
-    'leads AS (\n' +
-    '  SELECT\n' +
-    '    ' + funilOrigemExpr_() + ' AS origem,\n' +
-    '    LOWER(TRIM(contact_email)) AS email,\n' +
-    "    RIGHT(REGEXP_REPLACE(CAST(contact_phone AS STRING), r'[^0-9]', ''), 11) AS phone11\n" +
+  return 'WITH legado_deals AS (\n' +
+    '  SELECT LOWER(TRIM(contact_email)) AS contact_email,\n' +
+    '         ' + phoneNorm_('contact_phone') + ' AS phone11,\n' +
+    '         ' + funilOrigemExpr_() + ' AS origem\n' +
     '  FROM `' + cfg.bqDealsCleaned + '`\n' +
     '  WHERE ' + funilGrupoWhere_(cfg) + '\n' +
     '),\n' +
-    'venda_origem AS (\n' +
-    '  SELECT v.dia, v.pmp, v.email, v.phone11,\n' +
-    '    COALESCE(le.origem, lp.origem) AS origem\n' +
-    '  FROM vendas v\n' +
-    '  LEFT JOIN leads le ON le.email = v.email AND v.email IS NOT NULL AND v.email != \'\'\n' +
-    '  LEFT JOIN leads lp ON lp.phone11 = v.phone11 AND v.phone11 IS NOT NULL AND LENGTH(v.phone11) = 11\n' +
+    'leg_email AS (\n' +
+    '  SELECT email, ANY_VALUE(origem) AS origem FROM (\n' +
+    '    SELECT DISTINCT contact_email AS email, origem FROM legado_deals\n' +
+    "    WHERE contact_email IS NOT NULL AND contact_email != ''\n" +
+    '  ) GROUP BY email\n' +
+    '),\n' +
+    'leg_phone AS (\n' +
+    '  SELECT phone11, ANY_VALUE(origem) AS origem FROM (\n' +
+    '    SELECT DISTINCT phone11, origem FROM legado_deals WHERE phone11 IS NOT NULL\n' +
+    '  ) GROUP BY phone11\n' +
+    '),\n' +
+    'vendas AS (\n' +
+    '  SELECT DISTINCT\n' +
+    "    FORMAT_DATE('%Y-%m-%d', t.transaction_dt) AS dia,\n" +
+    '    UPPER(t.seller_pmp) AS pmp,\n' +
+    "    COALESCE(ce.origem, cp.origem, '(sem match)') AS origem,\n" +
+    '    ' + funilBuyerKey_('t.user_email', 't.user_phone') + ' AS buyer\n' +
+    '  FROM `' + cfg.bqTable + '` t\n' +
+    '  LEFT JOIN leg_email ce ON LOWER(TRIM(t.user_email)) = ce.email\n' +
+    '  LEFT JOIN leg_phone cp ON ' + phoneNorm_('t.user_phone') + ' = cp.phone11\n' +
+    '  WHERE NOT COALESCE(t.is_refunded, FALSE)\n' +
+    '    AND t.sales_channel = ' + t + '\n' +
+    '    AND t.seller_pmp IS NOT NULL\n' +
+    '    AND UPPER(t.product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
+    '    AND t.transaction_dt BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
     ')\n' +
-    'SELECT\n' +
-    '  dia,\n' +
-    "  COALESCE(NULLIF(pmp, ''), '(sem pmp)') AS pmp,\n" +
-    "  COALESCE(origem, '(sem match)') AS origem,\n" +
-    '  COUNT(DISTINCT COALESCE(email, phone11)) AS n\n' +
-    'FROM venda_origem\n' +
+    'SELECT dia, pmp, origem, COUNT(DISTINCT buyer) AS n\n' +
+    'FROM vendas\n' +
     'GROUP BY dia, pmp, origem';
 }
 
-// Conversao geral: leads unicos (dedup email) x leads que compraram (match email/telefone).
+// Conversao geral: leads unicos (dedup email) x leads que compraram (match email OU telefone).
+// Espelha sqlLeadsEConversao da referencia (buyers de transactions com user_email/user_phone).
 function sqlFunilConversaoGeral_(cfg, ini, fim) {
   var t = sqlStr_(cfg.canalTvd);
   return 'WITH leads_u AS (\n' +
-    '  SELECT LOWER(TRIM(lead_email)) AS email,\n' +
-    "    ANY_VALUE(RIGHT(REGEXP_REPLACE(CAST(lead_phone_number AS STRING), r'[^0-9]', ''), 11)) AS phone11\n" +
-    '  FROM `' + cfg.bqLeads + '`\n' +
-    '  WHERE campanha = ' + sqlStr_(cfg.funilCampanha) + '\n' +
-    '    AND lead_email IS NOT NULL\n' +
+    '  SELECT email, ANY_VALUE(phone) AS phone FROM (\n' +
+    '    SELECT LOWER(TRIM(lead_email)) AS email, ' + phoneNorm_('lead_phone_number') + ' AS phone\n' +
+    '    FROM `' + cfg.bqLeads + '`\n' +
+    '    WHERE campanha = ' + sqlStr_(cfg.funilCampanha) + '\n' +
+    "      AND lead_email IS NOT NULL AND TRIM(lead_email) != ''\n" +
+    '  )\n' +
     '  GROUP BY email\n' +
     '),\n' +
-    'compradores AS (\n' +
-    '  SELECT DISTINCT LOWER(TRIM(email)) AS email,\n' +
-    "    RIGHT(REGEXP_REPLACE(CAST(phone AS STRING), r'[^0-9]', ''), 11) AS phone11\n" +
+    'buyers AS (\n' +
+    '  SELECT DISTINCT LOWER(TRIM(user_email)) AS email, ' + phoneNorm_('user_phone') + ' AS phone\n' +
     '  FROM `' + cfg.bqTable + '`\n' +
     '  WHERE NOT COALESCE(is_refunded, FALSE)\n' +
     '    AND sales_channel = ' + t + '\n' +
     '    AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
     '    AND transaction_dt BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
+    "    AND user_email IS NOT NULL AND TRIM(user_email) != ''\n" +
     ')\n' +
     'SELECT\n' +
     '  (SELECT COUNT(*) FROM leads_u) AS leads_unicos,\n' +
-    '  (SELECT COUNT(DISTINCT l.email) FROM leads_u l\n' +
-    '     WHERE EXISTS (SELECT 1 FROM compradores c\n' +
-    '       WHERE c.email = l.email OR (LENGTH(l.phone11) = 11 AND c.phone11 = l.phone11))) AS compradores_lead';
+    '  (SELECT COUNT(*) FROM leads_u l\n' +
+    '     WHERE l.email IN (SELECT email FROM buyers)\n' +
+    '        OR (l.phone IS NOT NULL AND l.phone IN (SELECT phone FROM buyers WHERE phone IS NOT NULL))\n' +
+    '  ) AS compradores_lead';
 }
 
-// ===== TMR (tempo medio de resposta) — par cliente -> 1a resposta humana =====
-// CTE base reusada pelas 3 granularidades.
+// ===== TMR (tempo medio de resposta) — par msg do CLIENTE -> 1a resposta HUMANA =====
+// CTE base reusada pelas 3 granularidades. Espelha funilTmrRespostasCte_ da referencia:
+// vendedor = PMP do REMETENTE da msg (email->user_pmp via history); dia/hora pela msg do cliente
+// (prev_at). created_at das mensagens ja e BRT (sem conversao). Devolve a CTE `respostas`.
 function funilTmrBaseCte_(cfg, ini, fim) {
   var canais = cfg.tvdChannelIds.map(function (id) { return sqlStr_(id); }).join(', ');
-  return 'WITH ativados AS (\n' +
-    '  SELECT DISTINCT h.deal_id, c.contact_id, ' + funilOrigemExpr_() + ' AS origem\n' +
-    '  FROM `' + cfg.bqDealsHistory + '` h\n' +
-    '  JOIN `' + cfg.bqDealsCleaned + '` c USING (deal_id)\n' +
-    '  WHERE LOWER(c.group_name) LIKE LOWER(' + sqlStr_(cfg.funilGroupLike) + ')\n' +
-    '    AND LOWER(TRIM(h.deal_stage)) IN (' + funilStagesInSql_() + ')\n' +
+  return 'WITH legado_deals AS (\n' +
+    '  SELECT deal_id, contact_id, ' + funilOrigemExpr_() + ' AS origem\n' +
+    '  FROM `' + cfg.bqDealsCleaned + '`\n' +
+    '  WHERE ' + funilGrupoWhere_(cfg) + '\n' +
     '),\n' +
-    'dono AS (\n' +  // pmp do dono do deal (primeira ativacao)
-    '  SELECT deal_id, UPPER(user_pmp) AS pmp FROM (\n' +
-    '    SELECT deal_id, user_pmp,\n' +
-    '      ROW_NUMBER() OVER (PARTITION BY deal_id ORDER BY entered_stage_at, deal_stage) AS rn\n' +
-    '    FROM `' + cfg.bqDealsHistory + '`\n' +
-    '    WHERE LOWER(TRIM(deal_stage)) IN (' + funilStagesInSql_() + ')\n' +
-    '  ) WHERE rn = 1\n' +
+    'activated_contacts AS (\n' +
+    '  SELECT l.contact_id, ANY_VALUE(l.origem) AS origem\n' +
+    '  FROM `' + cfg.bqDealsHistory + '` h\n' +
+    '  JOIN legado_deals l USING (deal_id)\n' +
+    '  WHERE LOWER(TRIM(h.deal_stage)) IN (' + funilStagesInSql_() + ')\n' +
+    '  GROUP BY l.contact_id\n' +
+    '),\n' +
+    'vendedor_dim AS (\n' +  // email normalizado (sem +gp) -> PMP do dono no history
+    "  SELECT REGEXP_REPLACE(LOWER(TRIM(user_email)), r'\\+[^@]*', '') AS email,\n" +
+    '         ANY_VALUE(UPPER(user_pmp)) AS pmp\n' +
+    '  FROM `' + cfg.bqDealsHistory + '`\n' +
+    '  WHERE user_email IS NOT NULL GROUP BY email\n' +
     '),\n' +
     'msgs AS (\n' +
     '  SELECT m.chat_contact_id, m.message_id, m.created_at, m.message_type, m.message_source,\n' +
-    '    LAG(m.message_type) OVER w AS prev_type,\n' +
-    '    LAG(m.created_at)   OVER w AS prev_at\n' +
+    "         REGEXP_REPLACE(LOWER(TRIM(m.user_email)), r'\\+[^@]*', '') AS email\n" +
     '  FROM `' + cfg.bqMessages + '` m\n' +
-    '  JOIN ativados a ON a.contact_id = m.chat_contact_id\n' +
-    '  WHERE m.chat_channel_account_id IN (' + canais + ')\n' +
-    '  WINDOW w AS (PARTITION BY m.chat_contact_id ORDER BY m.created_at, m.message_id)\n' +
+    '  JOIN activated_contacts a ON a.contact_id = m.chat_contact_id\n' +
+    '  WHERE m.created_at >= DATETIME ' + sqlStr_(ini) + '\n' +
+    '    AND m.created_at < DATETIME_ADD(DATETIME ' + sqlStr_(fim) + ', INTERVAL 1 DAY)\n' +
+    '    AND m.chat_channel_account_id IN (' + canais + ')\n' +
+    "    AND (m.message_type = 'CUSTOMER' OR (m.message_type = 'USER' AND m.message_source = 'CHAT'))\n" +
     '),\n' +
-    'resp AS (\n' +
-    '  SELECT a.deal_id, a.origem, d.pmp,\n' +
-    "    FORMAT_DATE('%Y-%m-%d', DATE(msgs.created_at)) AS dia,\n" +
-    '    EXTRACT(HOUR FROM msgs.created_at) AS hora,\n' +
-    '    DATETIME_DIFF(msgs.created_at, msgs.prev_at, SECOND) AS resp_seconds\n' +
-    '  FROM msgs\n' +
-    '  JOIN ativados a ON a.contact_id = msgs.chat_contact_id\n' +
-    '  LEFT JOIN dono d ON d.deal_id = a.deal_id\n' +
-    "  WHERE msgs.message_type = 'USER' AND msgs.message_source = 'CHAT'\n" +
-    "    AND msgs.prev_type = 'CUSTOMER'\n" +
-    '    AND DATE(msgs.created_at) BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
+    'seq AS (\n' +
+    '  SELECT *, LAG(message_type) OVER w AS prev_type, LAG(created_at) OVER w AS prev_at\n' +
+    '  FROM msgs WINDOW w AS (PARTITION BY chat_contact_id ORDER BY created_at, message_id)\n' +
+    '),\n' +
+    'respostas AS (\n' +
+    '  SELECT ac.origem,\n' +
+    '         v.pmp AS vendedor_pmp,\n' +
+    "         FORMAT_DATE('%Y-%m-%d', DATE(s.prev_at)) AS dia,\n" +
+    '         EXTRACT(HOUR FROM s.prev_at) AS hora_brt,\n' +
+    '         DATETIME_DIFF(s.created_at, s.prev_at, SECOND) AS resp_seconds\n' +
+    '  FROM seq s\n' +
+    '  JOIN activated_contacts ac ON ac.contact_id = s.chat_contact_id\n' +
+    '  LEFT JOIN vendedor_dim v ON v.email = s.email\n' +
+    "  WHERE s.message_type = 'USER' AND s.prev_type = 'CUSTOMER'\n" +
     ')\n';
 }
+
+// Dimensoes p/ GROUPING SETS: NULL quando agregada (= "todos"), senao o valor (com fallback).
+// Distingue agregado (NULL) de "(sem pmp)"/"(sem origem)" real.
+var FUNIL_TMR_DIM_PMP_ = "IF(GROUPING(vendedor_pmp)=1, NULL, COALESCE(vendedor_pmp, '(sem pmp)')) AS pmp";
+var FUNIL_TMR_DIM_ORIGEM_ = "IF(GROUPING(origem)=1, NULL, COALESCE(origem, '(sem origem)')) AS origem";
 
 // TMR janela total: grouping sets () (pmp) (origem) (pmp,origem).
 function sqlFunilTmr_(cfg, ini, fim) {
   return funilTmrBaseCte_(cfg, ini, fim) +
-    'SELECT pmp, origem,\n' +
+    'SELECT\n' +
+    '  ' + FUNIL_TMR_DIM_PMP_ + ',\n' +
+    '  ' + FUNIL_TMR_DIM_ORIGEM_ + ',\n' +
     '  COUNT(*) AS respostas,\n' +
     '  ROUND(AVG(resp_seconds)/60, 1) AS tmr_medio_min,\n' +
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(50)]/60, 1) AS tmr_mediana_min\n' +
-    'FROM resp\n' +
-    'GROUP BY GROUPING SETS ((), (pmp), (origem), (pmp, origem))';
+    'FROM respostas\n' +
+    'GROUP BY GROUPING SETS ((), (vendedor_pmp), (origem), (vendedor_pmp, origem))';
 }
 
 // TMR por dia: grouping sets (dia) (dia,pmp) (dia,origem).
 function sqlFunilTmrDia_(cfg, ini, fim) {
   return funilTmrBaseCte_(cfg, ini, fim) +
-    'SELECT dia, pmp, origem,\n' +
+    'SELECT\n' +
+    '  dia,\n' +
+    '  ' + FUNIL_TMR_DIM_PMP_ + ',\n' +
+    '  ' + FUNIL_TMR_DIM_ORIGEM_ + ',\n' +
     '  COUNT(*) AS respostas,\n' +
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(50)]/60, 1) AS tmr_mediana_min\n' +
-    'FROM resp\n' +
-    'GROUP BY GROUPING SETS ((dia), (dia, pmp), (dia, origem))';
+    'FROM respostas\n' +
+    'GROUP BY GROUPING SETS ((dia), (dia, vendedor_pmp), (dia, origem))';
 }
 
 // TMR por hora: grouping sets (hora) (hora,origem) (hora,pmp) (hora,pmp,origem) com faixa p25-p75.
 function sqlFunilTmrHora_(cfg, ini, fim) {
   return funilTmrBaseCte_(cfg, ini, fim) +
-    'SELECT hora, pmp, origem,\n' +
+    'SELECT\n' +
+    '  hora_brt AS hora,\n' +
+    '  ' + FUNIL_TMR_DIM_PMP_ + ',\n' +
+    '  ' + FUNIL_TMR_DIM_ORIGEM_ + ',\n' +
     '  COUNT(*) AS respostas,\n' +
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(25)]/60, 1) AS p25_min,\n' +
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(50)]/60, 1) AS p50_min,\n' +
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(75)]/60, 1) AS p75_min\n' +
-    'FROM resp\n' +
-    'GROUP BY GROUPING SETS ((hora), (hora, origem), (hora, pmp), (hora, pmp, origem))';
+    'FROM respostas\n' +
+    'GROUP BY GROUPING SETS ((hora_brt), (hora_brt, origem), (hora_brt, vendedor_pmp), (hora_brt, vendedor_pmp, origem))';
 }
 
 // ===================== MAPPERS (linhas do BQ -> shape normalizado) =====================
