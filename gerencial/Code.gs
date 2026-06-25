@@ -25,7 +25,17 @@ var DEFAULTS = {
   FOTOS_BASE:      'https://raw.githubusercontent.com/ANT0Ni0-R/Dashboard-Campeonato/main/assets/fotos/',
   BQ_PROJECT:      'grupo-primo-prd',
   BQ_TABLE:        'grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request',
-  CANAL_TVD:       'TVD'
+  CANAL_TVD:       'TVD',
+  // --- Funil (snapshot proprio; tabelas do CRM/leads/mensagens) ---
+  FUNIL_GROUP_NAME:    'O Legado',
+  FUNIL_CAMPANHA:      'BAR0001',
+  BQ_DEALS_HISTORY:    'grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_history_cleaned',
+  BQ_DEALS_CLEANED:    'grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_cleaned',
+  BQ_DEALS_ENRICHED:   'grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_enriched',
+  BQ_LEADS:            'grupo-primo-prd.mart_grupo.mrt_grupo__leads',
+  BQ_MESSAGES:         'grupo-primo-prd.staging_clint.stg_clint__messages',
+  // canais TVD do Clint (chat_channel_account_id) usados no TMR — separados por virgula
+  TVD_CHANNEL_IDS:     'b5a67dba-4e8a-4ec0-9ef1-3e9fd4f6ee7b,fa4ca424-9eff-4d67-b208-22b4bc254470,2b86238b-e7af-4a00-98a5-c6bc1c25b99a,16d9b4ae-0c7f-4fe2-a8bd-b1385cb9b59e'
 };
 
 // ===== SERVE A PAGINA =====
@@ -37,7 +47,9 @@ function doGet() {
     return negado.evaluate().setTitle('Acesso negado')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
   }
-  return HtmlService.createTemplateFromFile('Index')
+  var tpl = HtmlService.createTemplateFromFile('Index');
+  tpl.papel = papelAtivo_();  // o front usa p/ mostrar a aba Funil so a gerencial
+  return tpl
     .evaluate()
     .setTitle('Dashboard Gerencial')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
@@ -52,15 +64,25 @@ function include(name) {
 // Deploy "Executar como: usuario que acessa" + acesso ao dominio -> da o e-mail do visitante.
 function emailAtivo_() { return String(Session.getActiveUser().getEmail() || '').trim().toLowerCase(); }
 
-// Le a coluna A da aba "Acessos" (e-mails liberados). Vazio/sem aba -> allowlist nao configurada.
-function lerAcessos_() {
+// Le a aba "Acessos" (Email | Nivel | PMP) -> { email: { nivel, pmp } }. Fonte unica de acesso.
+function lerAcessosMapa_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss && ss.getSheetByName('Acessos');
-  if (!sh) return [];
-  return sh.getDataRange().getValues().map(function (r) {
-    return String(r[0] || '').trim().toLowerCase();
-  }).filter(function (e) { return e && e.indexOf('@') >= 0 && e !== 'email'; });
+  var mapa = {};
+  if (!sh) return mapa;
+  sh.getDataRange().getValues().forEach(function (r) {
+    var email = String(r[0] || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0 || email === 'email') return;
+    mapa[email] = {
+      nivel: String(r[1] || '').trim().toLowerCase(),
+      pmp:   String(r[2] || '').trim().toUpperCase()
+    };
+  });
+  return mapa;
 }
+
+// E-mails liberados (coluna A). Vazio/sem aba -> allowlist nao configurada (so o dominio filtra).
+function lerAcessos_() { return Object.keys(lerAcessosMapa_()); }
 
 // Autorizado se a allowlist estiver vazia (so o dominio filtra) OU o e-mail estiver nela.
 function emailAutorizado_(email) {
@@ -69,11 +91,25 @@ function emailAutorizado_(email) {
   return !!email && lista.indexOf(email) >= 0;
 }
 
+// Papel (coluna Nivel) do visitante, em minusculas. '' se nao cadastrado.
+function papelAtivo_() {
+  var reg = lerAcessosMapa_()[emailAtivo_()];
+  return reg ? reg.nivel : '';
+}
+
 // Guard para as funcoes de dados (defesa em profundidade: google.script.run e chamavel direto).
 function exigirAcesso_() {
   var email = emailAtivo_();
   if (!emailAutorizado_(email)) {
     throw new Error('Acesso negado' + (email ? ' para ' + email : ' (usuario nao identificado)') + '.');
+  }
+}
+
+// Guard extra: so quem tem Nivel "gerencial" na aba Acessos ve dados do Funil.
+function exigirGerencial_() {
+  exigirAcesso_();
+  if (papelAtivo_() !== 'gerencial') {
+    throw new Error('Acesso negado: a visao Funil e exclusiva do nivel gerencial.');
   }
 }
 
@@ -116,6 +152,16 @@ function lerConfig_() {
     bqTable:       kv['bq_table'] || DEFAULTS.BQ_TABLE,
     bqProductLike: kv['bq_product_like'] || '%',
     canalTvd:      kv['canal_tvd'] || DEFAULTS.CANAL_TVD,
+    // --- Funil (tabelas/filtros do snapshot de ativacao) ---
+    funilGroupName:  kv['funil_group_name'] || DEFAULTS.FUNIL_GROUP_NAME,
+    funilCampanha:   kv['funil_campanha'] || DEFAULTS.FUNIL_CAMPANHA,
+    bqDealsHistory:  kv['bq_deals_history_table'] || DEFAULTS.BQ_DEALS_HISTORY,
+    bqDealsCleaned:  kv['bq_deals_cleaned_table'] || DEFAULTS.BQ_DEALS_CLEANED,
+    bqDealsEnriched: kv['bq_deals_enriched_table'] || DEFAULTS.BQ_DEALS_ENRICHED,
+    bqLeads:         kv['bq_leads_table'] || DEFAULTS.BQ_LEADS,
+    bqMessages:      kv['bq_messages_table'] || DEFAULTS.BQ_MESSAGES,
+    tvdChannelIds:   (kv['tvd_channel_ids'] || DEFAULTS.TVD_CHANNEL_IDS)
+                       .split(/[,;\s]+/).map(function (s) { return s.trim(); }).filter(Boolean),
     // --- conexao/segredos (Script Properties; url pode vir tambem da aba) ---
     url:            kv['url'] || p.getProperty('SUPABASE_URL') || DEFAULTS.SUPABASE_URL,
     serviceKey:     p.getProperty('SUPABASE_SERVICE_ROLE_KEY') || p.getProperty('SUPABASE_SECRET_KEY'),
@@ -303,19 +349,9 @@ function fetchTransactions_(cfg) {
 
 // PMP do closer logado: aba "Acessos" (Email | Nivel | PMP) -> PMP canonico do e-mail do visitante.
 function meuPmp_(cfg) {
-  var email = emailAtivo_();
-  if (!email) return '';
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss && ss.getSheetByName('Acessos');
-  if (!sh) return '';
-  var values = sh.getDataRange().getValues();
-  for (var i = 0; i < values.length; i++) {
-    if (String(values[i][0] || '').trim().toLowerCase() === email) {
-      var pmp = String(values[i][2] || '').trim().toUpperCase();
-      return pmp.length === 3 ? canonCode_(pmp, cfg.aliasPmp) : '';
-    }
-  }
-  return '';
+  var reg = lerAcessosMapa_()[emailAtivo_()];
+  var pmp = reg ? reg.pmp : '';
+  return pmp.length === 3 ? canonCode_(pmp, cfg.aliasPmp) : '';
 }
 
 // ===== CONSULTA DE VENDAS (ultimos 7 dias, SO o produto do dash) — via google.script.run =====

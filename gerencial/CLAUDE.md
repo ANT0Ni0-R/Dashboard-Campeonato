@@ -17,9 +17,10 @@ Menu fixo no topo, tema dark/light, controle de acesso por aba `Acessos`.
 
 | Arquivo | Papel |
 |---|---|
-| `Code.gs` | Backend principal: acesso, Supabase real-time, agregacoes, listarVendas |
-| `BigQuery.gs` | Snapshot BigQuery (trigger 30 min), leitura da aba `Snapshot_BQ` |
-| `Index.html` | HTML principal: menu fixo + grid 4 quadrantes |
+| `Code.gs` | Backend principal: acesso (papel/Nivel), Supabase real-time, agregacoes, listarVendas |
+| `BigQuery.gs` | Snapshot BigQuery (trigger 30 min) + helpers de snapshot fragmentado (`gravarJsonChunked_`/`lerJsonChunked_`) |
+| `Funil.gs` | Visao Funil (so gerencial): queries de ativacao/conversao/TMR + snapshot fragmentado na aba `Snapshot_Funil` |
+| `Index.html` | HTML principal: menu fixo + grid 4 quadrantes + view Funil (rolavel) |
 | `Stylesheet.html` | CSS (incluido via `<?= include('Stylesheet') ?>`) |
 | `JavaScript.html` | JS do cliente (incluido via `<?= include('JavaScript') ?>`) |
 | `AccessDenied.html` | Pagina de acesso negado |
@@ -28,19 +29,22 @@ Menu fixo no topo, tema dark/light, controle de acesso por aba `Acessos`.
 
 ## Deploy
 
-**1 Google Sheet por dashboard.** Abas necessarias: `Config`, `Participantes`, `Acessos` (colunas: Email | Nivel | PMP), `Snapshot_BQ`.
+**1 Google Sheet por dashboard.** Abas necessarias: `Config`, `Participantes`, `Acessos` (colunas: Email | Nivel | PMP), `Snapshot_BQ`, `Snapshot_Funil`.
 
 Deploy como: **"Executar como: usuario que acessa"** + acesso ao **dominio**.
-Isso permite que o `Code.gs` leia o e-mail do visitante para checar a allowlist.
+Isso permite que o `Code.gs` leia o e-mail do visitante para checar a allowlist e o **papel**
+(coluna `Nivel`). So `Nivel = gerencial` ve a aba **Funil**.
 
 Para publicar mudancas: copiar os arquivos `.gs` e `.html` para o editor em `script.google.com` e atualizar o deploy (gerenciar implantacoes → nova versao). O Apps Script nao le automaticamente do GitHub.
 
 ## `Code.gs` — funcoes
 
 **Acesso e setup:**
-- `doGet(e)` — checa acesso, serve `Index` ou `AccessDenied`
+- `doGet(e)` — checa acesso, injeta `papel` no template, serve `Index` ou `AccessDenied`
 - `lerConfig_()` / `lerParticipantes_()` — le abas Config e Participantes da planilha
+- `lerAcessosMapa_()` — fonte unica da aba Acessos: `{ email: { nivel, pmp } }`
 - `emailAtivo_()` / `lerAcessos_()` / `emailAutorizado_()` / `exigirAcesso_()` — controle de acesso
+- `papelAtivo_()` / `exigirGerencial_()` — papel do visitante (coluna Nivel); gate da visao Funil
 
 **Supabase real-time:**
 - `fetchTransactions_(config)` — faz REST call ao Supabase com JWT server-side
@@ -69,6 +73,21 @@ Para publicar mudancas: copiar os arquivos `.gs` e `.html` para o editor em `scr
 
 **Configuracao BigQuery:** projeto `grupo-primo-prd` (com hifens — obrigatorio), dataset `mart_sales_team`, tabela `mrt_sales_team__transactions_with_sales_request`. TVD = `sales_channel = 'TVD'`.
 
+**Snapshot fragmentado:** `gravarJsonChunked_(sh, ts, json)` / `lerJsonChunked_(sh)` quebram o JSON em pedacos de ~40k chars (limite de ~50k/celula). Usados pelo Funil; o `Snapshot_BQ` continua em celula unica (cabe).
+
+## `Funil.gs` — funcoes (visao Funil, so gerencial)
+
+Mesmo modelo da Comissao: trigger roda como **dono**, grava o snapshot; o front so **le**.
+
+- `getFunilData()` — entry point do front. `exigirGerencial_()` + le `Snapshot_Funil` (chunked) + parse.
+- `snapshotFunil()` — trigger de 30 min: roda as queries, monta o shape normalizado, grava chunked.
+- `montaSnapshotFunil_()` — orquestra as queries e os mappers no shape consumido pelo front.
+- SQL builders: `sqlFunilBase_` (pipeline por origem, ROLLUP), `sqlFunilAtivados_` (fato dia x hora x pmp x origem; 1a etapa de ativacao por deal), `sqlFunilVendas_` (vendas distintas com match lead por email/telefone), `sqlFunilConversaoGeral_` (leads x compradores), `sqlFunilTmr_`/`sqlFunilTmrDia_`/`sqlFunilTmrHora_` (TMR via GROUPING SETS).
+- Mappers `map*_` — convertem as linhas cruas do BQ no shape normalizado (isolam nomes de coluna).
+- `criarTriggerFunil()` / `testFunil()` — instala o trigger / loga contagens de cada query (valide as colunas aqui contra as amostras antes de produzir).
+
+**IMPORTANTE:** os nomes de coluna seguem o doc de contexto e **precisam ser validados** com `testFunil()` contra as amostras reais das tabelas. O front consome o shape normalizado, entao ajustes de coluna ficam restritos a `Funil.gs`. Etapas de "ativado" no array `FUNIL_STAGES_ATIVADO`.
+
 ## `JavaScript.html` — frontend (4 quadrantes)
 
 Supabase e BigQuery devolvem o **mesmo shape**; ha um unico path de render.
@@ -92,6 +111,20 @@ estilizado (`listaHTML`/`.copa-list`). Com **menos de 4 vendedores**, `renderRan
 `#rank-list` com a classe `podium-only` e o podio ocupa todo o quadrante.
 
 Regra: **todo grafico exibe data labels** (`chartjs-plugin-datalabels`). Quando os rotulos se sobrepoem, usar `display: 'auto'`. Graficos empilhados tambem exibem o rotulo do total no topo.
+
+### View Funil (`#view-funil`, so gerencial)
+
+Pagina **rolavel** (nao o grid 4 quadrantes). `carregarFunil()` -> `getFunilData()` -> `renderFunil()`.
+Os filtros **Dia / Origem / Vendedor** (no topo) e os toggles **Dia/Lancamento** (por painel) sao
+**client-side** sobre o snapshot pre-computado (`state.funil`) — sem nova query. `aplicarFunil()`
+re-renderiza todos os paineis. Como contagens agregam, KPIs/origem/tabela/curvas derivam do fato
+fino `ativados [{dia,hora,pmp,origem,n}]`; o **TMR** (percentis nao recombinam) vem pre-agregado
+por grao (`tmrTotal`/`tmrDia`/`tmrHora`, com `pmp`/`origem` = `null` para "todos").
+
+Paineis: 6 KPIs; combos hora-a-hora e dia-a-dia (barra volume + linha % do pipeline, `funilComboChart`);
+ativacao por origem (barras HTML); tabela por vendedor (mix de origens inline + vendas/conv/TMR);
+TMR hora-a-hora (mediana + faixa p25-p75); bolha TMR x conversao. Reusa `themeColors`, `SELLER_COLORS`,
+`cumulativo`, `diaLabel`; formatadores `formatInt`/`pct`/`pct0`/`pct2`/`formatMin`.
 
 ## `Stylesheet.html` + `Index.html`
 

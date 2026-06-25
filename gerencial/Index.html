@@ -31,6 +31,9 @@
       <button class="active" data-mode="supabase">⚡ Real-time</button>
       <button data-mode="bigquery">💰 Comissao</button>
       <button data-mode="vendas">🔎 Consulta de vendas</button>
+      <? if (papel === 'gerencial') { ?>
+      <button data-mode="funil">📊 Funil</button>
+      <? } ?>
     </div>
 
     <div class="status">
@@ -132,6 +135,88 @@
               <tbody id="gerais-tbody"><tr><td colspan="5" class="vendas-msg">—</td></tr></tbody>
             </table>
           </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: Funil (so nivel gerencial) ===== -->
+    <div id="view-funil" hidden>
+      <!-- Barra de filtros -->
+      <div class="funil-bar">
+        <span class="funil-bar-title">Ativacao</span>
+        <span class="funil-prod" id="funil-prod"></span>
+        <label class="funil-filtro">Dia <select id="f-dia"></select></label>
+        <label class="funil-filtro">Origem <select id="f-origem"></select></label>
+        <label class="funil-filtro">Vendedor <select id="f-vend"></select></label>
+        <span class="funil-scope" id="funil-scope"></span>
+        <div class="spacer"></div>
+        <button class="btn-sec" onclick="limparFunil()">limpar</button>
+      </div>
+
+      <!-- KPIs -->
+      <div class="funil-kpis" id="funil-kpis"></div>
+
+      <!-- Combos: hora a hora + dia a dia -->
+      <div class="funil-row2">
+        <section class="funil-card">
+          <div class="funil-card-head">
+            <span class="funil-card-title">ATIVACOES HORA A HORA</span>
+            <span class="funil-card-sub">dia selecionado · volume + % do pipeline</span>
+          </div>
+          <div class="funil-chart"><canvas id="funil-hora"></canvas></div>
+        </section>
+        <section class="funil-card">
+          <div class="funil-card-head">
+            <span class="funil-card-title">ATIVACOES DIA A DIA</span>
+            <span class="funil-card-sub">lancamento · volume + % do pipeline acum.</span>
+          </div>
+          <div class="funil-chart"><canvas id="funil-dia"></canvas></div>
+        </section>
+      </div>
+
+      <!-- Ativacao por origem -->
+      <section class="funil-card">
+        <div class="funil-card-head">
+          <span class="funil-card-title">ATIVACAO POR ORIGEM</span>
+          <span class="funil-card-sub">taxa de ativacao + conversao (match real)</span>
+          <div class="seg" id="seg-funil-origem">
+            <button data-scope="dia">Dia</button>
+            <button class="active" data-scope="lancamento">Lancamento</button>
+          </div>
+        </div>
+        <div class="funil-origem" id="funil-origem"></div>
+      </section>
+
+      <!-- Por vendedor -->
+      <section class="funil-card">
+        <div class="funil-card-head">
+          <span class="funil-card-title">POR VENDEDOR — ATIVADOS x VENDAS x CONVERSAO x TMR</span>
+          <span class="funil-card-sub">barra = mix de origens dos ativados</span>
+          <div class="seg" id="seg-funil-vend">
+            <button data-scope="dia">Dia</button>
+            <button class="active" data-scope="lancamento">Lancamento</button>
+          </div>
+        </div>
+        <div class="funil-tabela-wrap">
+          <table class="funil-tabela" id="funil-tabela"></table>
+        </div>
+      </section>
+
+      <!-- TMR hora a hora + bolha TMR x conversao -->
+      <div class="funil-row2">
+        <section class="funil-card">
+          <div class="funil-card-head">
+            <span class="funil-card-title">TMR HORA A HORA</span>
+            <span class="funil-card-sub">total · mediana + faixa p25-p75</span>
+          </div>
+          <div class="funil-chart"><canvas id="funil-tmr-hora"></canvas></div>
+        </section>
+        <section class="funil-card">
+          <div class="funil-card-head">
+            <span class="funil-card-title">CORRELACAO TMR x CONVERSAO</span>
+            <span class="funil-card-sub">por vendedor · X=TMR mediana · Y=conversao · bolha=ativados</span>
+          </div>
+          <div class="funil-chart"><canvas id="funil-bolha"></canvas></div>
         </section>
       </div>
     </div>

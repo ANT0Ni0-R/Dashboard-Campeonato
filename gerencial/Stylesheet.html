@@ -247,6 +247,61 @@
   .vendas-msg { text-align: center; padding: 3rem; color: var(--text-2); }
   .vendas-msg.err { color: var(--red); }
 
+  /* ===== View: Funil (so nivel gerencial) — pagina rolavel ===== */
+  #view-funil { height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 1vh;
+    padding-right: 0.3rem; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  #view-funil::-webkit-scrollbar { width: 6px; }
+  #view-funil::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .funil-bar { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem 0.9rem; flex-shrink: 0; }
+  .funil-bar-title { font-family: var(--font-title); font-weight: 800; font-size: 0.95rem; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+  .funil-prod { font-size: 0.78rem; color: var(--text-2); }
+  .funil-filtro { display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .funil-filtro select { font-family: var(--font-body); font-size: 0.8rem; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.5rem; }
+  .funil-filtro select:focus { outline: none; border-color: var(--gold); }
+  .funil-scope { font-size: 0.72rem; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 0.2rem 0.7rem; }
+
+  .funil-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.8vw; flex-shrink: 0; }
+  .funil-kpis .kpi-card { padding: 0.8vh 0.9vw; }
+  .funil-kpis .kpi-main { font-size: clamp(1.1rem, 1.8vw, 1.9rem); color: var(--gold); }
+
+  .funil-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1vw; flex-shrink: 0; }
+  .funil-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 0.9vh 0.9vw; display: flex; flex-direction: column; min-width: 0; }
+  .funil-card-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6vh; flex-wrap: wrap; }
+  .funil-card-title { font-family: var(--font-title); font-weight: 800; font-size: 0.8rem; color: var(--gold); text-transform: uppercase; letter-spacing: 0.5px; }
+  .funil-card-sub { font-size: 0.72rem; color: var(--text-muted); }
+  .funil-card-head .seg { margin-left: auto; }
+  .funil-chart { position: relative; height: 230px; }
+
+  /* Ativacao por origem (barras HTML) */
+  .funil-origem { display: flex; flex-direction: column; gap: 0.5vh; }
+  .origem-row { display: grid; grid-template-columns: 150px 1fr 70px 80px; gap: 0.7rem; align-items: center; }
+  .origem-head span { font-size: 0.64rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; text-align: right; }
+  .origem-nome { font-size: 0.82rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .origem-bar { position: relative; height: 22px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+  .origem-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--blue), #60a5fa); border-radius: 6px; }
+  .origem-val { position: absolute; right: 0.5rem; top: 0; line-height: 22px; font-size: 0.72rem; color: var(--text); font-variant-numeric: tabular-nums; }
+  .origem-num { text-align: right; font-family: var(--font-title); font-weight: 800; font-size: 0.85rem; color: var(--text); }
+  .origem-num.conv { color: var(--gold); }
+
+  /* Tabela por vendedor (mix de origens inline) */
+  .funil-tabela-wrap { overflow-x: auto; }
+  table.funil-tabela { width: 100%; border-collapse: collapse; }
+  table.funil-tabela th { padding: 0.5rem 0.7rem; font-size: 0.64rem; color: var(--text-2); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.funil-tabela th.num, table.funil-tabela td.num { text-align: right; }
+  table.funil-tabela td { padding: 0.45rem 0.7rem; font-size: 0.82rem; border-bottom: 1px solid var(--grid-line); }
+  table.funil-tabela tr:hover td { background: var(--surface-2); }
+  .funil-tabela .v-nome { font-family: var(--font-title); font-weight: 700; white-space: nowrap; }
+  .funil-tabela .num { font-variant-numeric: tabular-nums; }
+  .funil-tabela .num.pos { color: var(--green); font-weight: 700; }
+  .funil-tabela .num.neg { color: var(--red); font-weight: 700; }
+  .funil-tabela .num.dim { color: var(--text-muted); }
+  .funil-tabela .v-mix { width: 32%; min-width: 220px; }
+  .mix-bar { display: flex; height: 18px; border-radius: 5px; overflow: hidden; background: var(--surface-2); }
+  .mix-seg { display: flex; align-items: center; justify-content: center; font-size: 0.58rem; font-weight: 700; color: #0b1120; overflow: hidden; white-space: nowrap; }
+
   .q-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.85rem; text-align: center; }
 
   @keyframes pulse { from { opacity: 0.55; } to { opacity: 1; } }
@@ -262,5 +317,8 @@
     .kpi-scope-label { writing-mode: horizontal-tb; transform: none; grid-column: 1 / -1; justify-content: flex-start; }
     .vendas-split { flex-direction: column; }
     .vendas-block { min-height: 40vh; }
+    .funil-kpis { grid-template-columns: repeat(3, 1fr); }
+    .funil-row2 { grid-template-columns: 1fr; }
+    .origem-row { grid-template-columns: 110px 1fr 56px 64px; gap: 0.4rem; }
   }
 </style>

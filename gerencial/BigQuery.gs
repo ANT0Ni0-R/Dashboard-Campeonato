@@ -195,6 +195,37 @@ function sqlPorHoraBQ_(cfg) {
 // Literal SQL seguro (escapa aspas simples). Use so para valores de config (planilha do dono).
 function sqlStr_(v) { return "'" + String(v == null ? '' : v).replace(/'/g, "''") + "'"; }
 
+// ===== Snapshot fragmentado (JSON maior que o limite de ~50k chars/celula do Sheets) =====
+// Layout: B1=timestamp, B2=qtd de pedacos, A3:A(n+2)=pedacos do JSON. Reusado pelo Funil.
+var SNAPSHOT_CHUNK_SIZE = 40000;  // folga sob o limite de 50.000 chars por celula.
+
+function gravarJsonChunked_(sh, ts, json) {
+  json = String(json || '');
+  var pedacos = [];
+  for (var i = 0; i < json.length; i += SNAPSHOT_CHUNK_SIZE) {
+    pedacos.push([json.substr(i, SNAPSHOT_CHUNK_SIZE)]);
+  }
+  if (!pedacos.length) pedacos.push(['']);
+
+  sh.getRange('A1').setValue('geradoEm');
+  sh.getRange('B1').setValue(ts);
+  sh.getRange('A2').setValue('chunks');
+  sh.getRange('B2').setValue(pedacos.length);
+
+  // limpa pedacos de um snapshot anterior maior antes de escrever os novos
+  var antes = sh.getLastRow();
+  if (antes >= 3) sh.getRange(3, 1, antes - 2, 1).clearContent();
+  sh.getRange(3, 1, pedacos.length, 1).setValues(pedacos);
+}
+
+function lerJsonChunked_(sh) {
+  if (!sh) return '';
+  var n = Number(sh.getRange('B2').getValue()) || 0;
+  if (n <= 0) return '';
+  var vals = sh.getRange(3, 1, n, 1).getValues();
+  return vals.map(function (r) { return String(r[0] || ''); }).join('');
+}
+
 // Expressao canonica do PMP (funde aliases ainda no BQ, ex.: JCK -> JKC) p/ ranking e por-vendedor.
 // aliasPmp vem da aba Config (parseAliasPmp_ em Code.gs). Sem aliases, devolve a propria coluna.
 function canonSqlExpr_(cfg) {
