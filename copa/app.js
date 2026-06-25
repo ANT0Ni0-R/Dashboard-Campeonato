@@ -885,7 +885,7 @@ function createCloserCard(c, gmvVal, isLiveLeader = false, isQualified = false, 
     if (isQualified) card.classList.add("qualified");
   }
 
-  const bandeira = c.bandeira || "flags/brasil.svg";
+  const bandeira = c.bandeira || DEFAULT_FLAG;
   card.innerHTML = `
     <div class="avatar-wrapper">
       <img src="${c.foto}" alt="${c.nome}" class="avatar-img" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
@@ -922,8 +922,8 @@ function createConfrontoBox(title, c1, c2, vencedor, gmvPropName, prevPhaseName)
   }
 
   // Define os dois competidores
-  const comp1 = c1 || { nome: `Venc. ${prevPhaseName}`, code: "???", foto: "", bandeira: "flags/brasil.svg", eliminado: false };
-  const comp2 = c2 || { nome: `Venc. ${prevPhaseName}`, code: "???", foto: "", bandeira: "flags/brasil.svg", eliminado: false };
+  const comp1 = c1 || { nome: `Venc. ${prevPhaseName}`, code: "???", foto: "", bandeira: DEFAULT_FLAG, eliminado: false };
+  const comp2 = c2 || { nome: `Venc. ${prevPhaseName}`, code: "???", foto: "", bandeira: DEFAULT_FLAG, eliminado: false };
 
   const g1 = c1 ? c1[gmvPropName] : 0;
   const g2 = c2 ? c2[gmvPropName] : 0;
@@ -1045,7 +1045,7 @@ function buildPodium(top3, gmvProp = "gmv_copa") {
     place.className = `podium-place place-${pos}`;
     if (!c) { podium.appendChild(place); return; }
 
-    const bandeira = c.bandeira || "flags/brasil.svg";
+    const bandeira = c.bandeira || DEFAULT_FLAG;
     place.innerHTML = `
       <div class="podium-card">
         <div class="podium-name">${c.nome}</div>
@@ -1073,7 +1073,7 @@ function buildCopaList(resto, gmvProp = "gmv_copa") {
 
   resto.forEach((c, idx) => {
     const pos = idx + 4;
-    const bandeira = c.bandeira || "flags/brasil.svg";
+    const bandeira = c.bandeira || DEFAULT_FLAG;
     const row = document.createElement("div");
     row.className = "copa-list-row" + (c[gmvProp] <= 0 ? " zero" : "");
     row.innerHTML = `
@@ -1164,7 +1164,7 @@ function buildBigPlayerCard(c, gmvVal, opts = {}) {
   if (opts.leader) card.classList.add("leader");
   if (opts.winner) card.classList.add("winner");
 
-  const bandeira = c.bandeira || "flags/brasil.svg";
+  const bandeira = c.bandeira || DEFAULT_FLAG;
   card.innerHTML = `
     <div class="bp-photo">
       <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
@@ -1257,7 +1257,7 @@ function buildProjCard(c) {
     card.innerHTML = `<span class="a-definir-label">A definir</span>`;
     return card;
   }
-  const bandeira = c.bandeira || "flags/brasil.svg";
+  const bandeira = c.bandeira || DEFAULT_FLAG;
   card.innerHTML = `
     <div class="proj-avatar">
       <img src="${c.foto}" alt="${c.nome}" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.nome}'">
@@ -1320,7 +1320,7 @@ function buildFinalHalf(c, gmvVal, opts = {}) {
     return half;
   }
 
-  const bandeira = c.bandeira || "flags/brasil.svg";
+  const bandeira = c.bandeira || DEFAULT_FLAG;
   const coroa = opts.champion
     ? `<div class="fh-champ"><span class="fh-trophy">🏆</span><span class="fh-champ-label">Campeão do Lançamento</span></div>`
     : "";
