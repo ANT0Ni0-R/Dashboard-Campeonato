@@ -45,7 +45,7 @@ Global `COMPETICAO`. Chaves principais:
 - `fases`: grupos/quartas/brasil/semis/final com janelas em America/Sao_Paulo
 
 Constantes globais definidas aqui (acessiveis em `app.js`):
-- `ASSETS_BASE`: URL base do CDN jsDelivr ate `@main` (`https://cdn.jsdelivr.net/gh/ant0ni0-r/dashboard-campeonato@main`). NAO usar raw.githubusercontent direto: falha no iframe sandbox do Apps Script (ver secao Assets).
+- `ASSETS_BASE`: URL base raw.githubusercontent.com ate `main/`
 - `DEFAULT_FLAG`: URL absoluta da bandeira fallback (brasil.svg)
 
 A normalizacao no final do arquivo converte caminhos relativos em `vendedores` para URLs absolutas via `ASSETS_BASE`.
@@ -73,13 +73,7 @@ Estrutura depois da reorganizacao:
   fotos_bandeiras/
 ```
 
-URLs servidas via **jsDelivr** (CDN do GitHub): `https://cdn.jsdelivr.net/gh/ant0ni0-r/dashboard-campeonato@main/assets/fotos/HUM.jpg`
-
-> **Por que jsDelivr e nao raw.githubusercontent.com:** dentro do iframe sandbox do
-> Apps Script (googleusercontent), o `raw.githubusercontent.com` e hotlinkado/throttled
-> e falha de forma intermitente — as `<img>` caem no fallback DiceBear (onerror) e as
-> fotos somem. O jsDelivr serve o mesmo conteudo do repo publico com cache/CORS estaveis.
-> Requer o repo PUBLICO para o CDN indexar os arquivos.
+URLs raw no GitHub: `https://raw.githubusercontent.com/ant0ni0-r/dashboard-campeonato/main/assets/fotos/HUM.jpg`
 
 Fallback de avatar: DiceBear (`onerror` nas `<img>`).
 
