@@ -30,7 +30,7 @@ const COMPETICAO = {
     // Comparacao case-insensitive.
     // 6a31f4d2cc1cfab5a1fe7e7b = cristianeamanda@hotmail.com
     // 6a32aec05a20e4c3d73c6f57 = lmfalconi@gmail.com
-    excluir_ids: ["6a31f4d2cc1cfab5a1fe7e7b", "6a32aec05a20e4c3d73c6f57", '6a3a85e1f3732f6e3f4233b7', '6a3ab149d864301a520f9954'],
+    excluir_ids: ["6a31f4d2cc1cfab5a1fe7e7b", "6a32aec05a20e4c3d73c6f57", '6a3a85e1f3732f6e3f4233b7', '6a3ab149d864301a520f9954', '6a3b1da0fa40e973582feae7'],
     // Override de price/GMV por `id` (case-insensitive, chaves em minusculas).
     // Aplicado por transacao, antes da regua de GMV.
     // 6a313a63b98a6054e251eab7 = masterbrushsouza@gmail.com
