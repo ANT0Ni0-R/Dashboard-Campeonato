@@ -9,9 +9,12 @@
     pollMs: 60000,
     pollToken: 0,
     proximo: 0,
-    periodo: null              // { inicio, fim } do seletor de datas
+    periodo: null,             // { inicio, fim } do seletor de datas
+    funil: null,               // payload do snapshot do funil
+    funilFiltro: { dia: '', origem: '', vend: '', origemScope: 'lancamento', vendScope: 'lancamento' }
   };
-  var charts = { hora: null, dia: null, diaShare: null };
+  var charts = { hora: null, dia: null, diaShare: null,
+    fHora: null, fDia: null, fTmrHora: null, fBolha: null };
 
   // ===== Util =====
   function esc(s) {
@@ -30,6 +33,10 @@
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 }).format(v || 0);
   }
   function pct(v) { return (100 * (v || 0)).toFixed(1).replace('.', ',') + '%'; }
+  function formatInt(v) { return new Intl.NumberFormat('pt-BR').format(Math.round(v || 0)); }
+  function pct0(v) { return Math.round(100 * (v || 0)) + '%'; }
+  function pct2(v) { return (100 * (v || 0)).toFixed(2).replace('.', ',') + '%'; }
+  function formatMin(v) { return (v > 0) ? (Number(v).toFixed(1).replace('.', ',') + "'") : '—'; }
   function dataHoraBR(iso) {
     var d = new Date(iso);
     if (isNaN(d)) return esc(iso);
@@ -60,8 +67,10 @@
   function toggleTheme() {
     var atual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     applyTheme(atual);
-    // recria os graficos com as novas cores so quando o dashboard esta visivel
+    // recria os graficos com as novas cores so quando a respectiva view esta visivel
     if (state.dash && !document.getElementById('view-dash').hidden) renderDash(state.dash);
+    var vf = document.getElementById('view-funil');
+    if (state.funil && vf && !vf.hidden) aplicarFunil();
   }
 
   // ===== Status =====
@@ -83,7 +92,10 @@
     document.getElementById('view-dash').hidden = (name !== 'dash');
     document.getElementById('view-info').hidden = (name !== 'info');
     document.getElementById('view-vendas').hidden = (name !== 'vendas');
-    document.getElementById('daterange').style.visibility = (name === 'vendas') ? 'hidden' : 'visible';
+    var funil = document.getElementById('view-funil');
+    if (funil) funil.hidden = (name !== 'funil');
+    document.getElementById('daterange').style.visibility =
+      (name === 'vendas' || name === 'funil') ? 'hidden' : 'visible';
   }
   function switchMode(mode) {
     state.mode = mode;
@@ -92,6 +104,7 @@
       b.classList.toggle('active', b.dataset.mode === mode);
     });
     if (mode === 'vendas') { setView('vendas'); setStatus('ok'); buscarVendas(); return; }
+    if (mode === 'funil') { setView('funil'); carregarFunil(); return; }
     if (mode === 'bigquery') { carregarBigQuery(); return; }
     setView('dash'); carregarSupabase();
   }
@@ -429,6 +442,387 @@
       '<td class="v-valor">' + formatBRL(r.price) + '</td></tr>';
   }
 
+  // ============================================================
+  //  FUNIL (so nivel gerencial) — snapshot lido de Snapshot_Funil
+  // ============================================================
+  function carregarFunil() {
+    setStatus('load');
+    state.proximo = 0;
+    var token = ++state.pollToken;
+    google.script.run
+      .withSuccessHandler(function (data) {
+        if (token !== state.pollToken) return;
+        state.funil = data; renderFunil(data);
+        document.getElementById('status-dot').className = 'dot';
+        var t = data.snapshotEm ? dataHoraBR(data.snapshotEm) : '';
+        document.getElementById('status-texto').textContent = t ? 'snapshot ' + t : 'snapshot';
+      })
+      .withFailureHandler(function (e) {
+        if (token !== state.pollToken) return;
+        setStatus('erro', (e && e.message) ? e.message : 'erro');
+        document.getElementById('funil-kpis').innerHTML =
+          '<div class="q-empty">' + esc((e && e.message) ? e.message : 'Snapshot do funil indisponivel.') + '</div>';
+      })
+      .getFunilData();
+  }
+
+  function renderFunil(data) {
+    var cfg = data.config || {};
+    document.getElementById('titulo').textContent = cfg.titulo || 'Dashboard';
+    document.getElementById('produto').textContent = cfg.produto || '';
+    document.getElementById('funil-prod').textContent = cfg.produto || cfg.titulo || '';
+    popularSelectsFunil(data);
+    aplicarFunil();
+  }
+
+  // dia default: hoje (SP) se estiver na janela; senao o ultimo dia com ativados.
+  function diaDefaultFunil(data) {
+    var hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    var dias = data.dias || [];
+    if (dias.indexOf(hoje) >= 0) return hoje;
+    var comDados = {};
+    (data.ativados || []).forEach(function (a) { comDados[a.dia] = true; });
+    var ult = dias.filter(function (d) { return comDados[d]; }).pop();
+    return ult || dias[dias.length - 1] || hoje;
+  }
+  function popularSelectsFunil(data) {
+    var fDia = document.getElementById('f-dia');
+    fDia.innerHTML = (data.dias || []).map(function (d) {
+      return '<option value="' + esc(d) + '">' + esc(diaLabel(d)) + '</option>';
+    }).join('');
+    state.funilFiltro.dia = diaDefaultFunil(data);
+    fDia.value = state.funilFiltro.dia;
+
+    var fOrigem = document.getElementById('f-origem');
+    fOrigem.innerHTML = '<option value="">Todas</option>' + (data.origens || []).map(function (o) {
+      return '<option value="' + esc(o) + '">' + esc(o) + '</option>';
+    }).join('');
+    fOrigem.value = state.funilFiltro.origem = '';
+
+    var fVend = document.getElementById('f-vend');
+    fVend.innerHTML = '<option value="">Todos</option>' + (data.vendedores || []).map(function (v) {
+      return '<option value="' + esc(v.pmp) + '">' + esc(v.nome) + '</option>';
+    }).join('');
+    fVend.value = state.funilFiltro.vend = '';
+  }
+
+  // ----- Filtragem (counts agregam; TMR vem pre-agregado por grao) -----
+  function fMatch(row, f) {
+    if (f.origem && row.origem !== f.origem) return false;
+    if (f.vend && row.pmp !== f.vend) return false;
+    if (f.pmpEq && row.pmp !== f.pmpEq) return false;
+    if (f.dia && row.dia !== f.dia) return false;
+    return true;
+  }
+  function somaAtivados(f) {
+    return ((state.funil && state.funil.ativados) || []).reduce(function (s, a) {
+      return fMatch(a, f) ? s + a.n : s;
+    }, 0);
+  }
+  function somaVendas(f) {
+    return ((state.funil && state.funil.vendas) || []).reduce(function (s, v) {
+      return fMatch(v, f) ? s + v.n : s;
+    }, 0);
+  }
+  // base do pipeline considerando o filtro de origem (vendedor nao altera o pipeline).
+  function baseFiltrada() {
+    var fo = state.funilFiltro.origem;
+    if (!fo) return (state.funil && state.funil.baseTotal) || 0;
+    var b = ((state.funil && state.funil.basePorOrigem) || []).filter(function (x) { return x.origem === fo; })[0];
+    return b ? b.total : 0;
+  }
+  // TMR pre-agregado: acha a linha do grao (pmp/origem) — null = "todos".
+  function tmrTotalLookup(pmp, origem) {
+    var rows = (state.funil && state.funil.tmrTotal) || [];
+    for (var i = 0; i < rows.length; i++) {
+      if ((rows[i].pmp || null) === (pmp || null) && (rows[i].origem || null) === (origem || null)) return rows[i];
+    }
+    return null;
+  }
+
+  // ----- KPIs -----
+  function renderFunilKpis() {
+    var f = state.funilFiltro;
+    var base = baseFiltrada();
+    var ativAcum = somaAtivados({ origem: f.origem, vend: f.vend });
+    var ativDia = somaAtivados({ origem: f.origem, vend: f.vend, dia: f.dia });
+    var vendasAcum = somaVendas({ origem: f.origem, vend: f.vend });
+    var pctBase = base > 0 ? ativAcum / base : 0;
+    var conv = ativAcum > 0 ? vendasAcum / ativAcum : 0;
+    var tmr = tmrTotalLookup(f.vend || null, f.origem || null);
+
+    var cards = [
+      ['Base total', formatInt(base), 'deals no pipeline'],
+      ['Ativados (acum.)', formatInt(ativAcum), 'no lancamento'],
+      ['% da base ativada', pct(pctBase), 'acumulado'],
+      ['Ativados no dia', formatInt(ativDia), diaLabel(f.dia)],
+      ['Conversao geral', pct2(conv), 'vendas / ativados'],
+      ['TMR mediana', tmr ? formatMin(tmr.mediana) : '—', 'lancamento · mediana']
+    ];
+    document.getElementById('funil-kpis').innerHTML = cards.map(function (c) {
+      return '<div class="kpi-card"><div class="kpi-label">' + c[0] + '</div>' +
+        '<div class="kpi-main">' + c[1] + '</div><div class="kpi-sub">' + esc(c[2]) + '</div></div>';
+    }).join('');
+  }
+
+  // ----- Combos hora a hora / dia a dia (barra volume + linha % do pipeline) -----
+  function funilComboChart(key, canvasId, labels, bars, linePct, lineFmt, lineMax) {
+    var c = themeColors();
+    if (charts[key]) charts[key].destroy();
+    charts[key] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [
+        { type: 'bar', label: 'Ativados', data: bars, backgroundColor: c.gold, yAxisID: 'y',
+          datalabels: { display: 'auto', anchor: 'end', align: 'top', color: c.text2,
+            font: { size: 9, weight: 'bold' }, formatter: function (v) { return v > 0 ? formatInt(v) : ''; } } },
+        { type: 'line', label: '% do pipeline', data: linePct, borderColor: c.blue, backgroundColor: c.blue,
+          yAxisID: 'y1', tension: 0.3, pointRadius: 2, borderWidth: 2,
+          datalabels: { display: 'auto', align: 'top', anchor: 'end', color: c.blue,
+            font: { size: 8, weight: 'bold' }, formatter: function (v) { return lineFmt(v); } } }
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 22, right: 6 } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false }, datalabels: { display: false },
+          tooltip: { callbacks: { label: function (it) {
+            return it.dataset.yAxisID === 'y1' ? ('% pipeline: ' + lineFmt(it.parsed.y))
+              : ('Ativados: ' + formatInt(it.parsed.y));
+          }}}
+        },
+        scales: {
+          x: { grid: { color: c.grid }, ticks: { color: c.text2, font: { size: 9 } } },
+          y: { position: 'left', beginAtZero: true, grace: '20%', afterFit: function (s) { s.width = 44; },
+            grid: { color: c.grid }, ticks: { color: c.text2, font: { size: 9 }, callback: function (v) { return formatInt(v); } } },
+          y1: { position: 'right', beginAtZero: true, max: lineMax, grid: { display: false },
+            afterFit: function (s) { s.width = 44; },
+            ticks: { color: c.blue, font: { size: 9 }, callback: function (v) { return lineFmt(v); } } }
+        }
+      }
+    });
+  }
+  function renderFunilHora() {
+    var f = state.funilFiltro, base = baseFiltrada();
+    var horas = []; for (var h = 0; h < 24; h++) horas.push(h);
+    var contas = horas.map(function (h) {
+      return ((state.funil && state.funil.ativados) || []).reduce(function (s, a) {
+        return (a.dia === f.dia && a.hora === h && matchOV(a, f)) ? s + a.n : s;
+      }, 0);
+    });
+    var acum = cumulativo(contas).map(function (v) { return base > 0 ? v / base : 0; });
+    var labels = horas.map(function (h) { return String(h).padStart(2, '0') + 'h'; });
+    var maxPct = Math.max.apply(null, acum.concat([0])) * 1.25 || 0.001;
+    funilComboChart('fHora', 'funil-hora', labels, contas, acum, function (v) { return pct2(v); }, maxPct);
+  }
+  function renderFunilDia() {
+    var f = state.funilFiltro, base = baseFiltrada();
+    var dias = (state.funil && state.funil.dias) || [];
+    var contas = dias.map(function (d) {
+      return ((state.funil && state.funil.ativados) || []).reduce(function (s, a) {
+        return (a.dia === d && matchOV(a, f)) ? s + a.n : s;
+      }, 0);
+    });
+    var acum = cumulativo(contas).map(function (v) { return base > 0 ? v / base : 0; });
+    var labels = dias.map(diaLabel);
+    funilComboChart('fDia', 'funil-dia', labels, contas, acum, function (v) { return pct0(v); }, 1);
+  }
+  // match so de origem e vendedor (sem dia) — usado nos graficos que iteram dia/hora.
+  function matchOV(row, f) {
+    if (f.origem && row.origem !== f.origem) return false;
+    if (f.vend && row.pmp !== f.vend) return false;
+    return true;
+  }
+
+  // ----- Ativacao por origem (barras HTML) -----
+  function renderFunilOrigem() {
+    var f = state.funilFiltro;
+    var usaDia = f.origemScope === 'dia';
+    var base = {};
+    ((state.funil && state.funil.basePorOrigem) || []).forEach(function (b) { base[b.origem] = b.total; });
+
+    var linhas = (state.funil && state.funil.origens || []).map(function (origem) {
+      var ativ = somaAtivados({ origem: origem, vend: f.vend, dia: usaDia ? f.dia : '' });
+      var vend = somaVendas({ origem: origem, vend: f.vend, dia: usaDia ? f.dia : '' });
+      var tot = base[origem] || ativ;
+      return { origem: origem, ativ: ativ, tot: tot, vend: vend,
+        ativacao: tot > 0 ? ativ / tot : 0, conv: ativ > 0 ? vend / ativ : 0 };
+    }).filter(function (r) { return r.tot > 0 || r.ativ > 0; })
+      .sort(function (a, b) { return b.ativ - a.ativ; });
+
+    var maxAtiv = Math.max.apply(null, linhas.map(function (r) { return r.ativ; }).concat([1]));
+    var head = '<div class="origem-row origem-head"><span></span><span></span>' +
+      '<span class="origem-num">ATIVACAO</span><span class="origem-num">CONVERSAO</span></div>';
+    document.getElementById('funil-origem').innerHTML = head + linhas.map(function (r) {
+      var w = Math.round(100 * r.ativ / maxAtiv);
+      return '<div class="origem-row">' +
+        '<span class="origem-nome" title="' + esc(r.origem) + '">' + esc(r.origem) + '</span>' +
+        '<span class="origem-bar"><span class="origem-fill" style="width:' + w + '%"></span>' +
+          '<span class="origem-val">' + formatInt(r.ativ) + ' / ' + formatInt(r.tot) + '</span></span>' +
+        '<span class="origem-num">' + pct0(r.ativacao) + '</span>' +
+        '<span class="origem-num conv">' + pct2(r.conv) + '</span>' +
+      '</div>';
+    }).join('') || '<div class="q-empty">Sem dados.</div>';
+  }
+
+  // ----- Tabela por vendedor (mix de origens inline + vendas/conv/TMR) -----
+  function renderFunilTabela() {
+    var f = state.funilFiltro;
+    var usaDia = f.vendScope === 'dia';
+    var origens = (state.funil && state.funil.origens) || [];
+    var vendedores = (state.funil && state.funil.vendedores) || [];
+
+    var rows = vendedores.filter(function (v) { return !f.vend || v.pmp === f.vend; }).map(function (v) {
+      var ativ = somaAtivados({ pmpEq: v.pmp, origem: f.origem, dia: usaDia ? f.dia : '' });
+      var vend = somaVendasPmp(v.pmp, f.origem, usaDia ? f.dia : '');
+      var mix = origens.map(function (o) {
+        return { origem: o, n: somaAtivados({ pmpEq: v.pmp, origem: o, dia: usaDia ? f.dia : '' }) };
+      }).filter(function (x) { return x.n > 0; });
+      var tmr = tmrTotalLookup(v.pmp, f.origem || null);
+      return { pmp: v.pmp, nome: v.nome, ativ: ativ, vend: vend, mix: mix,
+        conv: ativ > 0 ? vend / ativ : 0, tmrMed: tmr ? tmr.mediana : 0,
+        tmrAvg: tmr ? tmr.media : 0, resp: tmr ? tmr.n : 0 };
+    }).filter(function (r) { return r.ativ > 0 || r.vend > 0; })
+      .sort(function (a, b) { return b.conv - a.conv || b.ativ - a.ativ; });
+
+    var origemColor = {};
+    origens.forEach(function (o, i) { origemColor[o] = SELLER_COLORS[i % SELLER_COLORS.length]; });
+
+    var thead = '<thead><tr><th>VENDEDOR</th><th>ATIVADOS (MIX DE ORIGENS)</th>' +
+      '<th class="num">VENDAS</th><th class="num">CONV.</th><th class="num">TMR MED.</th>' +
+      '<th class="num">TMR MED.</th><th class="num">#RESP</th></tr></thead>';
+    var body = rows.map(function (r) {
+      var segs = r.mix.map(function (m) {
+        var p = r.ativ > 0 ? Math.round(100 * m.n / r.ativ) : 0;
+        return '<span class="mix-seg" title="' + esc(m.origem) + ': ' + formatInt(m.n) + '" ' +
+          'style="width:' + p + '%;background:' + origemColor[m.origem] + '">' + (p >= 12 ? p + '%' : '') + '</span>';
+      }).join('');
+      var convCls = r.conv >= 0.005 ? 'pos' : 'neg';
+      return '<tr>' +
+        '<td class="v-nome">' + esc(r.nome) + '</td>' +
+        '<td class="v-mix"><div class="mix-bar">' + segs + '</div></td>' +
+        '<td class="num">' + formatInt(r.vend) + '</td>' +
+        '<td class="num ' + convCls + '">' + pct2(r.conv) + '</td>' +
+        '<td class="num">' + formatMin(r.tmrMed) + '</td>' +
+        '<td class="num">' + formatMin(r.tmrAvg) + '</td>' +
+        '<td class="num dim">' + formatInt(r.resp) + '</td>' +
+      '</tr>';
+    }).join('');
+    document.getElementById('funil-tabela').innerHTML = thead + '<tbody>' +
+      (body || '<tr><td colspan="7" class="q-empty">Sem dados.</td></tr>') + '</tbody>';
+  }
+  // variantes que filtram por pmp exato (mantem somaAtivados generico legivel)
+  function somaVendasPmp(pmp, origem, dia) {
+    return ((state.funil && state.funil.vendas) || []).reduce(function (s, v) {
+      if (v.pmp !== pmp) return s;
+      if (origem && v.origem !== origem) return s;
+      if (dia && v.dia !== dia) return s;
+      return s + v.n;
+    }, 0);
+  }
+
+  // ----- TMR hora a hora (mediana + faixa p25-p75) -----
+  function renderFunilTmrHora() {
+    var f = state.funilFiltro;
+    var rows = ((state.funil && state.funil.tmrHora) || []).filter(function (r) {
+      return (r.pmp || null) === (f.vend || null) && (r.origem || null) === (f.origem || null);
+    });
+    var byHora = {}; rows.forEach(function (r) { byHora[r.hora] = r; });
+    var horas = Object.keys(byHora).map(Number).sort(function (a, b) { return a - b; });
+    if (!horas.length) { for (var h = 8; h <= 22; h++) horas.push(h); }
+    var labels = horas.map(function (h) { return String(h).padStart(2, '0') + 'h'; });
+    var p25 = horas.map(function (h) { return byHora[h] ? byHora[h].p25 : null; });
+    var p50 = horas.map(function (h) { return byHora[h] ? byHora[h].p50 : null; });
+    var p75 = horas.map(function (h) { return byHora[h] ? byHora[h].p75 : null; });
+    var c = themeColors();
+
+    if (charts.fTmrHora) charts.fTmrHora.destroy();
+    charts.fTmrHora = new Chart(document.getElementById('funil-tmr-hora').getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: [
+        { label: 'p25', data: p25, borderColor: 'transparent', pointRadius: 0, fill: false, hideInLegend: true,
+          datalabels: { display: false } },
+        { label: 'faixa p25-p75', data: p75, borderColor: 'transparent', backgroundColor: c.blue + '22',
+          pointRadius: 0, fill: '-1', hideInLegend: true, datalabels: { display: false } },
+        { label: 'mediana', data: p50, borderColor: c.blue, backgroundColor: c.blue,
+          tension: 0.3, pointRadius: 2, borderWidth: 2,
+          datalabels: { display: 'auto', align: 'top', anchor: 'end', color: c.text2,
+            font: { size: 8, weight: 'bold' }, formatter: function (v) { return v ? String(v).replace('.', ',') : ''; } } }
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 18, right: 6 } },
+        plugins: { legend: { display: false }, datalabels: { display: false },
+          tooltip: { callbacks: { label: function (it) { return it.dataset.label + ': ' + formatMin(it.parsed.y); } } } },
+        scales: {
+          x: { grid: { color: c.grid }, ticks: { color: c.text2, font: { size: 9 } } },
+          y: { beginAtZero: true, grace: '15%', grid: { color: c.grid },
+            ticks: { color: c.text2, font: { size: 9 }, callback: function (v) { return v + "'"; } } }
+        }
+      }
+    });
+  }
+
+  // ----- Bolha TMR x conversao por vendedor -----
+  function renderFunilBolha() {
+    var f = state.funilFiltro;
+    var vendedores = (state.funil && state.funil.vendedores) || [];
+    var pts = vendedores.map(function (v) {
+      var tmr = tmrTotalLookup(v.pmp, f.origem || null);
+      var ativ = somaAtivados({ pmpEq: v.pmp, origem: f.origem });
+      var vend = somaVendasPmp(v.pmp, f.origem, '');
+      return { nome: v.nome, x: tmr ? tmr.mediana : 0, y: ativ > 0 ? vend / ativ : 0, ativ: ativ };
+    }).filter(function (p) { return p.ativ > 0; });
+    var maxAtiv = Math.max.apply(null, pts.map(function (p) { return p.ativ; }).concat([1]));
+    var c = themeColors();
+    var dados = pts.map(function (p) {
+      return { x: p.x, y: p.y, r: 6 + 18 * Math.sqrt(p.ativ / maxAtiv), nome: p.nome };
+    });
+
+    if (charts.fBolha) charts.fBolha.destroy();
+    charts.fBolha = new Chart(document.getElementById('funil-bolha').getContext('2d'), {
+      type: 'bubble',
+      data: { datasets: [{ data: dados, backgroundColor: c.green + '99', borderColor: c.green,
+        datalabels: { display: 'auto', color: c.text2, font: { size: 8 }, align: 'top',
+          formatter: function (v, ctx) { return ctx.dataset.data[ctx.dataIndex].nome; } } }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 18, right: 10 } },
+        plugins: { legend: { display: false }, datalabels: { display: false },
+          tooltip: { callbacks: { label: function (it) {
+            var d = it.dataset.data[it.dataIndex];
+            return d.nome + ': TMR ' + formatMin(d.x) + ' · conv ' + pct2(d.y) + ' · ' + formatInt(d.ativ) + ' ativ';
+          } } } },
+        scales: {
+          x: { beginAtZero: true, title: { display: true, text: 'TMR mediana (min)', color: c.text2, font: { size: 9 } },
+            grid: { color: c.grid }, ticks: { color: c.text2, font: { size: 9 }, callback: function (v) { return v + "'"; } } },
+          y: { beginAtZero: true, title: { display: true, text: 'conversao', color: c.text2, font: { size: 9 } },
+            grid: { color: c.grid }, ticks: { color: c.text2, font: { size: 9 }, callback: function (v) { return pct(v); } } }
+        }
+      }
+    });
+  }
+
+  function aplicarFunil() {
+    if (!state.funil) return;
+    var t = document.getElementById('funil-scope');
+    if (t) t.textContent = 'dia ' + state.funilFiltro.dia;
+    renderFunilKpis();
+    renderFunilHora();
+    renderFunilDia();
+    renderFunilOrigem();
+    renderFunilTabela();
+    renderFunilTmrHora();
+    renderFunilBolha();
+  }
+  function limparFunil() {
+    state.funilFiltro.origem = ''; state.funilFiltro.vend = '';
+    document.getElementById('f-origem').value = '';
+    document.getElementById('f-vend').value = '';
+    if (state.funil) { state.funilFiltro.dia = diaDefaultFunil(state.funil); document.getElementById('f-dia').value = state.funilFiltro.dia; }
+    aplicarFunil();
+  }
+
   // ===== Wiring =====
   function bindSeg(id, prop, after) {
     document.querySelectorAll('#' + id + ' button').forEach(function (b) {
@@ -436,6 +830,17 @@
         document.querySelectorAll('#' + id + ' button').forEach(function (x) { x.classList.remove('active'); });
         b.classList.add('active');
         state[prop] = b.dataset.mode || b.dataset.scope;
+        if (after) after();
+      });
+    });
+  }
+  // Igual ao bindSeg, mas grava em state.funilFiltro[prop] (escopo Dia/Lancamento dos paineis).
+  function bindScopeSeg(id, prop, after) {
+    document.querySelectorAll('#' + id + ' button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#' + id + ' button').forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        state.funilFiltro[prop] = b.dataset.scope;
         if (after) after();
       });
     });
@@ -460,6 +865,17 @@
     bindSeg('seg-rank', 'rankScope', function () { if (state.dash) renderRanking(state.dash.ranking || []); });
     bindSeg('seg-hora', 'horaMode', function () { if (state.dash) renderChartHora(state.dash.porHora || []); });
     bindSeg('seg-dia', 'diaMode', function () { if (state.dash) renderChartDia(state.dash.porDia || []); });
+
+    // Funil: filtros + toggles Dia/Lancamento (so existem p/ nivel gerencial).
+    var fDia = document.getElementById('f-dia');
+    if (fDia) {
+      fDia.addEventListener('change', function () { state.funilFiltro.dia = this.value; aplicarFunil(); });
+      document.getElementById('f-origem').addEventListener('change', function () { state.funilFiltro.origem = this.value; aplicarFunil(); });
+      document.getElementById('f-vend').addEventListener('change', function () { state.funilFiltro.vend = this.value; aplicarFunil(); });
+      bindScopeSeg('seg-funil-origem', 'origemScope', renderFunilOrigem);
+      bindScopeSeg('seg-funil-vend', 'vendScope', renderFunilTabela);
+    }
+
     document.getElementById('dt-inicio').addEventListener('change', onDateChange);
     document.getElementById('dt-fim').addEventListener('change', onDateChange);
     document.getElementById('termo').addEventListener('keydown', function (e) { if (e.key === 'Enter') buscarVendas(); });

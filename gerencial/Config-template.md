@@ -25,6 +25,17 @@ do Supabase ficam em Script Properties (nunca na planilha).
 | `bq_product_like` | `%legado%` | filtro do produto no **BigQuery** (`product_name LIKE`) (PR2) |
 | `canal_tvd` | `TVD` | valor de `sales_channel` que identifica o time de vendas no BigQuery (PR2) |
 | `pmp_aliases` | `JCK:JKC` | correcao de PMP trocado na origem (link de pagamento). Funde no ranking/foto/atribuicao. Formato `DE:PARA,DE:PARA`. Vazio = default `JCK:JKC` |
+| `funil_group_name` | `O Legado` | filtro `group_name` nas tabelas de CRM do **Funil** (`clint_deals_*`) |
+| `funil_campanha` | `BAR0001` | filtro `campanha` na tabela de leads do **Funil** (`mrt_grupo__leads`) |
+| `bq_deals_history_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_history_cleaned` | historico de etapas (ativacao) |
+| `bq_deals_cleaned_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_cleaned` | base do grupo + origem do lead |
+| `bq_deals_enriched_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_enriched` | funil TDV (reservado) |
+| `bq_leads_table` | `grupo-primo-prd.mart_grupo.mrt_grupo__leads` | volume de leads / conversao geral |
+| `bq_messages_table` | `grupo-primo-prd.staging_clint.stg_clint__messages` | mensagens do chat (TMR) |
+| `tvd_channel_ids` | `b5a67dba-...,fa4ca424-...,2b86238b-...,16d9b4ae-...` | 4 `chat_channel_account_id` do Clint (TVD) usados no TMR. Separados por virgula |
+
+> Todas as chaves do **Funil** tem defaults em `DEFAULTS` (Code.gs); so preencha na aba para
+> sobrescrever. A janela do Funil reusa `inicio`/`fim`.
 
 > **TVD no Supabase:** uma venda e do time de vendas (TVD) quando o campo `pmp` **contem "TVD"**.
 > "Outros" = `pmp` sem "TVD". No BigQuery, TVD = `sales_channel = 'TVD'` (= `canal_tvd`).
@@ -51,6 +62,11 @@ mesmo Google Workspace) e bloqueia quem nao estiver nesta aba (serve `AccessDeni
 funcoes de dados tambem checam (`exigirAcesso_`). **Aba vazia / sem aba = allowlist desligada**
 (so o dominio do deploy filtra). E-mail vazio (fora do dominio) com allowlist preenchida = negado.
 
+A coluna **`Nivel`** (2a coluna) define o **papel** do usuario. O valor **`gerencial`** libera a
+aba **Funil** (botao so aparece e `getFunilData()` so responde para esse nivel — `exigirGerencial_`).
+Outros valores (ex.: `viewer`, `closer`) veem as 3 abas padrao, mas **nao** o Funil. Linhas sem
+nivel continuam liberadas para o dashboard padrao.
+
 A coluna **`PMP`** (3a coluna, opcional) mapeia o e-mail -> PMP do closer. Na **Consulta de vendas**
 ela separa "Minhas vendas" (vendas desse PMP) das "Vendas Gerais do lancamento" (as demais). Sem
 PMP cadastrado, "Minhas vendas" fica vazia com um aviso e todas as vendas aparecem em "Gerais".
@@ -64,3 +80,18 @@ ultimo snapshot do BigQuery e o timestamp. A visao "Comissao" le daqui (sem roda
 |---|---|
 | `geradoEm` | `2026-06-24T13:30:00-03:00` |
 | `json` | `{...}` (payload do dashboard) |
+
+## Aba `Snapshot_Funil` (gerada pelo trigger do Funil)
+
+Preenchida pelo trigger `snapshotFunil` (30 em 30 min). Como o JSON do funil costuma passar do
+limite de ~50.000 chars por celula, ele e gravado **fragmentado**: `B1` = timestamp, `B2` = qtd de
+pedacos, `A3:A(n+2)` = pedacos do JSON. `getFunilData()` concatena (`lerJsonChunked_`) e da o parse.
+Nao edite a mao. Rode `criarTriggerFunil` uma vez para instalar o trigger e gerar o 1o snapshot.
+
+| A | B |
+|---|---|
+| `geradoEm` | `2026-06-25T13:30:00-03:00` |
+| `chunks` | `3` |
+| `{"baseTotal":...` (pedaco 1) | |
+| `...continuacao...` (pedaco 2) | |
+| `...fim}` (pedaco 3) | |
