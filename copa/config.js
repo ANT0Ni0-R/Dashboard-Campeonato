@@ -2,15 +2,20 @@
 // ===========================================================
 //  ASSETS (fotos + bandeiras)
 //  O Apps Script nao serve arquivos locais. Estes assets sao carregados de um
-//  repositorio PUBLICO via raw.githubusercontent. Mantenha assets/ (fotos/ e flags/)
-//  num repo publico (pode ser um repo separado so de assets) para que estas
-//  URLs funcionem mesmo com o repo de codigo privado.
+//  repositorio PUBLICO. Servimos via jsDelivr (CDN do GitHub) e NAO direto pelo
+//  raw.githubusercontent.com: dentro do iframe sandbox do Apps Script
+//  (googleusercontent) o raw e hotlinkado/throttled e falha de forma
+//  intermitente, fazendo as <img> caírem no fallback DiceBear (onerror).
+//  O jsDelivr serve o mesmo conteudo do repo com cache/CORS estaveis.
 //
-//  >>> ANTES de tornar o repo de codigo privado, troque ASSETS_BASE para o
+//  Formato: https://cdn.jsdelivr.net/gh/<owner>/<repo>@<branch>
+//  O repo precisa continuar PUBLICO para o jsDelivr indexar os arquivos.
+//
+//  >>> ANTES de tornar o repo de codigo privado, troque ASSETS_BASE para um
 //      repo publico de assets, ex.:
-//      'https://raw.githubusercontent.com/ant0ni0-r/dashboard-campeonato-assets/main'
+//      'https://cdn.jsdelivr.net/gh/ant0ni0-r/dashboard-campeonato-assets@main'
 // ===========================================================
-const ASSETS_BASE = 'https://raw.githubusercontent.com/ant0ni0-r/dashboard-campeonato/main';
+const ASSETS_BASE = 'https://cdn.jsdelivr.net/gh/ant0ni0-r/dashboard-campeonato@main';
 const DEFAULT_FLAG = ASSETS_BASE + '/assets/flags/brasil.svg';
 
 const COMPETICAO = {
