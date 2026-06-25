@@ -107,9 +107,14 @@ function funilStagesInSql_() {
   return FUNIL_STAGES_ATIVADO.map(function (s) { return sqlStr_(s); }).join(', ');
 }
 
-// Origem do lead: coluna origin_name do clint_deals_cleaned/enriched (o campo "fields" vem vazio).
+// Origem do lead. Prioridade: fields.origem_do_lead (campo usado no legado) -> origin_name
+// (preenchido nas tabelas atuais quando fields vem vazio) -> '(sem origem)'.
+// JSON_VALUE em coluna ausente/sem a chave retorna NULL, entao o COALESCE cai no proximo.
 function funilOrigemExpr_() {
-  return "COALESCE(NULLIF(TRIM(origin_name), ''), '(sem origem)')";
+  return "COALESCE(" +
+    "NULLIF(TRIM(JSON_VALUE(fields, '$.origem_do_lead')), ''), " +
+    "NULLIF(TRIM(origin_name), ''), " +
+    "'(sem origem)')";
 }
 
 // Filtro do grupo do lancamento. Os nomes vem com sufixo de turma (ex.: "... [TDV 2]"),
@@ -233,7 +238,7 @@ function sqlFunilConversaoGeral_(cfg, ini, fim) {
 function funilTmrBaseCte_(cfg, ini, fim) {
   var canais = cfg.tvdChannelIds.map(function (id) { return sqlStr_(id); }).join(', ');
   return 'WITH ativados AS (\n' +
-    '  SELECT DISTINCT h.deal_id, c.contact_id, COALESCE(NULLIF(TRIM(c.origin_name), \'\'), \'(sem origem)\') AS origem\n' +
+    '  SELECT DISTINCT h.deal_id, c.contact_id, ' + funilOrigemExpr_() + ' AS origem\n' +
     '  FROM `' + cfg.bqDealsHistory + '` h\n' +
     '  JOIN `' + cfg.bqDealsCleaned + '` c USING (deal_id)\n' +
     '  WHERE LOWER(c.group_name) LIKE LOWER(' + sqlStr_(cfg.funilGroupLike) + ')\n' +
