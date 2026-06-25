@@ -22,7 +22,7 @@
 var DEFAULTS = {
   SUPABASE_URL:    'https://ipalripfknzhrzddhvdx.supabase.co',
   SUPABASE_TABELA: 'db_transactions_events',
-  FOTOS_BASE:      'https://raw.githubusercontent.com/ANT0Ni0-R/Dashboard-Campeonato/main/competicoes/fotos/',
+  FOTOS_BASE:      'https://raw.githubusercontent.com/ANT0Ni0-R/Dashboard-Campeonato/main/assets/fotos/',
   BQ_PROJECT:      'grupo-primo-prd',
   BQ_TABLE:        'grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request',
   CANAL_TVD:       'TVD'

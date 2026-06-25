@@ -2,7 +2,7 @@
 // ===========================================================
 //  ASSETS (fotos + bandeiras)
 //  O Apps Script nao serve arquivos locais. Estes assets sao carregados de um
-//  repositorio PUBLICO via raw.githubusercontent. Mantenha as fotos/ e flags/
+//  repositorio PUBLICO via raw.githubusercontent. Mantenha assets/ (fotos/ e flags/)
 //  num repo publico (pode ser um repo separado so de assets) para que estas
 //  URLs funcionem mesmo com o repo de codigo privado.
 //
@@ -11,7 +11,7 @@
 //      'https://raw.githubusercontent.com/ant0ni0-r/dashboard-campeonato-assets/main'
 // ===========================================================
 const ASSETS_BASE = 'https://raw.githubusercontent.com/ant0ni0-r/dashboard-campeonato/main';
-const DEFAULT_FLAG = ASSETS_BASE + '/flags/brasil.svg';
+const DEFAULT_FLAG = ASSETS_BASE + '/assets/flags/brasil.svg';
 
 const COMPETICAO = {
   // fase_ativa_override: "grupos" | "quartas" | "semis" | "final" | null
@@ -55,18 +55,18 @@ const COMPETICAO = {
 
   vendedores: {
     // Chave de 3 letras (seller_code/PMP). Visível e associada às transações.
-    // Cada vendedor representa uma seleção (país) com a respectiva bandeira em flags/.
-    "CCL": { nome: "Camila",     selecao: "Inglaterra", foto: "fotos/CCL.jpeg", bandeira: "flags/inglaterra.png" },
-    "HDZ": { nome: "Diniz",      selecao: "Argentina",  foto: "fotos/HDZ.jpg",  bandeira: "flags/argentina.webp" },
-    "EZB": { nome: "Enzo",       selecao: "Portugal",   foto: "fotos/EZB.jpg",  bandeira: "flags/portugal.webp" },
-    "FAL": { nome: "Fernando",   selecao: "Canadá",     foto: "fotos/FAL.JPG",  bandeira: "flags/canada.png" },
-    "HLM": { nome: "Harry",      selecao: "Espanha",    foto: "fotos/HLM.jpg",  bandeira: "flags/espanha.png" },
-    "HMD": { nome: "Henrique",   selecao: "USA",        foto: "fotos/HMD.jpg",  bandeira: "flags/usa.png" },
-    "HUM": { nome: "Hudson",     selecao: "Japão",      foto: "fotos/HUM.jpg",  bandeira: "flags/japao.png" },
-    "JKC": { nome: "Jackson",    selecao: "México",     foto: "fotos/JKC.jpeg", bandeira: "flags/mexico.webp" },
-    "JPP": { nome: "João Pedro", selecao: "Brasil",     foto: "fotos/JPP.jpg",  bandeira: "flags/brasil.svg" },
-    "MDR": { nome: "Monica",     selecao: "Holanda",    foto: "fotos/MDR.jpg",  bandeira: "flags/holanda.webp" },
-    "THS": { nome: "Thayna",     selecao: "França",     foto: "fotos/THS.JPG",  bandeira: "flags/franca.png" }
+    // Cada vendedor representa uma seleção (país) com a respectiva bandeira em assets/flags/.
+    "CCL": { nome: "Camila",     selecao: "Inglaterra", foto: "assets/fotos/CCL.jpeg", bandeira: "assets/flags/inglaterra.png" },
+    "HDZ": { nome: "Diniz",      selecao: "Argentina",  foto: "assets/fotos/HDZ.jpg",  bandeira: "assets/flags/argentina.webp" },
+    "EZB": { nome: "Enzo",       selecao: "Portugal",   foto: "assets/fotos/EZB.jpg",  bandeira: "assets/flags/portugal.webp" },
+    "FAL": { nome: "Fernando",   selecao: "Canadá",     foto: "assets/fotos/FAL.JPG",  bandeira: "assets/flags/canada.png" },
+    "HLM": { nome: "Harry",      selecao: "Espanha",    foto: "assets/fotos/HLM.jpg",  bandeira: "assets/flags/espanha.png" },
+    "HMD": { nome: "Henrique",   selecao: "USA",        foto: "assets/fotos/HMD.jpg",  bandeira: "assets/flags/usa.png" },
+    "HUM": { nome: "Hudson",     selecao: "Japão",      foto: "assets/fotos/HUM.jpg",  bandeira: "assets/flags/japao.png" },
+    "JKC": { nome: "Jackson",    selecao: "México",     foto: "assets/fotos/JKC.jpeg", bandeira: "assets/flags/mexico.webp" },
+    "JPP": { nome: "João Pedro", selecao: "Brasil",     foto: "assets/fotos/JPP.jpg",  bandeira: "assets/flags/brasil.svg" },
+    "MDR": { nome: "Monica",     selecao: "Holanda",    foto: "assets/fotos/MDR.jpg",  bandeira: "assets/flags/holanda.webp" },
+    "THS": { nome: "Thayna",     selecao: "França",     foto: "assets/fotos/THS.JPG",  bandeira: "assets/flags/franca.png" }
   },
 
   fases: {
