@@ -83,8 +83,15 @@ Supabase e BigQuery devolvem o **mesmo shape**; ha um unico path de render.
 - `chart-dia-share` (em cima): so linha de Share (%)
 - `chart-dia` (embaixo): barras TVD empilhadas por vendedor
 - Eixos Y de largura fixa (`afterFit s.width=56`) para alinhar as categorias dos dois graficos.
+- O grafico de barras inclui um **dataset-overlay de linha transparente** (`label: 'Total'`,
+  `hideInLegend: true`) so para exibir o **total da pilha** no topo de cada coluna. A legenda
+  filtra esse dataset via `legend.labels.filter` em `baseOpts`.
 
-Regra: **todo grafico exibe data labels** (`chartjs-plugin-datalabels`). Quando os rotulos se sobrepoem, usar `display: 'auto'`.
+**Q3 — Ranking:** podio dos 3 primeiros em destaque (`podiumHTML`) + lista 4o+ com scroll
+estilizado (`listaHTML`/`.copa-list`). Com **menos de 4 vendedores**, `renderRanking` marca
+`#rank-list` com a classe `podium-only` e o podio ocupa todo o quadrante.
+
+Regra: **todo grafico exibe data labels** (`chartjs-plugin-datalabels`). Quando os rotulos se sobrepoem, usar `display: 'auto'`. Graficos empilhados tambem exibem o rotulo do total no topo.
 
 ## `Stylesheet.html` + `Index.html`
 

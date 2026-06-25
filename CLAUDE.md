@@ -54,6 +54,10 @@ Antes de escrever qualquer linha de codigo, responda explicitamente a estas 5 pe
 - **Ausencia de tratamento de erros** em operacoes assincronas.
 - **Graficos sem data labels.** Todo grafico (Chart.js + `chartjs-plugin-datalabels`) deve
   exibir valores como rotulos. Quando sobrepostos, usar `display: 'auto'`.
+- **Total em graficos empilhados/agrupados.** Alem dos rotulos por segmento, todo grafico de
+  barras empilhadas (ou agrupadas) deve exibir o **rotulo do TOTAL** no topo de cada coluna —
+  boa pratica de visualizacao de dados. Padrao usado: um dataset-overlay de linha transparente
+  com a soma da pilha, exibindo so o data label (ex.: `renderChartDia` em `gerencial/`).
 - Executar `/code-review` antes de apresentar o codigo.
 
 ---

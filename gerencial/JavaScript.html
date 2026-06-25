@@ -203,8 +203,11 @@
     }).sort(function (a, b) { return b.gmv - a.gmv || a.nome.localeCompare(b.nome); });
 
     var el = document.getElementById('rank-list');
-    if (!lista.length) { el.innerHTML = '<div class="q-empty">Sem vendas TVD no periodo.</div>'; return; }
-    el.innerHTML = podiumHTML(lista.slice(0, 3)) + listaHTML(lista.slice(3), 4);
+    if (!lista.length) { el.className = 'rank-list'; el.innerHTML = '<div class="q-empty">Sem vendas TVD no periodo.</div>'; return; }
+    // < 4 vendedores: sem lista, o podio ocupa todo o quadrante (classe podium-only).
+    var resto = lista.slice(3);
+    el.className = 'rank-list' + (resto.length ? '' : ' podium-only');
+    el.innerHTML = podiumHTML(lista.slice(0, 3)) + listaHTML(resto, 4);
   }
   function avatarHTML(r) {
     return '<img src="' + esc(r.foto) + '" alt="" onload="this.className=\'loaded\'" onerror="this.remove()">' +
@@ -293,6 +296,16 @@
           font: { size: 9, weight: 'bold' }, formatter: function (v) { return v > 0 ? formatBRLk(v) : ''; } } };
     });
 
+    // Total da pilha por dia (soma dos segmentos ja calculados em barDs) — rotulo no topo da barra.
+    var totalSerie = labels.map(function (_, i) {
+      return barDs.reduce(function (s, ds) { return s + (ds.data[i] || 0); }, 0);
+    });
+    var totalDs = { label: 'Total', type: 'line', data: totalSerie, yAxisID: 'y',
+      borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, fill: false,
+      hideInLegend: true,
+      datalabels: { display: true, anchor: 'end', align: 'top', color: c.text, clamp: true,
+        font: { size: 10, weight: 'bold' }, formatter: function (v) { return v > 0 ? formatBRLk(v) : ''; } } };
+
     // Share TVD = GMV TVD / GMV total do dia (recalculado no acumulado).
     var tvd = porDia.map(function (x) { return x.gmv_tvd || 0; });
     var tot = porDia.map(function (x) { return x.gmv_total || 0; });
@@ -315,12 +328,12 @@
       }, { legend: false, padTop: 20 })
     });
 
-    // Grafico de baixo: barras empilhadas por vendedor.
+    // Grafico de baixo: barras empilhadas por vendedor + overlay com o total no topo.
     if (charts.dia) charts.dia.destroy();
     charts.dia = new Chart(document.getElementById('chart-dia').getContext('2d'), {
       type: 'bar',
-      data: { labels: labels, datasets: barDs },
-      options: baseOpts(c, { y: rsAxis(c, true) })
+      data: { labels: labels, datasets: barDs.concat([totalDs]) },
+      options: baseOpts(c, { y: rsAxis(c, true, '20%') }, { padTop: 26 })
     });
   }
 
@@ -335,7 +348,8 @@
       plugins: {
         legend: extra.legend === false
           ? { display: false }
-          : { display: true, position: 'bottom', labels: { color: c.text2, boxWidth: 10, font: { size: 10 } } },
+          : { display: true, position: 'bottom', labels: { color: c.text2, boxWidth: 10, font: { size: 10 },
+              filter: function (item, data) { return !(data.datasets[item.datasetIndex] || {}).hideInLegend; } } },
         datalabels: { display: false },
         tooltip: { callbacks: { label: function (it) {
           var v = it.parsed.y;

@@ -150,35 +150,51 @@
   /* ===== Q3 Ranking — podio (top 3) + lista (demais) ===== */
   .rank-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.8vh; }
 
-  .podium { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5vw; align-items: end; }
-  .podium-place { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  /* Podio em destaque: altura natural (cards maiores); a lista 4o+ ocupa o espaco restante. */
+  .podium { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0.5vw; align-items: end; }
+  .podium-place { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; }
   .podium-place.zero { opacity: 0.5; }
   .podium-card { width: 100%; background: var(--surface-3); border: 1px solid var(--border);
-    border-radius: 10px 10px 0 0; padding: 0.6vh 0.4vw 0.5vh; display: flex; flex-direction: column; align-items: center; min-width: 0; }
-  .podium-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(0.7rem, 0.95vw, 1rem);
-    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 0.35rem; }
-  .podium-avatar { width: clamp(36px, 4vw, 60px); height: clamp(36px, 4vw, 60px); border-radius: 10px; overflow: hidden;
+    border-radius: 12px 12px 0 0; padding: 1vh 0.5vw 0.8vh; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .podium-name { font-family: var(--font-title); font-weight: 700; font-size: clamp(0.74rem, 1vw, 1.05rem);
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 0.4rem; }
+  .podium-avatar { width: clamp(48px, 5vw, 76px); height: clamp(48px, 5vw, 76px); border-radius: 12px; overflow: hidden;
     border: 2px solid var(--border); position: relative; background: var(--surface-2); display: flex; align-items: center; justify-content: center; }
   .podium-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
-  .podium-avatar .ini { font-family: var(--font-title); font-weight: 800; font-size: 0.9rem; color: var(--text-muted); }
+  .podium-avatar .ini { font-family: var(--font-title); font-weight: 800; font-size: 1.1rem; color: var(--text-muted); }
   .podium-avatar img.loaded + .ini { display: none; }
-  .podium-gmv { font-family: monospace; font-weight: 800; font-size: clamp(0.72rem, 0.95vw, 1.05rem); color: var(--gold); margin-top: 0.35rem; }
-  .podium-vendas { font-size: clamp(0.58rem, 0.74vw, 0.78rem); color: var(--text-muted); }
-  .podium-bar { width: 100%; display: flex; align-items: flex-start; justify-content: center;
-    border-radius: 0 0 4px 4px; color: #0b1120; font-family: var(--font-title); font-weight: 800; padding-top: 2px; }
-  .podium-num { font-size: clamp(0.9rem, 1.3vw, 1.5rem); }
-  .place-1 .podium-bar { height: clamp(20px, 3vh, 34px); background: linear-gradient(180deg, #fde68a, var(--p1)); }
-  .place-2 .podium-bar { height: clamp(14px, 2.2vh, 24px); background: linear-gradient(180deg, #f1f5f9, var(--p2)); }
-  .place-3 .podium-bar { height: clamp(10px, 1.6vh, 18px); background: linear-gradient(180deg, #fbbf24, var(--p3)); }
+  /* GMV nunca corta: nowrap + letter-spacing apertado; max-width 100% garante caber no card. */
+  .podium-gmv { font-family: monospace; font-weight: 800; font-size: clamp(0.7rem, 1.05vw, 1.15rem);
+    color: var(--gold); margin-top: 0.45rem; white-space: nowrap; letter-spacing: -0.02em; max-width: 100%; }
+  .podium-vendas { font-size: clamp(0.58rem, 0.76vw, 0.82rem); color: var(--text-muted); margin-top: 0.1rem; }
+  .podium-bar { width: 100%; display: flex; align-items: center; justify-content: center; line-height: 1;
+    border-radius: 0 0 4px 4px; color: #0b1120; font-family: var(--font-title); font-weight: 800; }
+  /* Num cabe na MENOR barra (place-3) para nunca cortar. */
+  .podium-num { font-size: clamp(0.82rem, 1.05vw, 1.2rem); }
+  .place-1 .podium-bar { height: clamp(26px, 3.8vh, 42px); background: linear-gradient(180deg, #fde68a, var(--p1)); }
+  .place-2 .podium-bar { height: clamp(20px, 2.9vh, 32px); background: linear-gradient(180deg, #f1f5f9, var(--p2)); }
+  .place-3 .podium-bar { height: clamp(17px, 2.3vh, 26px); background: linear-gradient(180deg, #fbbf24, var(--p3)); }
   .place-1 .podium-card { border-color: rgba(250,204,21,0.5); box-shadow: 0 0 18px rgba(250,204,21,0.15); }
   .place-1 .podium-avatar { border-color: var(--p1); }
   .place-2 .podium-avatar { border-color: var(--p2); }
   .place-3 .podium-avatar { border-color: var(--p3); }
   .place-1 .podium-gmv { color: var(--green); }
 
-  .copa-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5vh; padding-right: 0.3rem; }
+  /* < 4 vendedores: sem lista — o podio ocupa todo o quadrante, com avatares maiores.
+     align-content:end ancora as barras embaixo (numeros nunca cortam); o espaco extra fica no topo. */
+  .rank-list.podium-only .podium { flex: 1 1 auto; min-height: 0; align-items: end; align-content: end; }
+  .rank-list.podium-only .podium-card { padding: 1.4vh 0.6vw 1.1vh; }
+  .rank-list.podium-only .podium-avatar { width: clamp(56px, 6vw, 92px); height: clamp(56px, 6vw, 92px); }
+  .rank-list.podium-only .podium-gmv { font-size: clamp(0.82rem, 1.3vw, 1.4rem); }
+  .rank-list.podium-only .podium-name { font-size: clamp(0.82rem, 1.2vw, 1.25rem); }
+
+  .copa-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column;
+    gap: 0.5vh; padding-right: 0.3rem; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   .copa-list::-webkit-scrollbar { width: 6px; }
+  .copa-list::-webkit-scrollbar-track { background: transparent; }
   .copa-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .copa-list::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
   .copa-list-row { display: flex; align-items: center; gap: 0.7rem; background: var(--surface-3);
     border: 1px solid var(--border); border-radius: 10px; padding: 0.5vh 0.7rem; flex-shrink: 0; }
   .copa-list-row.zero { opacity: 0.5; }
