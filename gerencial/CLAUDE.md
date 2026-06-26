@@ -173,6 +173,13 @@ Logica de fallback no frontend: `<img onload="this.className='loaded'">` + CSS `
 - Alias de PMP: `JCK` → `JKC` por padrao em `canonCode_`. Mude `Config-template.md` se precisar de outros aliases.
 - A aba `Acessos` tem coluna `PMP` que mapeia o e-mail do usuario ao seu PMP — usada em `listarVendas` para separar "minhas vendas".
 - Projeto BigQuery com **hifens**: `grupo-primo-prd`. Sem hifens causa `Cannot parse as CloudRegion`.
+- **GMV projetado (so Supabase):** vendas parceladas entram no Supabase com **so a 1a parcela**
+  (`price`). A aba `Faixas_GMV` (valor_min | valor_max | meses | fator) projeta o contrato cheio:
+  `gmvProjetado_(price, cfg.faixasGmv)` = `price * meses * fator` da faixa onde a 1a parcela cai
+  (`fator` = provisao de reembolso da recorrencia). Aplicado na entrada de `aggregateRows_` (uma so
+  variavel `price`, todo o downstream acompanha) e em `listarVendas` (campo `price` = projetado,
+  `precoReal` = cru). Faixa ausente/sem match -> sem ajuste. **O BigQuery NAO usa isso** — a tabela
+  mart ja traz o valor cheio do contrato.
 - **Vendas de teste:** `exclude_email_domains` (config, default `timeprimo.com`) remove transacoes cujo
   e-mail tem dominio interno. Aplicado **so a vendas/transactions**: no Supabase via `semEmailTeste_`
   (`Code.gs`, e-mail vazio = mantido) e no BigQuery via `bqEmailNotTest_` (`BigQuery.gs`, fragmento
