@@ -117,16 +117,30 @@ function funilOrigemExpr_() {
     "'(sem origem)')";
 }
 
-// Filtro do grupo do lancamento: correspondencia APROXIMADA case-insensitive (LIKE) em
-// group_name (CRM). Os nomes de grupo sao longos e mudam entre lancamentos, entao casamos
-// por trecho — mesma convencao de slug_like/bq_product_like. O valor de Config pode vir com
-// `%` nas pontas (ex.: `%MBA IA [TDV 2]%`); se vier sem nenhum `%`, embrulhamos em `%...%`
-// para manter o match aproximado no modelo escalavel (duplica a planilha, troca o produto).
-// (Era `=` antes; com o valor `%...%` os % viravam literais e o funil inteiro voltava vazio.)
+// Escopo do lancamento no CRM (clint_deals_*). Usado em TODAS as queries do funil
+// (base/ativados/vendas/TMR), entao definir o escopo aqui propaga para tudo.
+//
+// Dois cenarios, uma so lever:
+//  - LEGADO: o grupo da Clint era dedicado ao lancamento -> basta `group_name`.
+//  - FIA e afins: o grupo (`MBA IA [TDV 2]`) e COMPARTILHADO entre varios funis; o lancamento
+//    e UM `origin_name` dentro dele (ex.: "Formacao Consultor de IA"). Preencher
+//    `funil_origin_name` na Config estreita o escopo a esse funil.
+//
+// Match APROXIMADO case-insensitive (LIKE) nos dois campos — nomes longos/instaveis, mesma
+// convencao de slug_like/bq_product_like. Valor pode vir com `%`; se nao vier, embrulhamos.
+// (Era `=` antes; com valor `%...%` os % viravam literais e o funil inteiro voltava vazio.)
+function funilLikeAprox_(valor) {
+  var v = String(valor || '');
+  if (v && v.indexOf('%') === -1) v = '%' + v + '%';
+  return v;
+}
 function funilGrupoWhere_(cfg) {
-  var nome = String(cfg.funilGroupName || '');
-  if (nome.indexOf('%') === -1) nome = '%' + nome + '%';
-  return 'LOWER(group_name) LIKE LOWER(' + sqlStr_(nome) + ')';
+  var cond = 'LOWER(group_name) LIKE LOWER(' + sqlStr_(funilLikeAprox_(cfg.funilGroupName)) + ')';
+  var origem = String(cfg.funilOriginName || '').trim();
+  if (origem) {
+    cond += '\n    AND LOWER(origin_name) LIKE LOWER(' + sqlStr_(funilLikeAprox_(origem)) + ')';
+  }
+  return cond;
 }
 
 // Telefone normalizado p/ cruzamento: so digitos, ultimos 11; NULL se < 10 digitos (evita lixo).

@@ -153,7 +153,11 @@ Mensagens de commit com acentos via heredoc podem causar exit code 144. Usar ASC
 `funil_group_name` casa por `LOWER(group_name) LIKE LOWER(valor)` — escolha consciente porque
 os nomes de grupo no CRM sao longos/instaveis e o gerencial e um **modelo escalavel** (duplica a
 planilha, troca so o produto). O valor vem com `%...%` (igual `slug_like`). Ja foi bug usar `=`
-com valor `%...%`: os `%` viram literais e base/ativados/TMR voltam vazios. Detalhe em
+com valor `%...%`: os `%` viram literais e base/ativados/TMR voltam vazios.
+
+Quando o grupo da Clint e **compartilhado** entre varios funis (caso FIA: grupo `MBA IA [TDV 2]`,
+lancamento = origem `Formação Consultor de IA`), preencha tambem `funil_origin_name` para estreitar
+o escopo aquele `origin_name`. Vazio = grupo inteiro (legado, grupo dedicado). Detalhe em
 `gerencial/CLAUDE.md`.
 
 ### Fotos: nome do arquivo deve ser `<PMP>.jpg` MINUSCULO
