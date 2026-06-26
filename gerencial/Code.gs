@@ -146,6 +146,7 @@ function lerConfig_() {
     slugLike:      kv['slug_like'] || '%',
     participantes: participantes,
     aliasPmp:      parseAliasPmp_(kv['pmp_aliases']),
+    faixasGmv:     lerFaixasGmv_(),  // projecao de GMV por faixa da 1a parcela (so Supabase)
     inicio:        kv['inicio'] || '',
     fim:           kv['fim'] || '',
     pollSegundos:  Number(kv['poll_segundos'] || 60) || 60,
@@ -183,6 +184,30 @@ function lerConfig_() {
     jwtEmail:       p.getProperty('SUPABASE_JWT_EMAIL'),
     accessToken:    p.getProperty('SUPABASE_ACCESS_TOKEN')
   };
+}
+
+// Le a aba "Faixas_GMV" (valor_min | valor_max | meses | fator) -> [{min, max, meses, fator}].
+// GMV no Supabase = so a 1a parcela; aqui projetamos o contrato (price * meses) com provisao de
+// reembolso (* fator) por faixa de valor da 1a parcela. valor_max vazio = faixa aberta no topo.
+// Aba ausente/vazia -> [] (sem ajuste; ver gmvProjetado_).
+function lerFaixasGmv_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss && ss.getSheetByName('Faixas_GMV');
+  var out = [];
+  if (!sh) return out;
+  var values = sh.getDataRange().getValues();
+  for (var i = 0; i < values.length; i++) {
+    var min = values[i][0], max = values[i][1], meses = values[i][2], fator = values[i][3];
+    if (min === '' || min == null) continue;                                   // linha vazia
+    if (String(min).trim().toLowerCase().indexOf('valor') === 0) continue;     // cabecalho
+    out.push({
+      min:   Number(min) || 0,
+      max:   (max === '' || max == null) ? Infinity : (Number(max) || 0),
+      meses: Number(meses) || 1,
+      fator: (fator === '' || fator == null) ? 1 : (Number(fator) || 1)
+    });
+  }
+  return out;
 }
 
 // Le a aba "Participantes" (PMP | Nome) -> { PMP: Nome }. Opcional.
@@ -226,14 +251,14 @@ function getDashboardSupabase(periodo) {
 }
 
 // ===== AGREGACAO (puro) — transforma linhas do Supabase no shape do dashboard =====
-// TVD = pmp contem "TVD". "Outros" = pmp sem "TVD". GMV = price.
+// TVD = pmp contem "TVD". "Outros" = pmp sem "TVD". GMV = price projetado por faixa (gmvProjetado_).
 function aggregateRows_(rows, cfg, nomes) {
   var hoje = hojeSP_();
   var kpiTotal = novoKpi_(), kpiHoje = novoKpi_();
   var rankAcc = {}, dias = {}, horas = {};
 
   (rows || []).forEach(function (t) {
-    var price = Number(t.price) || 0;
+    var price = gmvProjetado_(Number(t.price) || 0, cfg.faixasGmv);
     var tvd = isTvd_(t.pmp);
     var dia = diaSP_(t.created_at);
     var ehHoje = dia === hoje;
@@ -326,6 +351,17 @@ function parseAliasPmp_(raw) {
 function canonCode_(code, aliasMap) {
   code = String(code || '').toUpperCase();
   return (aliasMap && aliasMap[code]) || code;
+}
+// GMV projetado: a 1a parcela (price) cai numa faixa de Faixas_GMV e vira price*meses*fator
+// (contrato cheio com provisao de reembolso). Sem faixas ou sem match -> price inalterado.
+function gmvProjetado_(price, faixas) {
+  price = Number(price) || 0;
+  if (!faixas || !faixas.length) return price;
+  for (var i = 0; i < faixas.length; i++) {
+    var f = faixas[i];
+    if (price >= f.min && price <= f.max) return price * f.meses * f.fator;
+  }
+  return price;
 }
 function hojeSP_() { return Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd'); }
 function diaSP_(iso) {
@@ -422,7 +458,8 @@ function listarVendas(termo) {
         nome:       t.name || '',
         email:      t.email || '',
         phone:      t.phone || '',
-        price:      Number(t.price) || 0
+        price:      gmvProjetado_(Number(t.price) || 0, cfg.faixasGmv),  // GMV projetado (1a parcela x meses x fator)
+        precoReal:  Number(t.price) || 0                                  // valor cru cobrado na 1a parcela
       };
     })
   };

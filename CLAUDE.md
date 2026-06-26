@@ -181,3 +181,4 @@ Solucao: imagem `position: absolute; top:0; left:0; width:100%; height:100%`
 3. **`fase_ativa_override`:** deixar `null` para producao. Usar so para testes.
 4. **Repo publico:** necessario para as URLs raw.githubusercontent das fotos funcionarem.
 5. **Datas do Supabase:** a query filtra `created_at >= 2026-06-16`. Antes disso retorna vazio e o JSON fallback assume (intencional para testes).
+6. **GMV projetado (gerencial, so Supabase):** parcelado entra no Supabase so com a 1a parcela. A aba `Faixas_GMV` projeta `price * meses * fator` por faixa. BigQuery ja traz o contrato cheio (nao usa). Detalhe em `gerencial/CLAUDE.md`.

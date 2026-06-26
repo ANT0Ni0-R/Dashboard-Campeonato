@@ -42,6 +42,26 @@ do Supabase ficam em Script Properties (nunca na planilha).
 > **TVD no Supabase:** uma venda e do time de vendas (TVD) quando o campo `pmp` **contem "TVD"**.
 > "Outros" = `pmp` sem "TVD". No BigQuery, TVD = `sales_channel = 'TVD'` (= `canal_tvd`).
 
+## Aba `Faixas_GMV` (valor_min | valor_max | meses | fator) — projecao de GMV
+
+Vendas parceladas entram no **Supabase** com **apenas o valor da 1a parcela** (`price`). Esta aba
+projeta o contrato cheio: a 1a parcela cai numa **faixa de valor** que define o nº de **meses**
+(multiplicador) e um **fator** de provisao de reembolso (recorrencia). GMV = `price x meses x fator`.
+
+**So afeta o caminho Supabase (real-time).** O BigQuery (visao Comissao) ja traz o valor cheio do
+contrato e **nao** usa esta aba.
+
+| valor_min | valor_max | meses | fator |
+|---|---|---|---|
+| 0 | 99,99 | 12 | 0.85 |
+| 100 | 199,99 | 6 | 0.85 |
+| 200 | _(vazio)_ | 1 | 1.00 |
+
+- 1a linha = cabecalho (ignorada). Match: `price >= valor_min AND price <= valor_max` (inclusivos).
+- `valor_max` **vazio** = faixa aberta no topo (sem teto). `meses` vazio = 1; `fator` vazio = 1.
+- `price` fora de qualquer faixa = **sem ajuste** (GMV = price). Aba ausente/vazia = comportamento
+  atual (sem projecao). A contagem de vendas nao muda — so o valor monetario e projetado.
+
 ## Aba `Participantes` (PMP | Nome)
 
 | PMP | Nome |
