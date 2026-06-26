@@ -117,10 +117,9 @@ function funilOrigemExpr_() {
     "'(sem origem)')";
 }
 
-// Filtro do grupo do lancamento. Os nomes vem com sufixo de turma (ex.: "... [TDV 2]"),
-// entao usamos LIKE (case-insensitive) em vez de igualdade exata.
+// Filtro do grupo do lancamento: igualdade case-insensitive em group_name (CRM).
 function funilGrupoWhere_(cfg) {
-  return 'LOWER(group_name) LIKE LOWER(' + sqlStr_(cfg.funilGroupLike) + ')';
+  return 'LOWER(group_name) = LOWER(' + sqlStr_(cfg.funilGroupName) + ')';
 }
 
 // Telefone normalizado p/ cruzamento: so digitos, ultimos 11; NULL se < 10 digitos (evita lixo).
@@ -442,7 +441,7 @@ function criarTriggerFunil() {
 function testFunil() {
   var cfg = lerConfig_();
   var ini = String(cfg.inicio || '').slice(0, 10), fim = String(cfg.fim || '').slice(0, 10);
-  Logger.log('FUNIL janela %s -> %s | grupo LIKE %s | campanha %s', ini, fim, cfg.funilGroupLike, cfg.funilCampanha);
+  Logger.log('FUNIL janela %s -> %s | grupo (case-insensitive) %s | campanha %s', ini, fim, cfg.funilGroupName, cfg.funilCampanha);
   var passos = [
     ['base', function () { return sqlFunilBase_(cfg); }],
     ['ativados', function () { return sqlFunilAtivados_(cfg, ini, fim); }],

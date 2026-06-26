@@ -25,7 +25,7 @@ do Supabase ficam em Script Properties (nunca na planilha).
 | `bq_product_like` | `%legado%` | filtro do produto no **BigQuery** (`product_name LIKE`) (PR2) |
 | `canal_tvd` | `TVD` | valor de `sales_channel` que identifica o time de vendas no BigQuery (PR2) |
 | `pmp_aliases` | `JCK:JKC` | correcao de PMP trocado na origem (link de pagamento). Funde no ranking/foto/atribuicao. Formato `DE:PARA,DE:PARA`. Vazio = default `JCK:JKC` |
-| `funil_group_like` | `%legado%` | filtro `group_name` nas tabelas de CRM do **Funil** (LIKE; nomes vem com sufixo de turma, ex.: `... [TDV 2]`). **Opcional:** se vazio, herda `bq_product_like`. So preencha quando o nome do grupo do CRM divergir do produto |
+| `funil_group_name` | `O Legado` | nome do grupo no CRM (`clint_deals_*`) do **Funil**. Match **case-insensitive** (`LOWER(group_name)=LOWER(valor)`). Use o nome exato do grupo (ex.: o `group_name` que aparece na tabela) |
 | `funil_campanha` | `BAR0001` | filtro `campanha` na tabela de leads do **Funil** (`mrt_grupo__leads`) |
 | `bq_deals_history_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_history_cleaned` | historico de etapas (ativacao) |
 | `bq_deals_cleaned_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_cleaned` | base do grupo + origem do lead |

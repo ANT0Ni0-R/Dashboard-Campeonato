@@ -27,7 +27,7 @@ var DEFAULTS = {
   BQ_TABLE:        'grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request',
   CANAL_TVD:       'TVD',
   // --- Funil (snapshot proprio; tabelas do CRM/leads/mensagens) ---
-  FUNIL_GROUP_LIKE:    '%legado%',   // group_name vem com sufixo de turma (ex.: "... [TDV 2]")
+  FUNIL_GROUP_NAME:    'O Legado',   // group_name do CRM (match case-insensitive em group_name)
   FUNIL_CAMPANHA:      'BAR0001',
   BQ_DEALS_HISTORY:    'grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_history_cleaned',
   BQ_DEALS_CLEANED:    'grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_cleaned',
@@ -153,9 +153,8 @@ function lerConfig_() {
     bqProductLike: kv['bq_product_like'] || '%',
     canalTvd:      kv['canal_tvd'] || DEFAULTS.CANAL_TVD,
     // --- Funil (tabelas/filtros do snapshot de ativacao) ---
-    // group_name do CRM. Se nao setado, herda o bq_product_like (mesmo identificador do produto
-    // que voce ja mantem); so use funil_group_like quando o nome do grupo divergir do produto.
-    funilGroupLike:  kv['funil_group_like'] || kv['bq_product_like'] || DEFAULTS.FUNIL_GROUP_LIKE,
+    // Nome do grupo no CRM (clint_deals_*). Match case-insensitive (LOWER = LOWER) em funilGrupoWhere_.
+    funilGroupName:  kv['funil_group_name'] || DEFAULTS.FUNIL_GROUP_NAME,
     funilCampanha:   kv['funil_campanha'] || DEFAULTS.FUNIL_CAMPANHA,
     bqDealsHistory:  kv['bq_deals_history_table'] || DEFAULTS.BQ_DEALS_HISTORY,
     bqDealsCleaned:  kv['bq_deals_cleaned_table'] || DEFAULTS.BQ_DEALS_CLEANED,
