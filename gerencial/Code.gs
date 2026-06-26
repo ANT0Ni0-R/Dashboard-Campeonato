@@ -24,7 +24,7 @@ var DEFAULTS = {
   SUPABASE_TABELA: 'db_transactions_events',
   FOTOS_BASE:      'https://raw.githubusercontent.com/ANT0Ni0-R/Dashboard-Campeonato/main/assets/fotos/',
   BQ_PROJECT:      'grupo-primo-prd',
-  BQ_TABLE:        'grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request',
+  BQ_TABLE:        'grupo-primo-crm-prd.grupo_primo_crm.mrt_sales_team__transactions_with_sales_request',
   CANAL_TVD:       'TVD',
   // --- Funil (snapshot proprio; tabelas do CRM/leads/mensagens) ---
   FUNIL_GROUP_NAME:    'O Legado',   // group_name do CRM (match aproximado LIKE em group_name)

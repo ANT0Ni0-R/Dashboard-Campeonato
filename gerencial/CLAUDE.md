@@ -71,7 +71,9 @@ Para publicar mudancas: copiar os arquivos `.gs` e `.html` para o editor em `scr
 - `canonSqlExpr_(alias)` — alias de PMP em SQL
 - `criarTriggerSnapshot()` / `testSnapshot()` — setup e teste do trigger
 
-**Configuracao BigQuery:** projeto `grupo-primo-prd` (com hifens — obrigatorio), dataset `mart_sales_team`, tabela `mrt_sales_team__transactions_with_sales_request`. TVD = `sales_channel = 'TVD'`.
+**Configuracao BigQuery:** billing no projeto `grupo-primo-prd` (`bq_project`, com hifens — obrigatorio). A tabela de transactions migrou (cross-project) para `grupo-primo-crm-prd.grupo_primo_crm.mrt_sales_team__transactions_with_sales_request` (`bq_table`); as demais tabelas (deals/leads/messages) seguem em `grupo-primo-prd`. TVD = `sales_channel = 'TVD'`.
+
+**Colunas de data da tabela de transactions (apos a migracao):** o schema novo renomeou `transaction_dt` -> `transaction_created_date` (DATE, ja em BRT — GMV diario identico) e `transaction_at` (TIMESTAMP) -> `transaction_created_at` (DATETIME em **UTC**). Para hora BRT (Q2 hora-a-hora), converter: `DATETIME(TIMESTAMP(transaction_created_at, 'UTC'), 'America/Sao_Paulo')`. Demais colunas (gmv, net_transactions, sales_channel, product_name, is_refunded, seller_pmp, seller_name, user_email, user_phone) inalteradas.
 
 **Snapshot fragmentado:** `gravarJsonChunked_(sh, ts, json)` / `lerJsonChunked_(sh)` quebram o JSON em pedacos de ~40k chars (limite de ~50k/celula). Usados pelo Funil; o `Snapshot_BQ` continua em celula unica (cabe).
 

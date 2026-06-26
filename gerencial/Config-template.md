@@ -21,7 +21,7 @@ do Supabase ficam em Script Properties (nunca na planilha).
 | `tabela` | `db_transactions_events` | tabela do Supabase |
 | `url` | `https://ipalripfknzhrzddhvdx.supabase.co` | endpoint do Supabase (pode vir de Script Property) |
 | `bq_project` | `grupo-primo-prd` | **com hifens** — projeto do BigQuery (PR2) |
-| `bq_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request` | tabela do BigQuery (PR2) |
+| `bq_table` | `grupo-primo-crm-prd.grupo_primo_crm.mrt_sales_team__transactions_with_sales_request` | tabela de transactions no BigQuery. **Cross-project**: vive em `grupo-primo-crm-prd`, mas o billing roda em `bq_project` (`grupo-primo-prd`). Colunas de data: `transaction_created_date` (DATE, BRT) e `transaction_created_at` (DATETIME em **UTC**) |
 | `bq_product_like` | `%legado%` | filtro do produto no **BigQuery** (`product_name LIKE`) (PR2) |
 | `canal_tvd` | `TVD` | valor de `sales_channel` que identifica o time de vendas no BigQuery (PR2) |
 | `pmp_aliases` | `JCK:JKC` | correcao de PMP trocado na origem (link de pagamento). Funde no ranking/foto/atribuicao. Formato `DE:PARA,DE:PARA`. Vazio = default `JCK:JKC` |

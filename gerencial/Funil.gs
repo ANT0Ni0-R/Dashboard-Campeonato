@@ -16,7 +16,9 @@
  * no editor). O front consome um shape NORMALIZADO (montado pelos mappers deste arquivo), entao
  * ajustes de coluna ficam restritos a este arquivo — nao mexem na UI.
  *
- * Projeto/tabelas com HIFENS (grupo-primo-prd) — sem hifen o BQ falha (ver CLAUDE.md).
+ * Projeto/tabelas com HIFENS — sem hifen o BQ falha (ver CLAUDE.md). As tabelas do CRM/leads/
+ * mensagens seguem em grupo-primo-prd; a tabela de transactions (cfg.bqTable, usada em vendas/
+ * conversaoGeral) migrou para grupo-primo-crm-prd.grupo_primo_crm e usa transaction_created_date.
  * Reusa bqQuery_, sqlStr_ e os helpers de chunk de BigQuery.gs; lerConfig_/lerParticipantes_
  * e canonCode_ de Code.gs.
  */
@@ -221,7 +223,7 @@ function sqlFunilVendas_(cfg, ini, fim) {
     '),\n' +
     'vendas AS (\n' +
     '  SELECT DISTINCT\n' +
-    "    FORMAT_DATE('%Y-%m-%d', t.transaction_dt) AS dia,\n" +
+    "    FORMAT_DATE('%Y-%m-%d', t.transaction_created_date) AS dia,\n" +
     '    UPPER(t.seller_pmp) AS pmp,\n' +
     "    COALESCE(ce.origem, cp.origem, '(sem match)') AS origem,\n" +
     '    ' + funilBuyerKey_('t.user_email', 't.user_phone') + ' AS buyer\n' +
@@ -232,7 +234,7 @@ function sqlFunilVendas_(cfg, ini, fim) {
     '    AND t.sales_channel = ' + t + '\n' +
     '    AND t.seller_pmp IS NOT NULL\n' +
     '    AND UPPER(t.product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-    '    AND t.transaction_dt BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
+    '    AND t.transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
     ')\n' +
     'SELECT dia, pmp, origem, COUNT(DISTINCT buyer) AS n\n' +
     'FROM vendas\n' +
@@ -258,7 +260,7 @@ function sqlFunilConversaoGeral_(cfg, ini, fim) {
     '  WHERE NOT COALESCE(is_refunded, FALSE)\n' +
     '    AND sales_channel = ' + t + '\n' +
     '    AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-    '    AND transaction_dt BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
+    '    AND transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
     "    AND user_email IS NOT NULL AND TRIM(user_email) != ''\n" +
     ')\n' +
     'SELECT\n' +
