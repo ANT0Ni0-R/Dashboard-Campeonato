@@ -17,7 +17,7 @@ do Supabase ficam em Script Properties (nunca na planilha).
 | `inicio` | `2026-06-16T00:00:00-03:00` | inicio da janela (ISO com fuso) |
 | `fim` | `2026-06-20T23:59:59-03:00` | fim da janela (ISO com fuso) |
 | `poll_segundos` | `60` | intervalo de auto-refresh da visao real-time |
-| `fotos_base` | `https://raw.githubusercontent.com/.../competicoes/fotos/` | base das fotos `<PMP>.jpg` |
+| `fotos_base` | `https://raw.githubusercontent.com/ANT0Ni0-R/Dashboard-Campeonato/main/assets/fotos/` | base das fotos. O codigo SEMPRE monta `<PMP>.jpg` (minusculo), entao os arquivos no diretorio precisam ser `<PMP>.jpg` minusculo. Use `assets/fotos/` (consolidado); URL raw e **case-sensitive** no caminho |
 | `tabela` | `db_transactions_events` | tabela do Supabase |
 | `url` | `https://ipalripfknzhrzddhvdx.supabase.co` | endpoint do Supabase (pode vir de Script Property) |
 | `bq_project` | `grupo-primo-prd` | **com hifens** — projeto do BigQuery (PR2) |
@@ -25,7 +25,7 @@ do Supabase ficam em Script Properties (nunca na planilha).
 | `bq_product_like` | `%legado%` | filtro do produto no **BigQuery** (`product_name LIKE`) (PR2) |
 | `canal_tvd` | `TVD` | valor de `sales_channel` que identifica o time de vendas no BigQuery (PR2) |
 | `pmp_aliases` | `JCK:JKC` | correcao de PMP trocado na origem (link de pagamento). Funde no ranking/foto/atribuicao. Formato `DE:PARA,DE:PARA`. Vazio = default `JCK:JKC` |
-| `funil_group_name` | `O Legado` | nome do grupo no CRM (`clint_deals_*`) do **Funil**. Match **case-insensitive** (`LOWER(group_name)=LOWER(valor)`). Use o nome exato do grupo (ex.: o `group_name` que aparece na tabela) |
+| `funil_group_name` | `%MBA IA [TDV 2]%` | nome do grupo no CRM (`clint_deals_*`) do **Funil**. Correspondencia **aproximada case-insensitive** (`LOWER(group_name) LIKE LOWER(valor)`) — os nomes de grupo sao longos/instaveis entre lancamentos, entao basta um trecho identificavel. Embrulhe em `%...%` (mesma convencao de `slug_like`/`bq_product_like`); se omitir os `%`, o codigo embrulha sozinho. Garanta que o trecho case com **um unico** grupo |
 | `funil_campanha` | `BAR0001` | filtro `campanha` na tabela de leads do **Funil** (`mrt_grupo__leads`) |
 | `bq_deals_history_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_history_cleaned` | historico de etapas (ativacao) |
 | `bq_deals_cleaned_table` | `grupo-primo-prd.mart_sales_team.mrt_sales_team__clint_deals_cleaned` | base do grupo + origem do lead |

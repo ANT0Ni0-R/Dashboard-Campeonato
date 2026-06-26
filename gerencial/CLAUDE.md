@@ -83,6 +83,7 @@ Mesmo modelo da Comissao: trigger roda como **dono**, grava o snapshot; o front 
 - `snapshotFunil()` — trigger de 30 min: roda as queries, monta o shape normalizado, grava chunked.
 - `montaSnapshotFunil_()` — orquestra as queries e os mappers no shape consumido pelo front.
 - SQL builders: `sqlFunilBase_` (pipeline por origem, ROLLUP), `sqlFunilAtivados_` (fato dia x hora x pmp x origem; 1a etapa de ativacao por deal), `sqlFunilVendas_` (vendas distintas com match lead por email/telefone), `sqlFunilConversaoGeral_` (leads x compradores), `sqlFunilTmr_`/`sqlFunilTmrDia_`/`sqlFunilTmrHora_` (TMR via GROUPING SETS).
+- **Filtro do grupo (`funilGrupoWhere_`)**: correspondencia **APROXIMADA** `LOWER(group_name) LIKE LOWER(funil_group_name)` — escolha consciente, nao igualdade. Os nomes de grupo no CRM sao longos e mudam entre lancamentos (`MBA IA [TDV 2]`, `Viver de Renda [TVD7]`, ...), entao casamos por trecho. Por ser **modelo escalavel** (duplica a planilha, troca so o produto), o `funil_group_name` pode vir com `%...%` (igual a `slug_like`/`bq_product_like`); se vier sem `%`, o codigo embrulha. Atencao: garanta que o trecho case com **um unico** grupo (valide no BQ), senao agrega lancamentos diferentes. **Bug ja cometido:** com `=` + valor `%...%` os `%` viravam literais e base/ativados/TMR voltavam vazios — `vendas`/`conversaoGeral` enganavam porque nao dependem desse match.
 - Mappers `map*_` — convertem as linhas cruas do BQ no shape normalizado (isolam nomes de coluna).
 - `criarTriggerFunil()` / `testFunil()` — instala o trigger / loga contagens de cada query (valide as colunas aqui contra as amostras antes de produzir).
 
@@ -137,6 +138,11 @@ Carregadas via URL raw do GitHub apontando para `../assets/fotos/`. FOTOS_BASE n
 FOTOS_BASE: 'https://raw.githubusercontent.com/ANT0Ni0-R/Dashboard-Campeonato/main/assets/fotos/'
 ```
 (O `competicoes/fotos/` que estava antes foi consolidado em `assets/fotos/` na reorganizacao do repo.)
+
+**Convencao de nome OBRIGATORIA: `<PMP>.jpg` minusculo.** O codigo monta a URL sempre como
+`cfg.fotosBase + code + '.jpg'` (em `BigQuery.gs` e `Code.gs`) e a URL raw do GitHub e
+**case-sensitive no caminho** — `FAL.JPG` e `JKC.jpeg` dao 404 contra `FAL.jpg`/`JKC.jpg`.
+Ao adicionar foto nova, salve como `<PMP>.jpg` minusculo (sem `.JPG`/`.jpeg`).
 
 Logica de fallback no frontend: `<img onload="this.className='loaded'">` + CSS `.avatar img.loaded + .initials { display: none; }` — iniciais visiveis enquanto carrega, somem quando a foto aparece.
 
