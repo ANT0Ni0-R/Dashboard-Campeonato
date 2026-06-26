@@ -153,7 +153,9 @@ function lerConfig_() {
     bqProductLike: kv['bq_product_like'] || '%',
     canalTvd:      kv['canal_tvd'] || DEFAULTS.CANAL_TVD,
     // --- Funil (tabelas/filtros do snapshot de ativacao) ---
-    funilGroupLike:  kv['funil_group_like'] || DEFAULTS.FUNIL_GROUP_LIKE,
+    // group_name do CRM. Se nao setado, herda o bq_product_like (mesmo identificador do produto
+    // que voce ja mantem); so use funil_group_like quando o nome do grupo divergir do produto.
+    funilGroupLike:  kv['funil_group_like'] || kv['bq_product_like'] || DEFAULTS.FUNIL_GROUP_LIKE,
     funilCampanha:   kv['funil_campanha'] || DEFAULTS.FUNIL_CAMPANHA,
     bqDealsHistory:  kv['bq_deals_history_table'] || DEFAULTS.BQ_DEALS_HISTORY,
     bqDealsCleaned:  kv['bq_deals_cleaned_table'] || DEFAULTS.BQ_DEALS_CLEANED,
