@@ -118,8 +118,14 @@ function funilOrigemExpr_() {
 }
 
 // Filtro do grupo do lancamento: igualdade case-insensitive em group_name (CRM).
+// O match aqui e por IGUALDADE (nao LIKE) — o valor deve ser o nome EXATO do grupo.
+// Tolera o `%` da convencao LIKE (slug_like/bq_product_like): se o usuario embrulhar
+// o nome em `%...%` por habito, removemos os % das pontas antes de comparar. Sem isso,
+// LOWER(group_name) = '%mba ia [tdv 2]%' nunca casa (os % viram literais) e o funil
+// inteiro (base/ativados/TMR) volta vazio.
 function funilGrupoWhere_(cfg) {
-  return 'LOWER(group_name) = LOWER(' + sqlStr_(cfg.funilGroupName) + ')';
+  var nome = String(cfg.funilGroupName || '').replace(/^%+|%+$/g, '');
+  return 'LOWER(group_name) = LOWER(' + sqlStr_(nome) + ')';
 }
 
 // Telefone normalizado p/ cruzamento: so digitos, ultimos 11; NULL se < 10 digitos (evita lixo).
