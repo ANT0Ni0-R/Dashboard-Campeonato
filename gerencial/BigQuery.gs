@@ -6,7 +6,11 @@
  * do front (getDashboardBigQuery) apenas LE essa aba — assim os visitantes precisam so de
  * leitura na planilha, sem acesso ao BigQuery.
  *
- * Projeto/tabela com HIFENS (grupo-primo-prd) — sem hifen o BQ falha (ver CLAUDE.md).
+ * Projeto/dataset com HIFENS — sem hifen o BQ falha (ver CLAUDE.md). Billing roda em
+ * grupo-primo-prd (cfg.bqProject); a tabela de transactions migrou para
+ * grupo-primo-crm-prd.grupo_primo_crm (cfg.bqTable, cross-project). Colunas de data nessa
+ * tabela: transaction_created_date (DATE, BRT) e transaction_created_at (DATETIME em UTC —
+ * converter com DATETIME(TIMESTAMP(x,'UTC'),'America/Sao_Paulo') p/ hora BRT).
  * TVD no BigQuery = sales_channel = 'TVD' (canal_tvd na aba Config). GMV/receita de transactions.
  * Habilite o servico avancado "BigQuery" no editor (ou via appsscript.json).
  */
@@ -120,7 +124,8 @@ function porHoraBQ_(rows) {
 function bqFiltrosBase_(cfg, ini, fim) {
   return 'NOT COALESCE(is_refunded, FALSE)\n' +
          '  AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-         '  AND transaction_dt BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim);
+         '  AND transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) +
+         bqEmailNotTest_(cfg, 'user_email');
 }
 function sqlKpisBQ_(cfg, ini, fim) {
   var t = sqlStr_(cfg.canalTvd), hoje = "CURRENT_DATE('America/Sao_Paulo')";
@@ -129,10 +134,10 @@ function sqlKpisBQ_(cfg, ini, fim) {
     '  SUM(net_transactions) AS vendas_total,\n' +
     '  SUM(IF(sales_channel = ' + t + ', gmv, 0)) AS gmv_tvd,\n' +
     '  SUM(IF(sales_channel = ' + t + ', net_transactions, 0)) AS vendas_tvd,\n' +
-    '  SUM(IF(transaction_dt = ' + hoje + ', gmv, 0)) AS gmv_total_hoje,\n' +
-    '  SUM(IF(transaction_dt = ' + hoje + ', net_transactions, 0)) AS vendas_total_hoje,\n' +
-    '  SUM(IF(transaction_dt = ' + hoje + ' AND sales_channel = ' + t + ', gmv, 0)) AS gmv_tvd_hoje,\n' +
-    '  SUM(IF(transaction_dt = ' + hoje + ' AND sales_channel = ' + t + ', net_transactions, 0)) AS vendas_tvd_hoje\n' +
+    '  SUM(IF(transaction_created_date = ' + hoje + ', gmv, 0)) AS gmv_total_hoje,\n' +
+    '  SUM(IF(transaction_created_date = ' + hoje + ', net_transactions, 0)) AS vendas_total_hoje,\n' +
+    '  SUM(IF(transaction_created_date = ' + hoje + ' AND sales_channel = ' + t + ', gmv, 0)) AS gmv_tvd_hoje,\n' +
+    '  SUM(IF(transaction_created_date = ' + hoje + ' AND sales_channel = ' + t + ', net_transactions, 0)) AS vendas_tvd_hoje\n' +
     'FROM `' + cfg.bqTable + '`\n' +
     'WHERE ' + bqFiltrosBase_(cfg, ini, fim);
 }
@@ -144,8 +149,8 @@ function sqlRankingBQ_(cfg, ini, fim) {
     '  ANY_VALUE(seller_name) AS seller_name,\n' +
     '  SUM(gmv) AS gmv,\n' +
     '  SUM(net_transactions) AS vendas,\n' +
-    '  SUM(IF(transaction_dt = ' + hoje + ', gmv, 0)) AS gmv_hoje,\n' +
-    '  SUM(IF(transaction_dt = ' + hoje + ', net_transactions, 0)) AS vendas_hoje\n' +
+    '  SUM(IF(transaction_created_date = ' + hoje + ', gmv, 0)) AS gmv_hoje,\n' +
+    '  SUM(IF(transaction_created_date = ' + hoje + ', net_transactions, 0)) AS vendas_hoje\n' +
     'FROM `' + cfg.bqTable + '`\n' +
     'WHERE ' + bqFiltrosBase_(cfg, ini, fim) + '\n' +
     '  AND sales_channel = ' + sqlStr_(cfg.canalTvd) + '\n' +
@@ -157,7 +162,7 @@ function sqlRankingBQ_(cfg, ini, fim) {
 function sqlPorDiaBQ_(cfg, ini, fim) {
   var t = sqlStr_(cfg.canalTvd);
   return 'SELECT\n' +
-    "  FORMAT_DATE('%Y-%m-%d', transaction_dt) AS dia,\n" +
+    "  FORMAT_DATE('%Y-%m-%d', transaction_created_date) AS dia,\n" +
     '  SUM(IF(sales_channel = ' + t + ', gmv, 0)) AS gmv_tvd,\n' +
     '  SUM(gmv) AS gmv_total\n' +
     'FROM `' + cfg.bqTable + '`\n' +
@@ -169,7 +174,7 @@ function sqlPorDiaBQ_(cfg, ini, fim) {
 function sqlPorDiaSellerBQ_(cfg, ini, fim) {
   var canon = canonSqlExpr_(cfg);
   return 'SELECT\n' +
-    "  FORMAT_DATE('%Y-%m-%d', transaction_dt) AS dia,\n" +
+    "  FORMAT_DATE('%Y-%m-%d', transaction_created_date) AS dia,\n" +
     '  ' + canon + ' AS seller_pmp,\n' +
     '  SUM(gmv) AS gmv\n' +
     'FROM `' + cfg.bqTable + '`\n' +
@@ -181,19 +186,31 @@ function sqlPorDiaSellerBQ_(cfg, ini, fim) {
 }
 function sqlPorHoraBQ_(cfg) {
   return 'SELECT\n' +
-    "  EXTRACT(HOUR FROM DATETIME(transaction_at, 'America/Sao_Paulo')) AS hora,\n" +
+    "  EXTRACT(HOUR FROM DATETIME(TIMESTAMP(transaction_created_at, 'UTC'), 'America/Sao_Paulo')) AS hora,\n" +
     '  SUM(gmv) AS gmv_tvd\n' +
     'FROM `' + cfg.bqTable + '`\n' +
     'WHERE NOT COALESCE(is_refunded, FALSE)\n' +
     '  AND sales_channel = ' + sqlStr_(cfg.canalTvd) + '\n' +
     '  AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-    "  AND transaction_dt = CURRENT_DATE('America/Sao_Paulo')\n" +
+    "  AND transaction_created_date = CURRENT_DATE('America/Sao_Paulo')" +
+    bqEmailNotTest_(cfg, 'user_email') + '\n' +
     'GROUP BY hora\n' +
     'ORDER BY hora';
 }
 
 // Literal SQL seguro (escapa aspas simples). Use so para valores de config (planilha do dono).
 function sqlStr_(v) { return "'" + String(v == null ? '' : v).replace(/'/g, "''") + "'"; }
+
+// Fragmento WHERE que exclui vendas de teste (e-mail no dominio interno). col = coluna de e-mail
+// (ex.: 'user_email' ou 't.user_email'). NULL/'' nao casa '%@dominio' -> mantido (venda real).
+// Devolve '' se a lista de dominios estiver vazia.
+function bqEmailNotTest_(cfg, col) {
+  var doms = (cfg && cfg.excludeEmailDomains) || [];
+  if (!doms.length) return '';
+  return doms.map(function (d) {
+    return '\n  AND LOWER(COALESCE(' + col + ", '')) NOT LIKE " + sqlStr_('%@' + d);
+  }).join('');
+}
 
 // ===== Snapshot fragmentado (JSON maior que o limite de ~50k chars/celula do Sheets) =====
 // Layout: B1=timestamp, B2=qtd de pedacos, A3:A(n+2)=pedacos do JSON. Reusado pelo Funil.

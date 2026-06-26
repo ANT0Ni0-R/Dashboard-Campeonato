@@ -207,7 +207,11 @@
         <section class="funil-card">
           <div class="funil-card-head">
             <span class="funil-card-title">TMR HORA A HORA</span>
-            <span class="funil-card-sub">total · mediana + faixa p25-p75</span>
+            <span class="funil-card-sub">mediana + faixa p25-p75</span>
+            <div class="seg" id="seg-funil-tmr">
+              <button data-scope="dia">Dia</button>
+              <button class="active" data-scope="lancamento">Lancamento</button>
+            </div>
           </div>
           <div class="funil-chart"><canvas id="funil-tmr-hora"></canvas></div>
         </section>

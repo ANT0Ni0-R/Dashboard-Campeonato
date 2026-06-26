@@ -24,8 +24,10 @@ var DEFAULTS = {
   SUPABASE_TABELA: 'db_transactions_events',
   FOTOS_BASE:      'https://raw.githubusercontent.com/ANT0Ni0-R/Dashboard-Campeonato/main/assets/fotos/',
   BQ_PROJECT:      'grupo-primo-prd',
-  BQ_TABLE:        'grupo-primo-prd.mart_sales_team.mrt_sales_team__transactions_with_sales_request',
+  BQ_TABLE:        'grupo-primo-crm-prd.grupo_primo_crm.mrt_sales_team__transactions_with_sales_request',
   CANAL_TVD:       'TVD',
+  // dominios de e-mail considerados teste (vendas internas) — excluidos no Supabase e no BQ. Virgula-separado.
+  EXCLUDE_EMAIL_DOMAINS: 'timeprimo.com',
   // --- Funil (snapshot proprio; tabelas do CRM/leads/mensagens) ---
   FUNIL_GROUP_NAME:    'O Legado',   // group_name do CRM (match aproximado LIKE em group_name)
   FUNIL_ORIGIN_NAME:   '',           // opcional: estreita o escopo a um funil (origin_name) DENTRO do grupo.
@@ -154,6 +156,11 @@ function lerConfig_() {
     bqTable:       kv['bq_table'] || DEFAULTS.BQ_TABLE,
     bqProductLike: kv['bq_product_like'] || '%',
     canalTvd:      kv['canal_tvd'] || DEFAULTS.CANAL_TVD,
+    // dominios de e-mail de teste (lower, sem '@') a excluir nas vendas. Vazio = nao exclui nada.
+    excludeEmailDomains: (kv['exclude_email_domains'] || DEFAULTS.EXCLUDE_EMAIL_DOMAINS)
+                           .toLowerCase().split(/[,;\s]+/)
+                           .map(function (s) { return s.replace(/^@/, '').trim(); })
+                           .filter(Boolean),
     // --- Funil (tabelas/filtros do snapshot de ativacao) ---
     // Nome do grupo no CRM (clint_deals_*). Match case-insensitive (LOWER = LOWER) em funilGrupoWhere_.
     funilGroupName:  kv['funil_group_name'] || DEFAULTS.FUNIL_GROUP_NAME,
@@ -330,12 +337,24 @@ function horaSP_(iso) {
   return isNaN(d) ? 0 : Number(Utilities.formatDate(d, 'America/Sao_Paulo', 'HH'));
 }
 
+// Remove vendas de teste: linhas cujo e-mail termina com algum dominio de cfg.excludeEmailDomains.
+// E-mail vazio/ausente = venda real (mantida). Filtro client-side trata NULL melhor que o PostgREST.
+function semEmailTeste_(rows, cfg) {
+  var doms = (cfg && cfg.excludeEmailDomains) || [];
+  if (!doms.length) return rows || [];
+  return (rows || []).filter(function (t) {
+    var email = String(t.email || '').trim().toLowerCase();
+    if (!email) return true;
+    return !doms.some(function (d) { return email.slice(-(d.length + 1)) === '@' + d; });
+  });
+}
+
 // ===== CONSULTA O SUPABASE (janela + slug) =====
 function fetchTransactions_(cfg) {
   var slugFilter = encodeURIComponent(String(cfg.slugLike).replace(/%/g, '*'));
   var path = '/rest/v1/' + cfg.tabela +
              '?type=eq.order_success' +
-             '&select=price,pmp,created_at,slug,id' +
+             '&select=price,pmp,created_at,slug,id,email' +
              '&slug=ilike.' + slugFilter;
   if (cfg.inicio) path += '&created_at=gte.' + encodeURIComponent(cfg.inicio);
   if (cfg.fim)    path += '&created_at=lte.' + encodeURIComponent(cfg.fim);
@@ -348,7 +367,7 @@ function fetchTransactions_(cfg) {
     h = resolveAuthHeaders_(cfg, true);
     resp = restGet_(cfg.url, path, h);
   }
-  return parseRows_(resp);
+  return semEmailTeste_(parseRows_(resp), cfg);
 }
 
 // PMP do closer logado: aba "Acessos" (Email | Nivel | PMP) -> PMP canonico do e-mail do visitante.
@@ -389,7 +408,7 @@ function listarVendas(termo) {
   var h = resolveAuthHeaders_(cfg, false);
   var resp = restGet_(cfg.url, path, h);
   if (resp.getResponseCode() === 401) { h = resolveAuthHeaders_(cfg, true); resp = restGet_(cfg.url, path, h); }
-  var rows = parseRows_(resp);
+  var rows = semEmailTeste_(parseRows_(resp), cfg);
 
   return {
     meuPmp: meuPmp_(cfg),

@@ -285,6 +285,10 @@
   .origem-val { position: absolute; right: 0.5rem; top: 0; line-height: 22px; font-size: 0.72rem; color: var(--text); font-variant-numeric: tabular-nums; }
   .origem-num { text-align: right; font-family: var(--font-title); font-weight: 800; font-size: 0.85rem; color: var(--text); }
   .origem-num.conv { color: var(--gold); }
+  /* clique para filtrar (origem) + linha selecionada */
+  .origem-click { cursor: pointer; border-radius: 6px; transition: background 0.12s; }
+  .origem-click:hover { background: var(--surface-2); }
+  .origem-row.row-active { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--gold); }
 
   /* Tabela por vendedor (mix de origens inline) */
   .funil-tabela-wrap { overflow-x: auto; }
@@ -299,6 +303,11 @@
   .funil-tabela .num.neg { color: var(--red); font-weight: 700; }
   .funil-tabela .num.dim { color: var(--text-muted); }
   .funil-tabela .v-mix { width: 32%; min-width: 220px; }
+  /* cabecalho ordenavel + linha clicavel (filtra por vendedor) */
+  table.funil-tabela th.th-sort { cursor: pointer; user-select: none; }
+  table.funil-tabela th.th-sort:hover { color: var(--gold); }
+  .funil-tabela tr.v-row { cursor: pointer; }
+  .funil-tabela tr.v-row.row-active td { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--gold); }
   .mix-bar { display: flex; height: 18px; border-radius: 5px; overflow: hidden; background: var(--surface-2); }
   .mix-seg { display: flex; align-items: center; justify-content: center; font-size: 0.58rem; font-weight: 700; color: #0b1120; overflow: hidden; white-space: nowrap; }
 
