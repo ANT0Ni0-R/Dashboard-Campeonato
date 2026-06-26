@@ -301,9 +301,11 @@ function funilTmrBaseCte_(cfg, ini, fim) {
 }
 
 // Dimensoes p/ GROUPING SETS: NULL quando agregada (= "todos"), senao o valor (com fallback).
-// Distingue agregado (NULL) de "(sem pmp)"/"(sem origem)" real.
+// Distingue agregado (NULL) de "(sem pmp)"/"(sem origem)" real. O alias de SAIDA e DIFERENTE da
+// coluna agrupada (pmp != vendedor_pmp; origem_lead != origem) — senao o GROUP BY resolve para o
+// alias (que contem GROUPING(), uma agregacao) e o BQ quebra.
 var FUNIL_TMR_DIM_PMP_ = "IF(GROUPING(vendedor_pmp)=1, NULL, COALESCE(vendedor_pmp, '(sem pmp)')) AS pmp";
-var FUNIL_TMR_DIM_ORIGEM_ = "IF(GROUPING(origem)=1, NULL, COALESCE(origem, '(sem origem)')) AS origem";
+var FUNIL_TMR_DIM_ORIGEM_ = "IF(GROUPING(origem)=1, NULL, COALESCE(origem, '(sem origem)')) AS origem_lead";
 
 // TMR janela total: grouping sets () (pmp) (origem) (pmp,origem).
 function sqlFunilTmr_(cfg, ini, fim) {
@@ -374,7 +376,7 @@ function mapVendas_(rows, cfg) {
 function mapTmrTotal_(rows, cfg) {
   return (rows || []).map(function (r) {
     return { pmp: isRollupTotal_(r.pmp) ? null : canon_(r.pmp, cfg),
-      origem: isRollupTotal_(r.origem) ? null : r.origem,
+      origem: isRollupTotal_(r.origem_lead) ? null : r.origem_lead,
       mediana: Number(r.tmr_mediana_min) || 0, media: Number(r.tmr_medio_min) || 0,
       n: Number(r.respostas) || 0 };
   });
@@ -382,7 +384,7 @@ function mapTmrTotal_(rows, cfg) {
 function mapTmrDia_(rows, cfg) {
   return (rows || []).map(function (r) {
     return { dia: r.dia, pmp: isRollupTotal_(r.pmp) ? null : canon_(r.pmp, cfg),
-      origem: isRollupTotal_(r.origem) ? null : r.origem,
+      origem: isRollupTotal_(r.origem_lead) ? null : r.origem_lead,
       mediana: Number(r.tmr_mediana_min) || 0, n: Number(r.respostas) || 0 };
   });
 }
@@ -390,7 +392,7 @@ function mapTmrHora_(rows, cfg) {
   return (rows || []).map(function (r) {
     return { hora: Number(r.hora) || 0,
       pmp: isRollupTotal_(r.pmp) ? null : canon_(r.pmp, cfg),
-      origem: isRollupTotal_(r.origem) ? null : r.origem,
+      origem: isRollupTotal_(r.origem_lead) ? null : r.origem_lead,
       p25: Number(r.p25_min) || 0, p50: Number(r.p50_min) || 0, p75: Number(r.p75_min) || 0,
       n: Number(r.respostas) || 0 };
   });
