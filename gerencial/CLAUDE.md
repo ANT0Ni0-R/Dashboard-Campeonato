@@ -84,7 +84,7 @@ Mesmo modelo da Comissao: trigger roda como **dono**, grava o snapshot; o front 
 - `getFunilData()` — entry point do front. `exigirGerencial_()` + le `Snapshot_Funil` (chunked) + parse.
 - `snapshotFunil()` — trigger de 30 min: roda as queries, monta o shape normalizado, grava chunked.
 - `montaSnapshotFunil_()` — orquestra as queries e os mappers no shape consumido pelo front.
-- SQL builders: `sqlFunilBase_` (pipeline por origem, ROLLUP), `sqlFunilAtivados_` (fato dia x hora x pmp x origem; 1a etapa de ativacao por deal), `sqlFunilVendas_` (vendas distintas com match lead por email/telefone), `sqlFunilConversaoGeral_` (leads x compradores), `sqlFunilTmr_`/`sqlFunilTmrDia_`/`sqlFunilTmrHora_` (TMR via GROUPING SETS).
+- SQL builders: `sqlFunilBase_` (pipeline por origem, ROLLUP), `sqlFunilAtivados_` (fato dia x hora x pmp x origem; 1a etapa de ativacao por deal), `sqlFunilVendas_` (vendas distintas com match lead por email/telefone), `sqlFunilConversaoGeral_` (leads x compradores), `sqlFunilTmr_`/`sqlFunilTmrHora_` (TMR via GROUPING SETS, com dimensao `dia`: null=lancamento).
 - **Escopo do lancamento (`funilGrupoWhere_`)**: define quais deals do CRM pertencem ao lancamento e e usado em **todas** as queries (base/ativados/vendas/TMR), entao mexer aqui propaga para tudo. Dois cenarios, uma so lever:
   - **Legado** — o grupo da Clint era **dedicado** ao lancamento. Basta `funil_group_name`; deixe `funil_origin_name` vazio.
   - **FIA e afins** — o grupo (`MBA IA [TDV 2]`) e **compartilhado** entre varios funis (`origin_name`: `Formação Consultor de IA`, `Funi unificado (TVD2-2)`, `Base Fria`, ...). O lancamento e **um** desses funis. Preencha `funil_origin_name` (ex.: `%Formação Consultor de IA%`) para estreitar o escopo a ele.
@@ -128,12 +128,25 @@ Os filtros **Dia / Origem / Vendedor** (no topo) e os toggles **Dia/Lancamento**
 **client-side** sobre o snapshot pre-computado (`state.funil`) — sem nova query. `aplicarFunil()`
 re-renderiza todos os paineis. Como contagens agregam, KPIs/origem/tabela/curvas derivam do fato
 fino `ativados [{dia,hora,pmp,origem,n}]`; o **TMR** (percentis nao recombinam) vem pre-agregado
-por grao (`tmrTotal`/`tmrDia`/`tmrHora`, com `pmp`/`origem` = `null` para "todos").
+por grao (`tmrTotal`/`tmrHora`, com `dia`/`pmp`/`origem` = `null` para "todos").
+
+**Click-to-filter:** clicar numa linha de **origem** (painel) ou de **vendedor** (tabela) seta o
+filtro correspondente (`state.funilFiltro.origem`/`.vend`), sincroniza o `<select>` e re-aplica;
+clicar de novo no item ja ativo limpa (toggle). Linha ativa marcada com `.row-active`.
+
+**TMR Dia/Lancamento:** as queries de TMR (`sqlFunilTmr_`/`sqlFunilTmrHora_`) incluem a dimensao
+`dia` via GROUPING SETS — `dia = null` e o lancamento inteiro, `dia` preenchido e aquele dia. O
+toggle `seg-funil-tmr` (`state.funilFiltro.tmrScope`) escolhe o grao no KPI de TMR, no grafico
+hora-a-hora e na bolha. **Atencao:** percentis por (dia, hora, pmp, origem) tem amostra menor num
+lancamento curto -> mais ruido (esperado).
 
 Paineis: 6 KPIs; combos hora-a-hora e dia-a-dia (barra volume + linha % do pipeline, `funilComboChart`);
-ativacao por origem (barras HTML); tabela por vendedor (mix de origens inline + vendas/conv/TMR);
-TMR hora-a-hora (mediana + faixa p25-p75); bolha TMR x conversao. Reusa `themeColors`, `SELLER_COLORS`,
-`cumulativo`, `diaLabel`; formatadores `formatInt`/`pct`/`pct0`/`pct2`/`formatMin`.
+ativacao por origem (barras HTML, clicaveis); tabela por vendedor **ordenavel** (`state.funilSort`)
+com colunas Ativados / mix de origens / Vendas / **GMV** / **TKM** / Conv. / TMR mediana / TMR media /
+#Resp; TMR hora-a-hora (mediana + faixa p25-p75); bolha TMR x conversao. GMV/TKM vem do fato
+`vendas [{dia,pmp,origem,n,gmv}]` (`sqlFunilVendas_` soma `gmv`; TKM = gmv / vendas). Reusa
+`themeColors`, `SELLER_COLORS`, `cumulativo`, `diaLabel`; formatadores `formatInt`/`pct`/`pct0`/
+`pct2`/`formatMin`/`formatBRL`/`formatBRLk`.
 
 ## `Stylesheet.html` + `Index.html`
 
@@ -160,3 +173,9 @@ Logica de fallback no frontend: `<img onload="this.className='loaded'">` + CSS `
 - Alias de PMP: `JCK` → `JKC` por padrao em `canonCode_`. Mude `Config-template.md` se precisar de outros aliases.
 - A aba `Acessos` tem coluna `PMP` que mapeia o e-mail do usuario ao seu PMP — usada em `listarVendas` para separar "minhas vendas".
 - Projeto BigQuery com **hifens**: `grupo-primo-prd`. Sem hifens causa `Cannot parse as CloudRegion`.
+- **Vendas de teste:** `exclude_email_domains` (config, default `timeprimo.com`) remove transacoes cujo
+  e-mail tem dominio interno. Aplicado **so a vendas/transactions**: no Supabase via `semEmailTeste_`
+  (`Code.gs`, e-mail vazio = mantido) e no BigQuery via `bqEmailNotTest_` (`BigQuery.gs`, fragmento
+  `NOT LIKE '%@dominio'`) em `bqFiltrosBase_`, `sqlPorHoraBQ_`, `sqlFunilVendas_` e
+  `sqlFunilConversaoGeral_`. Match por **sufixo** `@dominio` (e-mail tipo `joao.primo@gmail.com` NAO
+  e excluido). Ativados/TMR (clint_deals/messages) nao entram no filtro.

@@ -124,7 +124,8 @@ function porHoraBQ_(rows) {
 function bqFiltrosBase_(cfg, ini, fim) {
   return 'NOT COALESCE(is_refunded, FALSE)\n' +
          '  AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-         '  AND transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim);
+         '  AND transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) +
+         bqEmailNotTest_(cfg, 'user_email');
 }
 function sqlKpisBQ_(cfg, ini, fim) {
   var t = sqlStr_(cfg.canalTvd), hoje = "CURRENT_DATE('America/Sao_Paulo')";
@@ -191,13 +192,25 @@ function sqlPorHoraBQ_(cfg) {
     'WHERE NOT COALESCE(is_refunded, FALSE)\n' +
     '  AND sales_channel = ' + sqlStr_(cfg.canalTvd) + '\n' +
     '  AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-    "  AND transaction_created_date = CURRENT_DATE('America/Sao_Paulo')\n" +
+    "  AND transaction_created_date = CURRENT_DATE('America/Sao_Paulo')" +
+    bqEmailNotTest_(cfg, 'user_email') + '\n' +
     'GROUP BY hora\n' +
     'ORDER BY hora';
 }
 
 // Literal SQL seguro (escapa aspas simples). Use so para valores de config (planilha do dono).
 function sqlStr_(v) { return "'" + String(v == null ? '' : v).replace(/'/g, "''") + "'"; }
+
+// Fragmento WHERE que exclui vendas de teste (e-mail no dominio interno). col = coluna de e-mail
+// (ex.: 'user_email' ou 't.user_email'). NULL/'' nao casa '%@dominio' -> mantido (venda real).
+// Devolve '' se a lista de dominios estiver vazia.
+function bqEmailNotTest_(cfg, col) {
+  var doms = (cfg && cfg.excludeEmailDomains) || [];
+  if (!doms.length) return '';
+  return doms.map(function (d) {
+    return '\n  AND LOWER(COALESCE(' + col + ", '')) NOT LIKE " + sqlStr_('%@' + d);
+  }).join('');
+}
 
 // ===== Snapshot fragmentado (JSON maior que o limite de ~50k chars/celula do Sheets) =====
 // Layout: B1=timestamp, B2=qtd de pedacos, A3:A(n+2)=pedacos do JSON. Reusado pelo Funil.

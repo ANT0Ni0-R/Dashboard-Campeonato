@@ -76,7 +76,6 @@ function montaSnapshotFunil_(cfg, nomes) {
   var vendas   = bqQuery_(cfg, sqlFunilVendas_(cfg, ini, fim));
   var geral    = bqQuery_(cfg, sqlFunilConversaoGeral_(cfg, ini, fim))[0] || {};
   var tmrTotal = bqQuery_(cfg, sqlFunilTmr_(cfg, ini, fim));
-  var tmrDia   = bqQuery_(cfg, sqlFunilTmrDia_(cfg, ini, fim));
   var tmrHora  = bqQuery_(cfg, sqlFunilTmrHora_(cfg, ini, fim));
 
   var basePorOrigem = mapBaseOrigem_(base);
@@ -90,14 +89,14 @@ function montaSnapshotFunil_(cfg, nomes) {
     vendedores:    listaVendedores_(ativadosFact, nomes),
     dias:          listaDias_(ativadosFact, ini, fim),
     ativados:      ativadosFact,                       // [{dia,hora,pmp,origem,n}]
-    vendas:        vendasFact,                         // [{dia,pmp,origem,n}]
+    vendas:        vendasFact,                         // [{dia,pmp,origem,n,gmv}]
     conversaoGeral: {
       leadsUnicos:     Number(geral.leads_unicos) || 0,
       compradoresLead: Number(geral.compradores_lead) || 0
     },
-    tmrTotal: mapTmrTotal_(tmrTotal, cfg),             // [{pmp,origem,mediana,media,n}] (null=todos)
-    tmrDia:   mapTmrDia_(tmrDia, cfg),                 // [{dia,pmp,origem,mediana,n}]
-    tmrHora:  mapTmrHora_(tmrHora, cfg)                // [{hora,pmp,origem,p25,p50,p75,n}]
+    // dia=null => lancamento inteiro; dia preenchido => aquele dia (toggle Dia/Lancamento do front).
+    tmrTotal: mapTmrTotal_(tmrTotal, cfg),             // [{dia,pmp,origem,mediana,media,n}] (null=todos)
+    tmrHora:  mapTmrHora_(tmrHora, cfg)                // [{dia,hora,pmp,origem,p25,p50,p75,n}]
   };
 }
 
@@ -221,12 +220,13 @@ function sqlFunilVendas_(cfg, ini, fim) {
     '    SELECT DISTINCT phone11, origem FROM legado_deals WHERE phone11 IS NOT NULL\n' +
     '  ) GROUP BY phone11\n' +
     '),\n' +
-    'vendas AS (\n' +
-    '  SELECT DISTINCT\n' +
+    'vendas AS (\n' +   // uma linha por TRANSACAO (sem DISTINCT) p/ somar GMV; n usa COUNT(DISTINCT buyer)
+    '  SELECT\n' +
     "    FORMAT_DATE('%Y-%m-%d', t.transaction_created_date) AS dia,\n" +
     '    UPPER(t.seller_pmp) AS pmp,\n' +
     "    COALESCE(ce.origem, cp.origem, '(sem match)') AS origem,\n" +
-    '    ' + funilBuyerKey_('t.user_email', 't.user_phone') + ' AS buyer\n' +
+    '    ' + funilBuyerKey_('t.user_email', 't.user_phone') + ' AS buyer,\n' +
+    '    t.gmv AS gmv\n' +
     '  FROM `' + cfg.bqTable + '` t\n' +
     '  LEFT JOIN leg_email ce ON LOWER(TRIM(t.user_email)) = ce.email\n' +
     '  LEFT JOIN leg_phone cp ON ' + phoneNorm_('t.user_phone') + ' = cp.phone11\n' +
@@ -234,9 +234,10 @@ function sqlFunilVendas_(cfg, ini, fim) {
     '    AND t.sales_channel = ' + t + '\n' +
     '    AND t.seller_pmp IS NOT NULL\n' +
     '    AND UPPER(t.product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
-    '    AND t.transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
+    '    AND t.transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) +
+    bqEmailNotTest_(cfg, 't.user_email') + '\n' +
     ')\n' +
-    'SELECT dia, pmp, origem, COUNT(DISTINCT buyer) AS n\n' +
+    'SELECT dia, pmp, origem, COUNT(DISTINCT buyer) AS n, SUM(gmv) AS gmv\n' +
     'FROM vendas\n' +
     'GROUP BY dia, pmp, origem';
 }
@@ -261,7 +262,8 @@ function sqlFunilConversaoGeral_(cfg, ini, fim) {
     '    AND sales_channel = ' + t + '\n' +
     '    AND UPPER(product_name) LIKE UPPER(' + sqlStr_(cfg.bqProductLike) + ')\n' +
     '    AND transaction_created_date BETWEEN DATE ' + sqlStr_(ini) + ' AND DATE ' + sqlStr_(fim) + '\n' +
-    "    AND user_email IS NOT NULL AND TRIM(user_email) != ''\n" +
+    "    AND user_email IS NOT NULL AND TRIM(user_email) != ''" +
+    bqEmailNotTest_(cfg, 'user_email') + '\n' +
     ')\n' +
     'SELECT\n' +
     '  (SELECT COUNT(*) FROM leads_u) AS leads_unicos,\n' +
@@ -328,37 +330,32 @@ function funilTmrBaseCte_(cfg, ini, fim) {
 // alias (que contem GROUPING(), uma agregacao) e o BQ quebra.
 var FUNIL_TMR_DIM_PMP_ = "IF(GROUPING(vendedor_pmp)=1, NULL, COALESCE(vendedor_pmp, '(sem pmp)')) AS pmp";
 var FUNIL_TMR_DIM_ORIGEM_ = "IF(GROUPING(origem)=1, NULL, COALESCE(origem, '(sem origem)')) AS origem_lead";
+// Dimensao dia para o toggle Dia/Lancamento: NULL quando agregada (= lancamento inteiro). Alias de
+// SAIDA (dia_g) DIFERENTE da coluna agrupada (dia) — mesma razao dos dims acima (GROUP BY nao pode
+// resolver para um alias que contem GROUPING()).
+var FUNIL_TMR_DIM_DIA_ = "IF(GROUPING(dia)=1, NULL, dia) AS dia_g";
 
-// TMR janela total: grouping sets () (pmp) (origem) (pmp,origem).
+// TMR janela: grouping sets dos 4 combos (pmp/origem) x {sem dia (lancamento), com dia}.
 function sqlFunilTmr_(cfg, ini, fim) {
   return funilTmrBaseCte_(cfg, ini, fim) +
     'SELECT\n' +
+    '  ' + FUNIL_TMR_DIM_DIA_ + ',\n' +
     '  ' + FUNIL_TMR_DIM_PMP_ + ',\n' +
     '  ' + FUNIL_TMR_DIM_ORIGEM_ + ',\n' +
     '  COUNT(*) AS respostas,\n' +
     '  ROUND(AVG(resp_seconds)/60, 1) AS tmr_medio_min,\n' +
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(50)]/60, 1) AS tmr_mediana_min\n' +
     'FROM respostas\n' +
-    'GROUP BY GROUPING SETS ((), (vendedor_pmp), (origem), (vendedor_pmp, origem))';
+    'GROUP BY GROUPING SETS (\n' +
+    '  (), (vendedor_pmp), (origem), (vendedor_pmp, origem),\n' +
+    '  (dia), (dia, vendedor_pmp), (dia, origem), (dia, vendedor_pmp, origem))';
 }
 
-// TMR por dia: grouping sets (dia) (dia,pmp) (dia,origem).
-function sqlFunilTmrDia_(cfg, ini, fim) {
-  return funilTmrBaseCte_(cfg, ini, fim) +
-    'SELECT\n' +
-    '  dia,\n' +
-    '  ' + FUNIL_TMR_DIM_PMP_ + ',\n' +
-    '  ' + FUNIL_TMR_DIM_ORIGEM_ + ',\n' +
-    '  COUNT(*) AS respostas,\n' +
-    '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(50)]/60, 1) AS tmr_mediana_min\n' +
-    'FROM respostas\n' +
-    'GROUP BY GROUPING SETS ((dia), (dia, vendedor_pmp), (dia, origem))';
-}
-
-// TMR por hora: grouping sets (hora) (hora,origem) (hora,pmp) (hora,pmp,origem) com faixa p25-p75.
+// TMR por hora: 4 combos (hora x pmp/origem) x {sem dia (lancamento), com dia} com faixa p25-p75.
 function sqlFunilTmrHora_(cfg, ini, fim) {
   return funilTmrBaseCte_(cfg, ini, fim) +
     'SELECT\n' +
+    '  ' + FUNIL_TMR_DIM_DIA_ + ',\n' +
     '  hora_brt AS hora,\n' +
     '  ' + FUNIL_TMR_DIM_PMP_ + ',\n' +
     '  ' + FUNIL_TMR_DIM_ORIGEM_ + ',\n' +
@@ -367,7 +364,9 @@ function sqlFunilTmrHora_(cfg, ini, fim) {
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(50)]/60, 1) AS p50_min,\n' +
     '  ROUND(APPROX_QUANTILES(resp_seconds, 100)[OFFSET(75)]/60, 1) AS p75_min\n' +
     'FROM respostas\n' +
-    'GROUP BY GROUPING SETS ((hora_brt), (hora_brt, origem), (hora_brt, vendedor_pmp), (hora_brt, vendedor_pmp, origem))';
+    'GROUP BY GROUPING SETS (\n' +
+    '  (hora_brt), (hora_brt, origem), (hora_brt, vendedor_pmp), (hora_brt, vendedor_pmp, origem),\n' +
+    '  (dia, hora_brt), (dia, hora_brt, origem), (dia, hora_brt, vendedor_pmp), (dia, hora_brt, vendedor_pmp, origem))';
 }
 
 // ===================== MAPPERS (linhas do BQ -> shape normalizado) =====================
@@ -392,27 +391,22 @@ function mapAtivados_(rows, cfg) {
 }
 function mapVendas_(rows, cfg) {
   return (rows || []).map(function (r) {
-    return { dia: r.dia, pmp: canon_(r.pmp, cfg), origem: r.origem || '(sem match)', n: Number(r.n) || 0 };
+    return { dia: r.dia, pmp: canon_(r.pmp, cfg), origem: r.origem || '(sem match)',
+      n: Number(r.n) || 0, gmv: Number(r.gmv) || 0 };
   });
 }
 function mapTmrTotal_(rows, cfg) {
   return (rows || []).map(function (r) {
-    return { pmp: isRollupTotal_(r.pmp) ? null : canon_(r.pmp, cfg),
+    return { dia: isRollupTotal_(r.dia_g) ? null : r.dia_g,
+      pmp: isRollupTotal_(r.pmp) ? null : canon_(r.pmp, cfg),
       origem: isRollupTotal_(r.origem_lead) ? null : r.origem_lead,
       mediana: Number(r.tmr_mediana_min) || 0, media: Number(r.tmr_medio_min) || 0,
       n: Number(r.respostas) || 0 };
   });
 }
-function mapTmrDia_(rows, cfg) {
-  return (rows || []).map(function (r) {
-    return { dia: r.dia, pmp: isRollupTotal_(r.pmp) ? null : canon_(r.pmp, cfg),
-      origem: isRollupTotal_(r.origem_lead) ? null : r.origem_lead,
-      mediana: Number(r.tmr_mediana_min) || 0, n: Number(r.respostas) || 0 };
-  });
-}
 function mapTmrHora_(rows, cfg) {
   return (rows || []).map(function (r) {
-    return { hora: Number(r.hora) || 0,
+    return { dia: isRollupTotal_(r.dia_g) ? null : r.dia_g, hora: Number(r.hora) || 0,
       pmp: isRollupTotal_(r.pmp) ? null : canon_(r.pmp, cfg),
       origem: isRollupTotal_(r.origem_lead) ? null : r.origem_lead,
       p25: Number(r.p25_min) || 0, p50: Number(r.p50_min) || 0, p75: Number(r.p75_min) || 0,
@@ -471,7 +465,6 @@ function testFunil() {
     ['vendas', function () { return sqlFunilVendas_(cfg, ini, fim); }],
     ['conversaoGeral', function () { return sqlFunilConversaoGeral_(cfg, ini, fim); }],
     ['tmrTotal', function () { return sqlFunilTmr_(cfg, ini, fim); }],
-    ['tmrDia', function () { return sqlFunilTmrDia_(cfg, ini, fim); }],
     ['tmrHora', function () { return sqlFunilTmrHora_(cfg, ini, fim); }]
   ];
   passos.forEach(function (p) {

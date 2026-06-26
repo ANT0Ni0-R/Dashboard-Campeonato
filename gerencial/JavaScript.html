@@ -11,7 +11,8 @@
     proximo: 0,
     periodo: null,             // { inicio, fim } do seletor de datas
     funil: null,               // payload do snapshot do funil
-    funilFiltro: { dia: '', origem: '', vend: '', origemScope: 'lancamento', vendScope: 'lancamento' }
+    funilFiltro: { dia: '', origem: '', vend: '', origemScope: 'lancamento', vendScope: 'lancamento', tmrScope: 'lancamento' },
+    funilSort: { col: 'conv', dir: 'desc' }   // ordenacao da tabela por vendedor (col + asc/desc)
   };
   var charts = { hora: null, dia: null, diaShare: null,
     fHora: null, fDia: null, fTmrHora: null, fBolha: null };
@@ -531,11 +532,13 @@
     var b = ((state.funil && state.funil.basePorOrigem) || []).filter(function (x) { return x.origem === fo; })[0];
     return b ? b.total : 0;
   }
-  // TMR pre-agregado: acha a linha do grao (pmp/origem) — null = "todos".
-  function tmrTotalLookup(pmp, origem) {
+  // TMR pre-agregado: acha a linha do grao (dia/pmp/origem) — null = "todos" (dia null = lancamento).
+  function tmrTotalLookup(dia, pmp, origem) {
     var rows = (state.funil && state.funil.tmrTotal) || [];
     for (var i = 0; i < rows.length; i++) {
-      if ((rows[i].pmp || null) === (pmp || null) && (rows[i].origem || null) === (origem || null)) return rows[i];
+      if ((rows[i].dia || null) === (dia || null) &&
+          (rows[i].pmp || null) === (pmp || null) &&
+          (rows[i].origem || null) === (origem || null)) return rows[i];
     }
     return null;
   }
@@ -549,7 +552,8 @@
     var vendasAcum = somaVendas({ origem: f.origem, vend: f.vend });
     var pctBase = base > 0 ? ativAcum / base : 0;
     var conv = ativAcum > 0 ? vendasAcum / ativAcum : 0;
-    var tmr = tmrTotalLookup(f.vend || null, f.origem || null);
+    var tmrDia = f.tmrScope === 'dia' ? f.dia : null;
+    var tmr = tmrTotalLookup(tmrDia, f.vend || null, f.origem || null);
 
     var cards = [
       ['Base total', formatInt(base), 'deals no pipeline'],
@@ -557,7 +561,7 @@
       ['% da base ativada', pct(pctBase), 'acumulado'],
       ['Ativados no dia', formatInt(ativDia), diaLabel(f.dia)],
       ['Conversao geral', pct2(conv), 'vendas / ativados'],
-      ['TMR mediana', tmr ? formatMin(tmr.mediana) : '—', 'lancamento · mediana']
+      ['TMR mediana', tmr ? formatMin(tmr.mediana) : '—', (tmrDia ? diaLabel(tmrDia) : 'lancamento') + ' · mediana']
     ];
     document.getElementById('funil-kpis').innerHTML = cards.map(function (c) {
       return '<div class="kpi-card"><div class="kpi-label">' + c[0] + '</div>' +
@@ -655,7 +659,8 @@
       '<span class="origem-num">ATIVACAO</span><span class="origem-num">CONVERSAO</span></div>';
     document.getElementById('funil-origem').innerHTML = head + linhas.map(function (r) {
       var w = Math.round(100 * r.ativ / maxAtiv);
-      return '<div class="origem-row">' +
+      var active = (f.origem && r.origem === f.origem) ? ' row-active' : '';
+      return '<div class="origem-row origem-click' + active + '" data-origem="' + esc(r.origem) + '">' +
         '<span class="origem-nome" title="' + esc(r.origem) + '">' + esc(r.origem) + '</span>' +
         '<span class="origem-bar"><span class="origem-fill" style="width:' + w + '%"></span>' +
           '<span class="origem-val">' + formatInt(r.ativ) + ' / ' + formatInt(r.tot) + '</span></span>' +
@@ -665,32 +670,57 @@
     }).join('') || '<div class="q-empty">Sem dados.</div>';
   }
 
-  // ----- Tabela por vendedor (mix de origens inline + vendas/conv/TMR) -----
+  // ----- Tabela por vendedor (mix de origens inline + ativados/vendas/GMV/TKM/conv/TMR; ordenavel) -----
+  // Colunas: key = chave de ordenacao (null = nao ordenavel); usadas no thead e no body.
+  var FUNIL_COLS = [
+    { key: 'nome',   label: 'VENDEDOR',                  cls: '' },
+    { key: null,     label: 'ATIVADOS (MIX DE ORIGENS)', cls: '' },
+    { key: 'ativ',   label: 'ATIV.',                     cls: 'num' },
+    { key: 'vend',   label: 'VENDAS',                    cls: 'num' },
+    { key: 'gmv',    label: 'GMV',                       cls: 'num' },
+    { key: 'tkm',    label: 'TKM',                       cls: 'num' },
+    { key: 'conv',   label: 'CONV.',                     cls: 'num' },
+    { key: 'tmrMed', label: 'TMR MEDIANA',               cls: 'num' },
+    { key: 'tmrAvg', label: 'TMR MEDIA',                 cls: 'num' },
+    { key: 'resp',   label: '#RESP',                     cls: 'num' }
+  ];
   function renderFunilTabela() {
     var f = state.funilFiltro;
     var usaDia = f.vendScope === 'dia';
+    var scopeDia = usaDia ? f.dia : '';
     var origens = (state.funil && state.funil.origens) || [];
     var vendedores = (state.funil && state.funil.vendedores) || [];
 
     var rows = vendedores.filter(function (v) { return !f.vend || v.pmp === f.vend; }).map(function (v) {
-      var ativ = somaAtivados({ pmpEq: v.pmp, origem: f.origem, dia: usaDia ? f.dia : '' });
-      var vend = somaVendasPmp(v.pmp, f.origem, usaDia ? f.dia : '');
+      var ativ = somaAtivados({ pmpEq: v.pmp, origem: f.origem, dia: scopeDia });
+      var vend = somaVendasPmp(v.pmp, f.origem, scopeDia);
+      var gmv = somaGmvPmp(v.pmp, f.origem, scopeDia);
       var mix = origens.map(function (o) {
-        return { origem: o, n: somaAtivados({ pmpEq: v.pmp, origem: o, dia: usaDia ? f.dia : '' }) };
+        return { origem: o, n: somaAtivados({ pmpEq: v.pmp, origem: o, dia: scopeDia }) };
       }).filter(function (x) { return x.n > 0; });
-      var tmr = tmrTotalLookup(v.pmp, f.origem || null);
-      return { pmp: v.pmp, nome: v.nome, ativ: ativ, vend: vend, mix: mix,
+      var tmr = tmrTotalLookup(usaDia ? f.dia : null, v.pmp, f.origem || null);
+      return { pmp: v.pmp, nome: v.nome, ativ: ativ, vend: vend, gmv: gmv,
+        tkm: vend > 0 ? gmv / vend : 0, mix: mix,
         conv: ativ > 0 ? vend / ativ : 0, tmrMed: tmr ? tmr.mediana : 0,
         tmrAvg: tmr ? tmr.media : 0, resp: tmr ? tmr.n : 0 };
-    }).filter(function (r) { return r.ativ > 0 || r.vend > 0; })
-      .sort(function (a, b) { return b.conv - a.conv || b.ativ - a.ativ; });
+    }).filter(function (r) { return r.ativ > 0 || r.vend > 0; });
+
+    // Ordenacao por coluna (state.funilSort): nome via localeCompare, demais numerico; desempate por ativados.
+    var so = state.funilSort, mul = so.dir === 'asc' ? 1 : -1;
+    rows.sort(function (a, b) {
+      var d = so.col === 'nome' ? String(a.nome).localeCompare(String(b.nome)) : ((a[so.col] || 0) - (b[so.col] || 0));
+      return (mul * d) || (b.ativ - a.ativ);
+    });
 
     var origemColor = {};
     origens.forEach(function (o, i) { origemColor[o] = SELLER_COLORS[i % SELLER_COLORS.length]; });
 
-    var thead = '<thead><tr><th>VENDEDOR</th><th>ATIVADOS (MIX DE ORIGENS)</th>' +
-      '<th class="num">VENDAS</th><th class="num">CONV.</th><th class="num">TMR MED.</th>' +
-      '<th class="num">TMR MED.</th><th class="num">#RESP</th></tr></thead>';
+    var seta = function (key) { return (key && so.col === key) ? (so.dir === 'asc' ? ' ▲' : ' ▼') : ''; };
+    var thead = '<thead><tr>' + FUNIL_COLS.map(function (c) {
+      return '<th class="' + c.cls + (c.key ? ' th-sort' : '') + '"' +
+        (c.key ? ' data-col="' + c.key + '"' : '') + '>' + c.label + seta(c.key) + '</th>';
+    }).join('') + '</tr></thead>';
+
     var body = rows.map(function (r) {
       var segs = r.mix.map(function (m) {
         var p = r.ativ > 0 ? Math.round(100 * m.n / r.ativ) : 0;
@@ -698,10 +728,14 @@
           'style="width:' + p + '%;background:' + origemColor[m.origem] + '">' + (p >= 12 ? p + '%' : '') + '</span>';
       }).join('');
       var convCls = r.conv >= 0.005 ? 'pos' : 'neg';
-      return '<tr>' +
+      var active = (f.vend && r.pmp === f.vend) ? ' row-active' : '';
+      return '<tr class="v-row' + active + '" data-pmp="' + esc(r.pmp) + '">' +
         '<td class="v-nome">' + esc(r.nome) + '</td>' +
         '<td class="v-mix"><div class="mix-bar">' + segs + '</div></td>' +
+        '<td class="num">' + formatInt(r.ativ) + '</td>' +
         '<td class="num">' + formatInt(r.vend) + '</td>' +
+        '<td class="num">' + (r.gmv > 0 ? formatBRLk(r.gmv) : '—') + '</td>' +
+        '<td class="num">' + (r.tkm > 0 ? formatBRL(r.tkm) : '—') + '</td>' +
         '<td class="num ' + convCls + '">' + pct2(r.conv) + '</td>' +
         '<td class="num">' + formatMin(r.tmrMed) + '</td>' +
         '<td class="num">' + formatMin(r.tmrAvg) + '</td>' +
@@ -709,7 +743,7 @@
       '</tr>';
     }).join('');
     document.getElementById('funil-tabela').innerHTML = thead + '<tbody>' +
-      (body || '<tr><td colspan="7" class="q-empty">Sem dados.</td></tr>') + '</tbody>';
+      (body || '<tr><td colspan="' + FUNIL_COLS.length + '" class="q-empty">Sem dados.</td></tr>') + '</tbody>';
   }
   // variantes que filtram por pmp exato (mantem somaAtivados generico legivel)
   function somaVendasPmp(pmp, origem, dia) {
@@ -720,12 +754,22 @@
       return s + v.n;
     }, 0);
   }
+  function somaGmvPmp(pmp, origem, dia) {
+    return ((state.funil && state.funil.vendas) || []).reduce(function (s, v) {
+      if (v.pmp !== pmp) return s;
+      if (origem && v.origem !== origem) return s;
+      if (dia && v.dia !== dia) return s;
+      return s + (v.gmv || 0);
+    }, 0);
+  }
 
   // ----- TMR hora a hora (mediana + faixa p25-p75) -----
   function renderFunilTmrHora() {
     var f = state.funilFiltro;
+    var tmrDia = f.tmrScope === 'dia' ? f.dia : null;
     var rows = ((state.funil && state.funil.tmrHora) || []).filter(function (r) {
-      return (r.pmp || null) === (f.vend || null) && (r.origem || null) === (f.origem || null);
+      return (r.dia || null) === (tmrDia || null) &&
+        (r.pmp || null) === (f.vend || null) && (r.origem || null) === (f.origem || null);
     });
     var byHora = {}; rows.forEach(function (r) { byHora[r.hora] = r; });
     var horas = Object.keys(byHora).map(Number).sort(function (a, b) { return a - b; });
@@ -766,11 +810,12 @@
   // ----- Bolha TMR x conversao por vendedor -----
   function renderFunilBolha() {
     var f = state.funilFiltro;
+    var scopeDia = f.tmrScope === 'dia' ? f.dia : '';
     var vendedores = (state.funil && state.funil.vendedores) || [];
     var pts = vendedores.map(function (v) {
-      var tmr = tmrTotalLookup(v.pmp, f.origem || null);
-      var ativ = somaAtivados({ pmpEq: v.pmp, origem: f.origem });
-      var vend = somaVendasPmp(v.pmp, f.origem, '');
+      var tmr = tmrTotalLookup(scopeDia || null, v.pmp, f.origem || null);
+      var ativ = somaAtivados({ pmpEq: v.pmp, origem: f.origem, dia: scopeDia });
+      var vend = somaVendasPmp(v.pmp, f.origem, scopeDia);
       return { nome: v.nome, x: tmr ? tmr.mediana : 0, y: ativ > 0 ? vend / ativ : 0, ativ: ativ };
     }).filter(function (p) { return p.ativ > 0; });
     var maxAtiv = Math.max.apply(null, pts.map(function (p) { return p.ativ; }).concat([1]));
@@ -874,6 +919,34 @@
       document.getElementById('f-vend').addEventListener('change', function () { state.funilFiltro.vend = this.value; aplicarFunil(); });
       bindScopeSeg('seg-funil-origem', 'origemScope', renderFunilOrigem);
       bindScopeSeg('seg-funil-vend', 'vendScope', renderFunilTabela);
+      bindScopeSeg('seg-funil-tmr', 'tmrScope', function () {
+        renderFunilTmrHora(); renderFunilBolha(); renderFunilKpis();
+      });
+
+      // Click-to-filter: clicar numa ORIGEM (painel) ou VENDEDOR (tabela) filtra tudo; clicar de
+      // novo no ja selecionado limpa (toggle). Mantem o <select> sincronizado.
+      document.getElementById('funil-origem').addEventListener('click', function (e) {
+        var row = e.target.closest('.origem-click'); if (!row) return;
+        var v = row.getAttribute('data-origem');
+        state.funilFiltro.origem = (state.funilFiltro.origem === v) ? '' : v;
+        document.getElementById('f-origem').value = state.funilFiltro.origem;
+        aplicarFunil();
+      });
+      document.getElementById('funil-tabela').addEventListener('click', function (e) {
+        var th = e.target.closest('th.th-sort');
+        if (th) {
+          var col = th.getAttribute('data-col'), s = state.funilSort;
+          if (s.col === col) { s.dir = (s.dir === 'asc') ? 'desc' : 'asc'; }
+          else { s.col = col; s.dir = (col === 'nome') ? 'asc' : 'desc'; }
+          renderFunilTabela();
+          return;
+        }
+        var tr = e.target.closest('tr.v-row'); if (!tr) return;
+        var p = tr.getAttribute('data-pmp');
+        state.funilFiltro.vend = (state.funilFiltro.vend === p) ? '' : p;
+        document.getElementById('f-vend').value = state.funilFiltro.vend;
+        aplicarFunil();
+      });
     }
 
     document.getElementById('dt-inicio').addEventListener('change', onDateChange);
