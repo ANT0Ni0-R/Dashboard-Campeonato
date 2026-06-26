@@ -148,6 +148,20 @@ Ver detalhes em `apps-script/CLAUDE.md` e `apps-script/README.md`.
 
 Mensagens de commit com acentos via heredoc podem causar exit code 144. Usar ASCII puro.
 
+### Funil: filtro de grupo e LIKE (aproximado), nao igualdade
+
+`funil_group_name` casa por `LOWER(group_name) LIKE LOWER(valor)` — escolha consciente porque
+os nomes de grupo no CRM sao longos/instaveis e o gerencial e um **modelo escalavel** (duplica a
+planilha, troca so o produto). O valor vem com `%...%` (igual `slug_like`). Ja foi bug usar `=`
+com valor `%...%`: os `%` viram literais e base/ativados/TMR voltam vazios. Detalhe em
+`gerencial/CLAUDE.md`.
+
+### Fotos: nome do arquivo deve ser `<PMP>.jpg` MINUSCULO
+
+O codigo monta a URL sempre como `<PMP>.jpg`. A URL raw do GitHub e case-sensitive no caminho,
+entao `FAL.JPG`/`JKC.jpeg`/`CCL.jpeg` dao 404. Em `assets/fotos/` todos os arquivos devem ser
+`<PMP>.jpg` minusculo. Ao adicionar foto nova, padronize a extensao.
+
 ### Fotos no Apps Script: overlay de iniciais
 
 CSS `position: absolute` na imagem e no span `.initials` causa sobreposicao.

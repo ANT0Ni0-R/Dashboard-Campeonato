@@ -117,9 +117,16 @@ function funilOrigemExpr_() {
     "'(sem origem)')";
 }
 
-// Filtro do grupo do lancamento: igualdade case-insensitive em group_name (CRM).
+// Filtro do grupo do lancamento: correspondencia APROXIMADA case-insensitive (LIKE) em
+// group_name (CRM). Os nomes de grupo sao longos e mudam entre lancamentos, entao casamos
+// por trecho — mesma convencao de slug_like/bq_product_like. O valor de Config pode vir com
+// `%` nas pontas (ex.: `%MBA IA [TDV 2]%`); se vier sem nenhum `%`, embrulhamos em `%...%`
+// para manter o match aproximado no modelo escalavel (duplica a planilha, troca o produto).
+// (Era `=` antes; com o valor `%...%` os % viravam literais e o funil inteiro voltava vazio.)
 function funilGrupoWhere_(cfg) {
-  return 'LOWER(group_name) = LOWER(' + sqlStr_(cfg.funilGroupName) + ')';
+  var nome = String(cfg.funilGroupName || '');
+  if (nome.indexOf('%') === -1) nome = '%' + nome + '%';
+  return 'LOWER(group_name) LIKE LOWER(' + sqlStr_(nome) + ')';
 }
 
 // Telefone normalizado p/ cruzamento: so digitos, ultimos 11; NULL se < 10 digitos (evita lixo).
