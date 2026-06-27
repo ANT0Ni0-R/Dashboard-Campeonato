@@ -132,47 +132,13 @@ Grupos A, B, C avancam 2; Grupo D avanca 1. Repescagem: 1 vaga.
 
 ## Erros cometidos -- nao repetir
 
-### BigQuery: hifens no PROJECT_ID e na tabela
-
-O ID do projeto e `grupo-primo-prd` (com hifens). Sem hifens causa:
-- `Cannot parse as CloudRegion` -- se o PROJECT_ID nao tiver hifen
-- `Access Denied: Table grupoprimoprd:...` -- se o path da tabela nao tiver hifen
-
-**Regra:** sempre usar `grupo-primo-prd` com hifens em ambos os lugares.
-
-### Apps Script: autenticacao Supabase com CAPTCHA
-
-O Supabase ativou CAPTCHA no Auth, quebrando o login `grant_type=password`.
-Solucao: usar a secret key em Script Property `SUPABASE_SECRET_KEY` (nunca no repo).
-Ver detalhes em `apps-script/CLAUDE.md` e `apps-script/README.md`.
-
-### Commit messages com caracteres especiais
-
-Mensagens de commit com acentos via heredoc podem causar exit code 144. Usar ASCII puro.
-
-### Funil: filtro de grupo e LIKE (aproximado), nao igualdade
-
-`funil_group_name` casa por `LOWER(group_name) LIKE LOWER(valor)` — escolha consciente porque
-os nomes de grupo no CRM sao longos/instaveis e o gerencial e um **modelo escalavel** (duplica a
-planilha, troca so o produto). O valor vem com `%...%` (igual `slug_like`). Ja foi bug usar `=`
-com valor `%...%`: os `%` viram literais e base/ativados/TMR voltam vazios.
-
-Quando o grupo da Clint e **compartilhado** entre varios funis (caso FIA: grupo `MBA IA [TDV 2]`,
-lancamento = origem `Formação Consultor de IA`), preencha tambem `funil_origin_name` para estreitar
-o escopo aquele `origin_name`. Vazio = grupo inteiro (legado, grupo dedicado). Detalhe em
-`gerencial/CLAUDE.md`.
-
-### Fotos: nome do arquivo deve ser `<PMP>.jpg` MINUSCULO
-
-O codigo monta a URL sempre como `<PMP>.jpg`. A URL raw do GitHub e case-sensitive no caminho,
-entao `FAL.JPG`/`JKC.jpeg`/`CCL.jpeg` dao 404. Em `assets/fotos/` todos os arquivos devem ser
-`<PMP>.jpg` minusculo. Ao adicionar foto nova, padronize a extensao.
-
-### Fotos no Apps Script: overlay de iniciais
-
-CSS `position: absolute` na imagem e no span `.initials` causa sobreposicao.
-Solucao: imagem `position: absolute; top:0; left:0; width:100%; height:100%`
-+ `onload="this.className='loaded'"` + CSS `.avatar img.loaded + .initials { display: none; }`.
+> Os erros foram movidos para arquivos `ERROS.md` dedicados (fonte unica de verdade):
+>
+> - **`ERROS.md`** (raiz) — erros globais (BigQuery, Supabase/CAPTCHA, git, funil, fotos, etc.).
+> - **`<subpasta>/ERROS.md`** — erros especificos daquele subprojeto.
+>
+> **Antes de codar, leia o `ERROS.md` global e o da subpasta afetada.** Ao resolver um bug novo,
+> registre-o no nivel certo (global se vale para o repo todo; subpasta se for especifico).
 
 ---
 
