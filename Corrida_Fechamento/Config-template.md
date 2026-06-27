@@ -49,9 +49,13 @@ Datas em ISO 8601 com fuso `-03:00` (America/Sao_Paulo).
 ## Aba `Parcelamento` (cinco colunas: `slug_like` | `valor_min` | `valor_max` | `meses` | `fator`)
 
 GMV Ajustado **por produto**. A venda parcelada entra no Supabase so com a 1a parcela (`price`).
-A regra projeta o contrato cheio: a 1a regra cujo `slug` casa (por "contem", case-insensitive) **e**
-cujo `price` cai na faixa `[valor_min, valor_max]` vence -> GMV = `price * meses * fator`.
+A regra projeta o contrato cheio: a 1a regra cujo `slug` casa (por "contem") **e** cujo `price` cai
+na faixa `[valor_min, valor_max]` vence -> GMV = `price * meses * fator`.
 Sem nenhuma regra que case -> `price` inalterado (produto sem parcelamento).
+
+O match e **normalizado**: ignora acentos, espacos, hifens e maiusculas/minusculas. Ou seja,
+`Formação Consultor de IA` casa com o slug real `formacao-consultor-de-ia`. Pode preencher
+`slug_like` com o nome amigavel do produto que funciona.
 
 | slug_like | valor_min | valor_max | meses | fator |
 |---|---|---|---|---|
