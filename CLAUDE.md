@@ -70,6 +70,7 @@ Antes de escrever qualquer linha de codigo, responda explicitamente a estas 5 pe
 | `apps-script/` | Dashboard 2 - Ranking Geral (BigQuery) | `apps-script/CLAUDE.md` |
 | `competicoes/` | Variante reutilizavel: podio de GMV por competicao | `competicoes/CLAUDE.md` |
 | `gerencial/` | Dashboard 3 - Gerencial (Apps Script, 4 quadrantes) | `gerencial/CLAUDE.md` |
+| `Corrida_Fechamento/` | Dashboard 4 - Corrida de fechamento do mes (Apps Script + Supabase) | `Corrida_Fechamento/CLAUDE.md` |
 | `assets/` | Fotos, bandeiras e outros assets compartilhados entre projetos | - |
 
 **`assets/`:**
@@ -93,6 +94,7 @@ O repo precisa ser **publico** para as URLs raw funcionarem.
 | Ranking Geral | BigQuery (direto) | Apps Script Web App |
 | Gerencial | Supabase real-time + BigQuery snapshot 30 min | Apps Script Web App |
 | Competicoes | Supabase (JWT server-side) | Apps Script Web App (1 por competicao) |
+| Corrida de Fechamento | Supabase (JWT server-side, polling) | Apps Script Web App |
 
 ---
 
