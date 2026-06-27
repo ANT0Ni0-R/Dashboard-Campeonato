@@ -89,7 +89,10 @@ function setupInitial() {
   const order = [ABA_PROD, ABA_METAS, ABA_AMAR, ABA_EXT, ABA_LISTA];
   order.forEach((name, i) => {
     const sh = ss.getSheetByName(name);
-    if (sh) ss.setActiveSheet(sh).moveActiveSheet(i + 1);
+    if (sh) {
+      ss.setActiveSheet(sh);
+      ss.moveActiveSheet(i + 1);
+    }
   });
 
   ss.setActiveSheet(ss.getSheetByName(ABA_AMAR));
