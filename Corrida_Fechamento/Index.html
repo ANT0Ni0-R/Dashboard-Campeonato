@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #05070d; }
+  * { box-sizing: border-box; }
+  @keyframes om-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .25; transform: scale(.65); } }
+  @keyframes om-stripes { to { background-position: 48px 0; } }
+  #stage ::-webkit-scrollbar { width: 9px; height: 9px; }
+  #stage ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 6px; }
+  #stage ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); }
+  #stage ::-webkit-scrollbar-track { background: rgba(255,255,255,.03); border-radius: 6px; }
+
+  /* avatar com foto + fallback de iniciais (padrao dos demais dashboards) */
+  .avatar { position: relative; overflow: hidden; }
+  .avatar img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+  .avatar img.loaded + .initials { display: none; }
+</style>
+</head>
+<body>
+<div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#05070d;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+<div id="stage" style="flex:0 0 auto;width:1920px;height:1080px;position:relative;background:radial-gradient(1200px 700px at 18% -8%,rgba(43,212,160,.10),transparent 60%),radial-gradient(1100px 700px at 96% 8%,rgba(91,156,255,.10),transparent 55%),linear-gradient(180deg,#080b14,#05070d);color:#e8edf5;font-family:'Archivo',sans-serif;overflow:hidden;padding:34px 40px;display:flex;flex-direction:column;gap:20px;">
+
+  <!-- decorative checkered corner -->
+  <div style="position:absolute;top:0;right:0;width:340px;height:340px;opacity:.05;background-image:linear-gradient(45deg,#fff 25%,transparent 25%,transparent 75%,#fff 75%,#fff),linear-gradient(45deg,#fff 25%,transparent 25%,transparent 75%,#fff 75%,#fff);background-size:34px 34px;background-position:0 0,17px 17px;pointer-events:none;"></div>
+
+  <!-- HEADER -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;">
+    <div style="display:flex;align-items:center;gap:18px;">
+      <div style="width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2bd4a0,#15a978);box-shadow:0 8px 24px rgba(43,212,160,.35);">
+        <div style="width:24px;height:24px;background-image:linear-gradient(45deg,#06281e 25%,transparent 25%,transparent 75%,#06281e 75%,#06281e),linear-gradient(45deg,#06281e 25%,transparent 25%,transparent 75%,#06281e 75%,#06281e);background-size:12px 12px;background-position:0 0,6px 6px;border-radius:4px;"></div>
+      </div>
+      <div>
+        <div id="hdr-titulo" style="font-size:30px;font-weight:900;letter-spacing:-.5px;line-height:1;">CORRIDA DE FECHAMENTO</div>
+        <div id="hdr-sub" style="font-size:15px;font-weight:600;color:#7c8aa3;margin-top:5px;letter-spacing:.5px;text-transform:uppercase;">Fechamento do mes</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:24px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:999px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.35);">
+        <span id="status-dot" style="width:11px;height:11px;border-radius:50%;background:#ff4d6d;animation:om-pulse 1.2s infinite;"></span>
+        <span id="status-txt" style="font-size:15px;font-weight:800;letter-spacing:1.5px;color:#ff6b85;">AO VIVO</span>
+      </div>
+      <div id="hdr-update" style="font-size:15px;font-weight:600;color:#7c8aa3;letter-spacing:.5px;">conectando...</div>
+    </div>
+  </div>
+
+  <!-- ROW A : KPIs gerais -->
+  <div style="display:flex;gap:20px;flex:0 0 288px;">
+
+    <!-- META DO MES -->
+    <div style="flex:1.65;border-radius:22px;padding:26px 28px;background:linear-gradient(160deg,#121b2c,#0c1220);border:1px solid rgba(255,255,255,.07);position:relative;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:14px;font-weight:700;letter-spacing:1.4px;color:#7c8aa3;text-transform:uppercase;">Realizado no mes</span>
+        <span id="meta-pct" style="font-size:14px;font-weight:800;color:#2bd4a0;letter-spacing:.5px;">--% DA META</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:14px;margin-top:8px;">
+        <span id="meta-realizado" style="font-size:62px;font-weight:900;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums;">R$ 0</span>
+      </div>
+      <div style="font-size:15px;font-weight:600;color:#7c8aa3;margin-top:4px;">de <span id="meta-total" style="color:#aeb9cc;font-weight:700;">R$ 0</span> meta do mes</div>
+
+      <div style="margin-top:auto;">
+        <div style="height:18px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:visible;">
+          <div id="meta-fill" style="position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(0);transform-origin:left center;background:linear-gradient(90deg,#15a978,#2bd4a0);box-shadow:0 0 18px rgba(43,212,160,.5);border-radius:999px;transition:transform 1.4s cubic-bezier(.2,.8,.2,1);">
+            <div style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;border-radius:999px;background-image:repeating-linear-gradient(120deg,rgba(255,255,255,.32) 0 12px,rgba(255,255,255,0) 12px 24px);background-size:48px 100%;animation:om-stripes .55s linear infinite;"></div>
+            <div id="meta-car" style="position:absolute;top:50%;right:0;transform:translate(50%,-50%) scale(.95,.95);transform-origin:center;z-index:3;"></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:12px;align-items:center;">
+          <span style="font-size:15px;font-weight:700;color:#7c8aa3;">Faltam para a meta</span>
+          <span id="meta-falta" style="font-size:26px;font-weight:900;color:#ffb13d;font-variant-numeric:tabular-nums;letter-spacing:-.5px;">R$ 0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- GMV HOJE - VELOCIMETRO -->
+    <div style="flex:1.25;border-radius:22px;padding:22px 26px;background:linear-gradient(160deg,#121b2c,#0c1220);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:14px;font-weight:700;letter-spacing:1.4px;color:#7c8aa3;text-transform:uppercase;">GMV de hoje</span>
+        <span id="sp-pct" style="font-size:13px;font-weight:800;color:#2bd4a0;letter-spacing:.5px;">--% DA META/DIA</span>
+      </div>
+      <div style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0;margin-top:2px;">
+        <svg viewBox="0 0 200 116" style="width:100%;height:100%;max-height:148px;overflow:visible;">
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#15a978"></stop>
+              <stop offset="0.6" stop-color="#2bd4a0"></stop>
+              <stop offset="1" stop-color="#ffb13d"></stop>
+            </linearGradient>
+          </defs>
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1c2740" stroke-width="14" stroke-linecap="round"></path>
+          <path id="gauge-arc" d="M 20 100" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round" style="transition:all 1.4s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 0 6px rgba(43,212,160,.5));"></path>
+          <g stroke="#3a4760" stroke-width="2.5" stroke-linecap="round">
+            <line x1="20" y1="100" x2="30" y2="100"></line>
+            <line x1="43.4" y1="43.4" x2="50.5" y2="50.5"></line>
+            <line x1="100" y1="20" x2="100" y2="30"></line>
+            <line x1="156.6" y1="43.4" x2="149.5" y2="50.5"></line>
+            <line x1="180" y1="100" x2="170" y2="100"></line>
+          </g>
+          <line id="gauge-needle" x1="100" y1="100" x2="20" y2="100" stroke="#ff4d6d" stroke-width="4.5" stroke-linecap="round" style="transition:all 1.4s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));"></line>
+          <circle cx="100" cy="100" r="8" fill="#0c1220" stroke="#ff4d6d" stroke-width="3"></circle>
+        </svg>
+        <div style="position:absolute;bottom:-2px;left:0;right:0;text-align:center;">
+          <div id="hoje-gmv" style="font-size:42px;font-weight:900;letter-spacing:-1.5px;line-height:1;color:#2bd4a0;font-variant-numeric:tabular-nums;text-shadow:0 0 24px rgba(43,212,160,.4);">R$ 0</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:rgba(255,255,255,.04);border-radius:12px;padding:9px 13px;">
+          <div style="font-size:11px;font-weight:700;color:#7c8aa3;letter-spacing:.6px;text-transform:uppercase;">Real R$/h</div>
+          <div id="real-hora" style="font-size:21px;font-weight:900;margin-top:2px;font-variant-numeric:tabular-nums;">R$ 0</div>
+        </div>
+        <div style="flex:1;background:rgba(255,77,109,.07);border-radius:12px;padding:9px 13px;border:1px solid rgba(255,77,109,.18);">
+          <div style="font-size:11px;font-weight:700;color:#ff8aa0;letter-spacing:.6px;text-transform:uppercase;">Necessario R$/h</div>
+          <div id="nec-hora" style="font-size:21px;font-weight:900;margin-top:2px;color:#ff6b85;font-variant-numeric:tabular-nums;">R$ 0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RITMO -->
+    <div style="flex:.92;border-radius:22px;padding:26px 28px;background:linear-gradient(160deg,#1a1322,#13101c);border:1px solid rgba(255,77,109,.18);display:flex;flex-direction:column;justify-content:space-between;">
+      <span style="font-size:14px;font-weight:700;letter-spacing:1.4px;color:#ff8aa0;text-transform:uppercase;">Ritmo necessario</span>
+      <div style="display:flex;align-items:baseline;gap:4px;">
+        <span id="ritmo" style="font-size:72px;font-weight:900;letter-spacing:-3px;line-height:.9;color:#ff4d6d;font-variant-numeric:tabular-nums;">0.0</span>
+        <span style="font-size:34px;font-weight:900;color:#ff4d6d;">x</span>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:#9aa6bd;line-height:1.4;">Precisamos vender <span id="ritmo-inline" style="color:#ff8aa0;font-weight:800;">0.0x mais rapido</span> que o ritmo atual para bater a meta.</div>
+    </div>
+
+    <!-- COUNTDOWN -->
+    <div style="flex:1.5;border-radius:22px;padding:24px 28px;background:linear-gradient(160deg,#0d1626,#0a1019);border:1px solid rgba(91,156,255,.16);display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background:radial-gradient(420px 240px at 50% 120%,rgba(91,156,255,.16),transparent);pointer-events:none;"></div>
+      <span style="font-size:14px;font-weight:700;letter-spacing:1.4px;color:#8fb4ff;text-transform:uppercase;position:relative;">Fechamento em</span>
+      <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-top:6px;position:relative;font-family:'JetBrains Mono',monospace;">
+        <div style="text-align:center;">
+          <div id="cd-h" style="font-size:68px;font-weight:800;line-height:1;color:#e8edf5;font-variant-numeric:tabular-nums;">00</div>
+          <div style="font-size:12px;font-weight:700;color:#6b7790;letter-spacing:2px;margin-top:6px;">HORAS</div>
+        </div>
+        <div style="font-size:60px;font-weight:800;color:#3a4760;line-height:1;padding-bottom:22px;">:</div>
+        <div style="text-align:center;">
+          <div id="cd-m" style="font-size:68px;font-weight:800;line-height:1;color:#e8edf5;font-variant-numeric:tabular-nums;">00</div>
+          <div style="font-size:12px;font-weight:700;color:#6b7790;letter-spacing:2px;margin-top:6px;">MIN</div>
+        </div>
+        <div style="font-size:60px;font-weight:800;color:#3a4760;line-height:1;padding-bottom:22px;">:</div>
+        <div style="text-align:center;">
+          <div id="cd-s" style="font-size:68px;font-weight:800;line-height:1;color:#ff4d6d;font-variant-numeric:tabular-nums;text-shadow:0 0 22px rgba(255,77,109,.5);">00</div>
+          <div style="font-size:12px;font-weight:700;color:#6b7790;letter-spacing:2px;margin-top:6px;">SEG</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW B : por vendedor -->
+  <div style="display:flex;flex-direction:column;gap:20px;flex:1 1 auto;min-height:0;">
+
+    <div style="display:flex;gap:20px;flex:1.5;min-height:0;">
+
+    <!-- RACE TRACK -->
+    <div style="flex:2.4;border-radius:22px;padding:24px 28px 18px;background:linear-gradient(160deg,#101826,#0b1018);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;min-height:0;position:relative;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:18px;font-weight:900;letter-spacing:.4px;">Corrida dos vendedores - GMV de hoje</span>
+        <span style="font-size:13px;font-weight:700;color:#7c8aa3;letter-spacing:.6px;text-transform:uppercase;">Linha de chegada = lider</span>
+      </div>
+      <div id="race" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:14px;"></div>
+      <div style="position:absolute;top:60px;bottom:20px;right:30px;width:8px;background-image:linear-gradient(0deg,#fff 50%,#1a2230 50%);background-size:8px 14px;opacity:.18;border-radius:4px;pointer-events:none;"></div>
+    </div>
+
+    <!-- PODIO -->
+      <div style="flex:1;border-radius:22px;padding:22px 24px;background:linear-gradient(160deg,#141026,#0e0b18);border:1px solid rgba(255,211,92,.16);display:flex;flex-direction:column;">
+        <span style="font-size:16px;font-weight:900;letter-spacing:.4px;margin-bottom:10px;">Podio do dia</span>
+        <div style="position:relative;flex:1;display:flex;align-items:flex-start;justify-content:center;gap:12px;padding-top:4px;overflow:hidden;">
+          <div style="position:absolute;top:22px;left:-8px;right:-8px;height:16px;background-color:#fff;background-image:linear-gradient(45deg,#15171c 25%,transparent 25%,transparent 75%,#15171c 75%,#15171c),linear-gradient(45deg,#15171c 25%,transparent 25%,transparent 75%,#15171c 75%,#15171c);background-size:16px 16px;background-position:0 0,8px 8px;z-index:1;box-shadow:0 6px 14px rgba(0,0,0,.45);"></div>
+          <div id="podium" style="display:contents;"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GMV GERAL HORA A HORA -->
+    <div style="flex:1;border-radius:22px;padding:18px 28px 16px;background:linear-gradient(160deg,#101826,#0b1018);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;min-height:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex:0 0 auto;">
+        <span style="font-size:18px;font-weight:900;letter-spacing:.4px;">GMV geral - hora a hora</span>
+        <div style="display:flex;align-items:center;gap:22px;">
+          <div style="display:flex;align-items:center;gap:8px;"><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(180deg,#2bd4a0,#15a978);"></span><span style="font-size:13px;font-weight:700;color:#9aa6bd;">Pico <span id="pico">0</span></span></div>
+          <div style="font-size:13px;font-weight:700;color:#7c8aa3;letter-spacing:.4px;">Total hoje <span id="hoje-total" style="color:#e8edf5;font-weight:900;">R$ 0</span></div>
+        </div>
+      </div>
+      <div id="hourly-bars" style="flex:1;display:flex;align-items:stretch;gap:10px;min-height:0;border-bottom:2px solid rgba(255,255,255,.08);padding-bottom:0;"></div>
+      <div id="hourly-labels" style="display:flex;gap:10px;margin-top:7px;flex:0 0 auto;"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+  // ============ ESTADO + CONSTANTES ============
+  var POLL_MS = 60000;
+  var FIM_ISO = '';                 // alvo do countdown (config.fim); vazio = fim de hoje
+  var EXPEDIENTE_FIM = 24;          // hora-cheia da janela do grafico hora-a-hora (preenchido pela config)
+  var lastNums = {};                // ultimos valores exibidos (para count-up suave)
+
+  // ============ HELPERS ============
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+    });
+  }
+  function iniciais(nome) {
+    var p = String(nome).trim().split(/\s+/);
+    return (((p[0] || '')[0] || '') + ((p[p.length - 1] || '')[0] || '')).toUpperCase();
+  }
+  function brl(n) { return 'R$ ' + Math.round(n || 0).toLocaleString('pt-BR'); }
+  function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+  // Carro de F1 (porte do componente F1Car) — cor injetada.
+  function f1Car(color) {
+    return '<div style="position:relative;width:76px;height:42px;flex:0 0 auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));">' +
+      '<div style="position:absolute;left:0;top:4px;width:9px;height:34px;background:linear-gradient(180deg,#3a3a3a,#0e0e0e);border-radius:3px;z-index:2;"></div>' +
+      '<div style="position:absolute;left:18px;top:-2px;width:20px;height:12px;background:linear-gradient(180deg,#262626,#0c0c0c);border-radius:5px;z-index:2;"></div>' +
+      '<div style="position:absolute;left:18px;top:32px;width:20px;height:12px;background:linear-gradient(180deg,#0c0c0c,#262626);border-radius:5px;z-index:2;"></div>' +
+      '<div style="position:absolute;left:50px;top:0px;width:16px;height:10px;background:linear-gradient(180deg,#262626,#0c0c0c);border-radius:4px;z-index:2;"></div>' +
+      '<div style="position:absolute;left:50px;top:32px;width:16px;height:10px;background:linear-gradient(180deg,#0c0c0c,#262626);border-radius:4px;z-index:2;"></div>' +
+      '<div style="position:absolute;left:66px;top:6px;width:8px;height:30px;background:linear-gradient(180deg,#f2f4f7,#c8d0da);border-radius:2px;z-index:2;"></div>' +
+      '<div style="position:absolute;left:7px;top:8px;width:66px;height:26px;background:' + color + ';clip-path:polygon(0% 6%,60% 6%,100% 50%,60% 94%,0% 94%);z-index:3;box-shadow:inset 0 3px 4px rgba(255,255,255,.28),inset 0 -3px 5px rgba(0,0,0,.35);"></div>' +
+      '<div style="position:absolute;left:12px;top:17px;width:44px;height:8px;background:linear-gradient(180deg,#ffffff,#e6ebf1);clip-path:polygon(0% 0%,78% 0%,100% 50%,78% 100%,0% 100%);z-index:4;opacity:.85;"></div>' +
+      '<div style="position:absolute;left:31px;top:13px;width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#3c3c3c,#070707);box-shadow:0 0 0 3px rgba(236,236,236,.92);z-index:5;"></div>' +
+      '</div>';
+  }
+
+  function avatarCircle(s, size) {
+    return '<div class="avatar" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#06121b;background:' + s.cor + ';border:2px solid rgba(255,255,255,.18);box-shadow:0 4px 12px rgba(0,0,0,.4);">' +
+      '<img src="' + esc(s.foto) + '" alt="" onload="this.className=\'loaded\'" onerror="this.remove()">' +
+      '<span class="initials">' + esc(iniciais(s.nome)) + '</span></div>';
+  }
+
+  // ============ GAUGE ============
+  function gaugeGeo(frac) {
+    var cx = 100, cy = 100, r = 80;
+    var f = clamp01(frac);
+    var theta = 180 - f * 180;
+    var rad = theta * Math.PI / 180;
+    var ex = cx + r * Math.cos(rad), ey = cy - r * Math.sin(rad);
+    var nx = cx + (r - 16) * Math.cos(rad), ny = cy - (r - 16) * Math.sin(rad);
+    var arc = 'M ' + (cx - r).toFixed(1) + ' ' + cy + ' A ' + r + ' ' + r + ' 0 0 1 ' + ex.toFixed(1) + ' ' + ey.toFixed(1);
+    return { arc: arc, nx: nx.toFixed(1), ny: ny.toFixed(1) };
+  }
+
+  // ============ COUNT-UP suave para os numeros-heroi ============
+  function animNum(id, to, fmt) {
+    var el = document.getElementById(id);
+    var from = lastNums[id] || 0;
+    lastNums[id] = to;
+    var t0 = Date.now(), dur = 1200, ease = function (x) { return 1 - Math.pow(1 - x, 3); };
+    (function step() {
+      var k = Math.min(1, (Date.now() - t0) / dur);
+      el.textContent = fmt(from + (to - from) * ease(k));
+      if (k < 1) requestAnimationFrame(step);
+    })();
+  }
+
+  // ============ RENDER ============
+  function render(data) {
+    var cfg = data.config || {};
+    POLL_MS = (cfg.pollSegundos || 60) * 1000;
+    FIM_ISO = cfg.fim || '';
+    var meta = data.meta || {}, hoje = data.hoje || {};
+
+    document.getElementById('hdr-titulo').textContent = (cfg.titulo || 'Corrida de Fechamento').toUpperCase();
+    document.getElementById('hdr-sub').textContent = subtitulo(cfg);
+
+    // META DO MES
+    var pctMes = Math.round((meta.pctMes || 0) * 100);
+    document.getElementById('meta-pct').textContent = pctMes + '% DA META';
+    document.getElementById('meta-total').textContent = brl(meta.metaMes);
+    animNum('meta-realizado', meta.realizadoMes || 0, brl);
+    animNum('meta-falta', meta.faltaMes || 0, brl);
+    var metaFrac = clamp01((meta.pctMes || 0));
+    document.getElementById('meta-fill').style.transform = 'scaleX(' + metaFrac + ')';
+    document.getElementById('meta-car').style.transform =
+      'translate(50%,-50%) scale(' + (metaFrac > 0.02 ? 0.95 / metaFrac : 0.95) + ',0.95)';
+
+    // GMV HOJE - velocimetro
+    document.getElementById('sp-pct').textContent = Math.round((meta.pctDia || 0) * 100) + '% DA META/DIA';
+    animNum('hoje-gmv', hoje.gmv || 0, brl);
+    var g = gaugeGeo(meta.metaDia > 0 ? (hoje.gmv || 0) / meta.metaDia : 0);
+    document.getElementById('gauge-arc').setAttribute('d', g.arc);
+    var needle = document.getElementById('gauge-needle');
+    needle.setAttribute('x2', g.nx); needle.setAttribute('y2', g.ny);
+    document.getElementById('real-hora').textContent = brl(hoje.realHora);
+    document.getElementById('nec-hora').textContent = brl(hoje.necHora);
+
+    // RITMO
+    var ritmo = (hoje.ritmo || 0).toFixed(1);
+    document.getElementById('ritmo').textContent = ritmo;
+    document.getElementById('ritmo-inline').textContent = ritmo + 'x mais rapido';
+
+    renderRace(data.sellers || []);
+    renderPodium(data.sellers || []);
+    renderHourly(data.hourly || []);
+  }
+
+  function subtitulo(cfg) {
+    var d = cfg.inicio ? new Date(cfg.inicio) : new Date();
+    if (isNaN(d)) d = new Date();
+    var mes = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+    return mes + ' - fechamento das metas';
+  }
+
+  // ---- corrida ----
+  function renderRace(sellers) {
+    var maxGmv = Math.max(1, Math.max.apply(null, sellers.map(function (s) { return s.gmvHoje || 0; })));
+    document.getElementById('race').innerHTML = sellers.map(function (s, i) {
+      var frac = clamp01((s.gmvHoje || 0) / maxGmv);
+      var csx = frac > 0.02 ? 0.8 / frac : 0.8;
+      var hit = (s.metaPct || 0) >= 1;
+      var badgeBg = hit ? 'rgba(43,212,160,.16)' : 'rgba(255,255,255,.06)';
+      var badgeColor = hit ? '#2bd4a0' : '#8fa0bb';
+      return '<div style="display:flex;align-items:center;gap:16px;padding:4px 0;flex:0 0 auto;">' +
+        '<span style="width:26px;text-align:center;font-size:20px;font-weight:900;color:#5b6880;font-variant-numeric:tabular-nums;">' + (i + 1) + '</span>' +
+        avatarCircle(s, 46) +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<span style="font-size:16px;font-weight:800;color:#e8edf5;">' + esc(s.nome) + '</span>' +
+              '<span style="font-size:11px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:6px;background:' + badgeBg + ';color:' + badgeColor + ';">' + Math.round((s.metaPct || 0) * 100) + '%</span>' +
+            '</div>' +
+            '<span style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;color:#cdd6e6;">' + brl(s.gmvHoje) + '</span>' +
+          '</div>' +
+          '<div style="height:14px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:visible;">' +
+            '<div style="position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(' + frac + ');transform-origin:left center;background:linear-gradient(90deg,' + s.cor + '88,' + s.cor + ');box-shadow:0 0 14px ' + s.cor + '66;border-radius:999px;transition:transform 1.5s cubic-bezier(.2,.8,.2,1);">' +
+              '<div style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;border-radius:999px;background-image:repeating-linear-gradient(120deg,rgba(255,255,255,.28) 0 12px,rgba(255,255,255,0) 12px 24px);background-size:48px 100%;animation:om-stripes .5s linear infinite;"></div>' +
+              '<div style="position:absolute;top:50%;right:0;transform:translate(50%,-50%) scale(' + csx + ',0.8);transform-origin:center;z-index:3;">' + f1Car(s.cor) + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('') || '<div style="color:#7c8aa3;font-size:15px;padding:20px;">Sem vendedores configurados.</div>';
+  }
+
+  // ---- podio (ordem 2-1-3) ----
+  function renderPodium(sellers) {
+    var top3 = sellers.slice(0, 3);
+    var ordem = [
+      { s: top3[1], place: '2.', ring: '#c8d2e0', lane: '36px', scale: 1.25 },
+      { s: top3[0], place: '1.', ring: '#ffd35c', lane: '0px',  scale: 1.55 },
+      { s: top3[2], place: '3.', ring: '#e08a4a', lane: '20px', scale: 1.15 }
+    ];
+    document.getElementById('podium').innerHTML = ordem.map(function (o) {
+      if (!o.s) return '<div style="width:92px;"></div>';
+      var s = o.s;
+      return '<div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:92px;padding-top:' + o.lane + ';">' +
+        '<div style="width:62px;height:104px;display:flex;align-items:center;justify-content:center;">' +
+          '<div style="transform:rotate(-90deg) scale(' + o.scale + ');transform-origin:center;">' + f1Car(s.cor) + '</div>' +
+        '</div>' +
+        '<div style="margin-top:2px;font-size:13px;font-weight:900;letter-spacing:.4px;color:#06121b;background:' + o.ring + ';padding:2px 13px;border-radius:999px;box-shadow:0 0 14px ' + o.ring + '66;">' + o.place + '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#e8edf5;text-align:center;line-height:1.2;margin-top:7px;">' + esc(s.nome) + '</div>' +
+        '<div style="font-size:14px;font-weight:900;color:#9aa6bd;font-variant-numeric:tabular-nums;margin-top:2px;">' + brl(s.gmvHoje) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ---- hora a hora (janela expediente_inicio? mostramos 08h-EXPEDIENTE_FIM) ----
+  function renderHourly(hourly) {
+    var janela = hourly.filter(function (h) { return h.hora >= 8 && h.hora < EXPEDIENTE_FIM; });
+    if (!janela.length) janela = hourly;
+    var hmax = Math.max.apply(null, janela.map(function (h) { return h.gmv || 0; }));
+    if (!isFinite(hmax) || hmax <= 0) hmax = 1;
+
+    document.getElementById('hourly-bars').innerHTML = janela.map(function (h) {
+      var active = (h.gmv || 0) > 0;
+      var peak = (h.gmv || 0) === hmax && active;
+      var color = peak ? 'linear-gradient(180deg,#2bd4a0,#15a978)' : (active ? 'linear-gradient(180deg,#3a7bd5,#2f5fae)' : 'rgba(255,255,255,.05)');
+      var glow = peak ? '0 0 16px rgba(43,212,160,.55)' : 'none';
+      var valStr = active ? Math.round((h.gmv || 0) / 1000) + 'k' : '';
+      var valColor = peak ? '#2bd4a0' : '#7c8aa3';
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:0;">' +
+        '<div style="height:18px;font-size:12px;font-weight:800;color:' + valColor + ';font-variant-numeric:tabular-nums;">' + valStr + '</div>' +
+        '<div style="flex:1;width:78%;position:relative;display:flex;align-items:flex-end;min-height:0;">' +
+          '<div style="width:100%;height:100%;transform:scaleY(' + (active ? (h.gmv / hmax) : 0) + ');transform-origin:bottom;background:' + color + ';box-shadow:' + glow + ';border-radius:6px 6px 0 0;transition:transform 1.2s cubic-bezier(.2,.8,.2,1);"></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    document.getElementById('hourly-labels').innerHTML = janela.map(function (h) {
+      var active = (h.gmv || 0) > 0;
+      return '<div style="flex:1;text-align:center;font-size:12px;font-weight:700;color:' + (active ? '#9aa6bd' : '#4a566e') + ';font-variant-numeric:tabular-nums;">' + String(h.hora).padStart(2, '0') + '</div>';
+    }).join('');
+
+    document.getElementById('pico').textContent = (hmax / 1000).toFixed(1) + 'k';
+    var total = hourly.reduce(function (a, b) { return a + (b.gmv || 0); }, 0);
+    document.getElementById('hoje-total').textContent = brl(total);
+  }
+
+  // ============ COUNTDOWN ============
+  function tickCountdown() {
+    var now = new Date();
+    var alvo;
+    if (FIM_ISO) { alvo = new Date(FIM_ISO); if (isNaN(alvo)) alvo = fimDeHoje(now); }
+    else alvo = fimDeHoje(now);
+    var diff = Math.max(0, Math.floor((alvo - now) / 1000));
+    var h = Math.floor(diff / 3600); diff -= h * 3600;
+    var m = Math.floor(diff / 60); var s = diff - m * 60;
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    document.getElementById('cd-h').textContent = p(h);
+    document.getElementById('cd-m').textContent = p(m);
+    document.getElementById('cd-s').textContent = p(s);
+  }
+  function fimDeHoje(now) { var d = new Date(now); d.setHours(23, 59, 59, 999); return d; }
+
+  // ============ FIT 1920x1080 -> viewport ============
+  function fit() {
+    var scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    document.getElementById('stage').style.zoom = scale;
+  }
+
+  // ============ POLLING ============
+  var proximo = 0;
+  function setStatus(ok) {
+    document.getElementById('status-dot').style.background = ok ? '#ff4d6d' : '#6b7790';
+    document.getElementById('status-txt').textContent = ok ? 'AO VIVO' : 'SEM SINAL';
+    document.getElementById('status-txt').style.color = ok ? '#ff6b85' : '#7c8aa3';
+  }
+  function onOK(data) {
+    setStatus(true);
+    if (data && data.config && data.config.expedienteFim) EXPEDIENTE_FIM = data.config.expedienteFim;
+    render(data);
+    document.getElementById('hdr-update').textContent = 'Atualizado ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    proximo = Date.now() + POLL_MS;
+    setTimeout(carregar, POLL_MS);
+  }
+  function onErro(err) {
+    setStatus(false);
+    document.getElementById('hdr-update').textContent = (err && err.message) ? err.message : 'erro ao carregar';
+    proximo = Date.now() + POLL_MS;
+    setTimeout(carregar, POLL_MS);
+  }
+  function carregar() {
+    google.script.run.withSuccessHandler(onOK).withFailureHandler(onErro).getDashboard();
+  }
+
+  // ============ BOOT ============
+  fit();
+  window.addEventListener('resize', fit);
+  tickCountdown();
+  setInterval(tickCountdown, 1000);
+  carregar();
+</script>
+</body>
+</html>
