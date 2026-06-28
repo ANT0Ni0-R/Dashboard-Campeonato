@@ -101,6 +101,38 @@ Tamanho fora disso vira `NULL` (nao faz ponte em lixo). Telefone de alto grau
 
 ---
 
+## BigQuery: canal TVD nao e `is_in_tvd_portfolio`
+
+**Sintoma:** filtrar vendas do time de vendas por `is_in_tvd_portfolio = TRUE` zera o funil
+do Legado (todas as 2.822 vendas tem `is_in_tvd_portfolio = FALSE`), apesar de o Legado ser
+claramente um produto do time de vendas.
+
+**Causa:** `is_in_tvd_portfolio` mede outra coisa (produto no portfolio TVD), nao "esta venda
+passou pelo time de vendas". O canal correto e a coluna **`sales_channel`** da
+`mrt_sales_team__transactions_with_sales_request` (valores `TVD` x `OUTROS`).
+
+**Solucao:** filtrar `sales_channel = 'TVD'`. Bate 1:1 com `canal1 = 'TVD'` e e exatamente
+onde `seller_pmp`/`seller_name` vem 100% preenchidos (no Legado: 784 vendas / R$ 2,99 mi).
+A base do `int_..._transactions_with_sales_request_with_person_id` tem que ser a **mrt** (que
+carrega `sales_channel`), nao o intermediario que a abstrai.
+
+---
+
+## BigQuery: colisao de product_id ao trocar a base da transactions
+
+**Sintoma:** `CREATE TABLE has columns with duplicate name product_id` no build da
+transactions, ou o oposto (`* except (product_id)` falha porque a coluna nao existe).
+
+**Causa:** o intermediario antigo trazia uma coluna escalar `product_id` (id de origem), que
+colidia com o `product_id` canonico do de-para. A **mrt** (`mrt_sales_team__transactions_with_sales_request`)
+**nao** tem `product_id` escalar (so o array `products`).
+
+**Solucao:** ao usar a mrt como base, NAO usar `* except (product_id)` nem criar
+`product_id_origem` — o `product_id` canonico vem so do join com `map_transactions_produto`.
+Conferir as colunas da fonte (`INFORMATION_SCHEMA.COLUMNS`) antes de escrever o `select *`.
+
+---
+
 ## BigQuery: GROUP BY / filtro por alias do SELECT
 
 **Sintoma:** `Unrecognized name: <alias>` ao usar `GROUP BY <alias_do_select>` (ou filtrar
