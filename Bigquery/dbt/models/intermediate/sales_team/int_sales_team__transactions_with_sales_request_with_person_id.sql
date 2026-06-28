@@ -15,6 +15,10 @@
   - person_id : left join 1:1 em person_keys pela match_key (unica).
   - product_id: join exato product_name -> map_transactions_produto. NULL quando
                 o titulo nao esta mapeado (outras BUs/promos, ou a decidir).
+
+  OBS: a fonte ja traz uma coluna product_id (id de produto de origem, ex. Hotmart).
+  Pra nao colidir e manter product_id como a chave canonica (igual nas outras
+  fontes), o id de origem e preservado renomeado como product_id_origem.
 */
 
 with tx as (
@@ -42,7 +46,8 @@ mapa as (
 )
 
 select
-    w.*,
+    w.* except (product_id),
+    w.product_id as product_id_origem,
     mp.product_id
 from with_person w
 left join mapa mp
