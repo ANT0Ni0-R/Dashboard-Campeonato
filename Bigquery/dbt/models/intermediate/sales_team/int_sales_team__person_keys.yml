@@ -1,13 +1,35 @@
 version: 2
 
 models:
+  - name: int_sales_team__person_keys_pairs
+    description: >
+      Helper 1/3. Pares distintos (email, phone_key) normalizados das 4 fontes
+      (deals, leads, pesquisas, transactions). Unico modelo que escaneia as
+      fontes cruas. Grao = par distinto.
+    columns:
+      - name: match_key
+        description: concat(coalesce(email,''),'|',coalesce(phone_key,'')). Grao da tabela.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: int_sales_team__person_keys_graph
+    description: >
+      Helper 2/3. Grafo de identidade materializado: adjacencia (src, dst) entre
+      nos de email ('e:') e telefone ('p:'), com self-loop e blocklist aplicada.
+      Grao = aresta direcionada (cada aresta nao-direcionada aparece nos 2 sentidos).
+    columns:
+      - name: src
+        description: No de origem ('e:<email>' ou 'p:<phone_key>').
+      - name: dst
+        description: No de destino vizinho (ou o proprio, no self-loop).
+
   - name: int_sales_team__person_keys
     description: >
-      Crosswalk de identidade. Uma linha por par distinto (email, phone_key)
-      observado nas 4 fontes (deals, leads, pesquisas, transactions). Cada par
-      recebe um person_id canonico: a mesma pessoa ligada por email OU telefone
-      (transitivamente, via connected components) compartilha o mesmo person_id.
-      Serve para substituir o join "ON email OR telefone" por um join em match_key.
+      Modelo final 3/3. Crosswalk de identidade: 1 linha por par distinto
+      (email, phone_key), carimbada com person_id canonico (mesma pessoa por
+      email OU telefone, transitivamente). Substitui o join "ON email OR telefone"
+      por um left join em match_key.
     columns:
       - name: match_key
         description: >
@@ -28,7 +50,3 @@ models:
         description: >
           Telefone normalizado = DDD + ultimos 8 digitos (DDI 55 removido, robusto
           ao 9o digito). NULL quando o nacional nao tem 10/11 digitos.
-
-# Singular test sugerido (criar em tests/): assert_person_keys_phone_key_format.sql
-# -> SELECT phone_key FROM ref do int_sales_team__person_keys
-#    WHERE phone_key IS NOT NULL AND NOT REGEXP_CONTAINS(phone_key, r'^[0-9]{10}$')
