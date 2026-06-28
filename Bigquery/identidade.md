@@ -25,6 +25,22 @@ Email normalizado como chave primária, telefone normalizado como fallback. Padr
 
 Limitação aceita na v1: não liga "mesma pessoa, emails diferentes" via telefone em comum.
 
+### Decisão fechada (2026-06-28): v2 connected components
+
+Validado no BQ que o merge por telefone alcança ~13% de emails que o só-email perderia, então
+a escolha foi **direto pro grafo (OU transitivo)**, materializado em
+`int_sales_team__person_keys` (grão = par distinto `(email, phone_key)`; chave de join
+`match_key = concat(coalesce(email,''),'|',coalesce(phone_key,''))`; `person_id` = MD5 do
+representante canônico = menor nó do componente). Regras validadas em campo:
+
+- **Telefone**: dígitos → tira DDI `55` quando sobra ≥12 díg → aceita só nacional de 10/11 díg
+  → `phone_key = DDD + últimos 8`. Lixo de tamanho vira NULL (não faz ponte).
+- **Blocklist** (obrigatória — sem ela um telefone-lixo junta milhares): telefone com grau
+  ≥ 6 emails (var `person_keys_phone_block_degree`), repdigits e `99999999`/`12345678`-like;
+  email com grau ≥ 6 telefones ou padrão `test@`/`sac@`/`contato@`. Nó na blocklist não propaga aresta.
+- CC via min-label propagation com N iterações (Jinja loop); componentes são minúsculos (93%
+  dos telefones têm grau 1), converge em poucas rodadas.
+
 ### v2 — grafo (evoluir depois, sem quebrar downstream)
 
 Componentes conectados sobre arestas (identificadores que co-ocorrem no mesmo registro),

@@ -1,0 +1,22 @@
+version: 2
+
+# Snippet de sources para o int_sales_team__person_keys.
+# Use APENAS se essas fontes ainda nao existirem no seu projeto.
+# Se ja existirem com outros nomes, mantenha os existentes e ajuste os
+# source('...') no .sql. Ambas vivem no projeto GCP grupo-primo-prd
+# (cross-project em relacao ao dbt do CRM), por isso o 'database' explicito.
+
+sources:
+  - name: mart_grupo
+    database: grupo-primo-prd
+    schema: mart_grupo
+    tables:
+      - name: mrt_grupo__leads
+        description: Base unificada de leads do Grupo Primo (lead_email, lead_phone_number).
+
+  - name: mart_lancamentos
+    database: grupo-primo-prd
+    schema: mart_lancamentos
+    tables:
+      - name: mrt_lancamentos__pesquisas_compiladas
+        description: Pesquisas de lancamentos, 1 linha por email+campanha (email, phone).
