@@ -53,3 +53,48 @@ das colunas: A = nome, B = PMP por linha).
 > Regra geral: nunca mesclar um intervalo que se sobreponha parcialmente a um merge ja existente.
 > Setups de planilha devem ser idempotentes — cada `_create*` deleta a aba antes de recriar, entao
 > basta rodar o setup de novo apos a correcao.
+
+---
+
+## Apps Script: "O servico Planilhas apresentou falha ao acessar o documento" no addMonth
+
+**Sintoma:**
+```
+Erro: O servico Planilhas apresentou falha ao acessar o documento com o codigo <id>.
+```
+Aparecia ao adicionar o 2o mes (e o 1o ja saia com o merge do mes fragmentado — "julho/2026"
+mesclado so ate a coluna Z e o valor repetido celula a celula em AA..AG).
+
+**Causa:**
+- `addMonth` escrevia **celula a celula** dentro de loops: para cada um dos ~31 dias chamava
+  `setValue`/`setBackground`/etc. + `setColumnWidth`, e para cada um dos 17 vendedores chamava
+  `_getAllTags()` (relendo a aba Produtos) e aplicava validacao/borda individualmente. Sao
+  centenas de chamadas ao servico Sheets num unico run -> dispara o erro transiente de acesso.
+- O merge do mes era feito sem `breakApart()` defensivo; restos de merge de uma execucao
+  anterior fragmentavam o resultado.
+
+**Solucao (refatoracao em `addMonth.gs`):**
+1. **Escritas em lote** — montar arrays e gravar de uma vez (`setValues`/`setBackgrounds`/
+   `setFontColors`) e `setColumnWidths(start, n, w)` numa unica chamada. `_getAllTags()` sai do
+   loop (1x). Reduz de centenas para ~uma duzia de chamadas. (Fonte: Apps Script Best Practices.)
+2. **`breakApart()` antes de `merge()`** no bloco do mes.
+3. **`addMonth` idempotente** — `_removeMonth(mesStr)` no inicio limpa estado anterior/parcial, e
+   tudo roda dentro de `_retry(fn, 3)` (backoff 1s/2s/4s) que repete **so** o erro transiente de
+   acesso. Como e idempotente, repetir nao duplica colunas.
+4. **`getMonthMapping` deriva da planilha** (procura o rotulo na linha 1) em vez de confiar em
+   `PropertiesService`. Assim remover/recriar um mes (que desloca colunas) nunca dessincroniza o
+   mapeamento usado pelo Extrato.
+
+> Regra geral (Sheets via Apps Script): leia/escreva SEMPRE em lote com arrays; loops
+> celula-a-celula sao lentos e sobrecarregam o servico (causa #1 do erro de acesso ao documento).
+> Para erros transientes, envolver a operacao IDEMPOTENTE em retry com backoff.
+
+> **Atencao ao re-deployar:** se a planilha atual estiver num estado quebrado/misto (ex.: o mes
+> gravado como Date em vez do rotulo "Julho/2026"), rode o **setup inicial** de novo (recria as
+> abas limpas) antes de adicionar os meses — o `getMonthMapping` procura o rotulo string e nao
+> reconheceria um mes gravado como Date.
+
+> **Limitacao conhecida (aceita):** recriar um mes que NAO seja o ultimo reanexa as colunas no
+> fim (o bloco fica fora da ordem cronologica visual). Os dados nao se perdem — `getMonthMapping`
+> acha o mes pelo rotulo — e o Extrato continua correto. Recriar o ULTIMO mes (caso comum) mantem
+> a ordem. Inserir colunas na posicao certa nao compensa a complexidade.

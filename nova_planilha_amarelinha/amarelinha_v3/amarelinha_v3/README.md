@@ -62,8 +62,11 @@ Para cada arquivo abaixo:
    a coloração automática e o recalculo do Extrato funcionem ao editar células.
 
 > **Por que instalar o trigger?**  
-> O `onEdit` simples não tem acesso ao `PropertiesService` (que armazena o
-> mapeamento de colunas por mês). O trigger instalável resolve isso.
+> O `onEdit` simples roda com autorização restrita; o trigger instalável roda
+> com autorização completa, garantindo a coloração automática e o recálculo do
+> Extrato ao editar células. (O mapeamento mês→coluna é derivado da própria
+> planilha — a linha 1 da Amarelinha — e não depende mais do `PropertiesService`;
+> este guarda apenas a lista de meses do dropdown.)
 
 ---
 
