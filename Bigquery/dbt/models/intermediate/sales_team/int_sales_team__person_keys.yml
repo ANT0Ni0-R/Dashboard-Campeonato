@@ -100,9 +100,8 @@ models:
 
   - name: int_sales_team__clint_deals_cleaned_with_person_id
     description: >
-      Deals + person_id + flag de dedup por pessoa/origem. Grao 1:1 (1 linha por
-      deal_id, nao filtra). is_primary_person_origin marca o primeiro deal de cada
-      (person_id, origin_name).
+      Deals enriquecido com as duas chaves canonicas (person_id + product_id) +
+      flag de dedup por pessoa/origem. Grao 1:1 (1 linha por deal_id, nao filtra).
     columns:
       - name: person_id
         description: person_id canonico (NULL se sem email/telefone usavel).
@@ -110,6 +109,14 @@ models:
           - relationships:
               to: ref('int_sales_team__person_keys')
               field: person_id
+      - name: product_id
+        description: >
+          product_id canonico via de-para map_clint_produto (origem vence grupo).
+          NULL quando o group_name nao tem regra. Relationships ignora NULL.
+        data_tests:
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
       - name: is_primary_person_origin
         description: TRUE no primeiro deal de cada (person_id, origin_name) por created_at.
         data_tests:
