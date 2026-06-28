@@ -188,18 +188,14 @@ function _createAmarelinha(ss) {
   sh = ss.insertSheet(ABA_AMAR);
   sh.setTabColor('#2E75B6');
 
-  // Colunas fixas: A = nome, B = PMP
-  sh.getRange('A1:B3').merge(); // placeholder
-  sh.getRange('A1').setValue('Vendedor / PMP')
+  // Canto fixo do cabecalho (linhas 1-3 x colunas A-B): rotulo "Vendedor / PMP".
+  // A1:B3 e um unico bloco mesclado; nao re-mesclar subconjuntos (A2:B2, A3) — isso
+  // sobrepoe o merge e gera "E necessario selecionar todas as celulas em um intervalo".
+  sh.getRange('A1:B3').merge()
+    .setValue('Vendedor / PMP')
     .setBackground('#1F3864').setFontColor('#FFFFFF')
     .setFontWeight('bold').setHorizontalAlignment('center')
     .setVerticalAlignment('middle').setFontFamily('Arial');
-
-  // Linhas fixas de cabeçalho
-  sh.getRange('A2:B2').merge().setValue('Nome').setBackground('#1F3864')
-    .setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center').setFontFamily('Arial');
-  sh.getRange('A3').setValue('PMP').setBackground('#1F3864')
-    .setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center').setFontFamily('Arial');
 
   sh.setColumnWidth(1, 150);
   sh.setColumnWidth(2, 80);
