@@ -1,4 +1,11 @@
 -- ============================================================================
+-- [ALTERNATIVA FUTURA - NAO EM USO]
+-- O de-para Clint->produto hoje e um SEED (seeds/sales_team/map_clint_produto.csv),
+-- porque criar tabela na mao no BQ exige permissao que nao temos (tudo via dbt).
+-- Este arquivo fica como referencia para, no futuro, migrar o de-para para uma
+-- PLANILHA editavel no navegador via pacote dbt_external_tables (criada pelo
+-- run de prod com `dbt run-operation stage_external_sources`).
+-- ============================================================================
 -- Tabelas externas sobre Google Sheets (de-paras mantidos a mao)
 -- ----------------------------------------------------------------------------
 -- Rodar no console do BigQuery, no projeto grupo-primo-crm-prd (onde voce tem

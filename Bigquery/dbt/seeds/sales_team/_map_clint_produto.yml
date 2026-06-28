@@ -1,0 +1,28 @@
+version: 2
+
+seeds:
+  - name: map_clint_produto
+    description: >
+      De-para Clint -> produto (regra+excecao), mantido a mao. Grao = regra:
+      origin_name PREENCHIDO = excecao de origem (vence o grupo); origin_name
+      VAZIO = default do grupo. Resolvido no
+      int_sales_team__clint_deals_with_product_id.
+    columns:
+      - name: group_name
+        description: group_name da Clint (chave da regra). Nunca vazio.
+        data_tests:
+          - not_null
+      - name: product_id
+        description: product_id canonico de destino (ref ao seed dim_produto).
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
+    data_tests:
+      # No maximo 1 regra por (group_name, origin_name); origin_name vazio
+      # (regra de grupo) tambem unico por grupo.
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - group_name
+            - origin_name
