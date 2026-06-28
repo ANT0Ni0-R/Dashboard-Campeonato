@@ -30,5 +30,5 @@ models:
           ao 9o digito). NULL quando o nacional nao tem 10/11 digitos.
 
 # Singular test sugerido (criar em tests/): assert_person_keys_phone_key_format.sql
-# -> SELECT phone_key FROM {{ ref('int_sales_team__person_keys') }}
+# -> SELECT phone_key FROM ref do int_sales_team__person_keys
 #    WHERE phone_key IS NOT NULL AND NOT REGEXP_CONTAINS(phone_key, r'^[0-9]{10}$')

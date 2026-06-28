@@ -16,7 +16,7 @@
   Uso downstream (substitui o join "ON a.email=b.email OR a.phone=b.phone"):
     1. normalize email/telefone da sua tabela do mesmo jeito daqui;
     2. derive match_key = concat(coalesce(email_norm,''),'|',coalesce(phone_key,''));
-    3. left join {{ ref('int_sales_team__person_keys') }} using (match_key)  -> person_id.
+    3. left join este modelo (int_sales_team__person_keys) using (match_key)  -> person_id.
 
   Logica validada no BigQuery em 2026-06-28 (ver Bigquery/identidade.md):
     - ~8,27M pares distintos; 6,72M emails; 6,17M telefones.
