@@ -1,0 +1,19 @@
+version: 2
+
+seeds:
+  - name: dim_produto
+    description: >
+      Catalogo canonico de produtos (1 linha por produto). Chave = product_id,
+      referenciada pelas pontes de mapeamento (clint/pesquisa/transactions) e
+      pelo fct_funil. Voce mantem este CSV: bu/tipo/janela ainda a preencher.
+    columns:
+      - name: product_id
+        description: Identificador canonico do produto. Chave do catalogo.
+        data_tests:
+          - unique
+          - not_null
+      - name: tipo
+        description: lancamento | perpetuo (define o recorte temporal).
+        data_tests:
+          - accepted_values:
+              values: ['lancamento', 'perpetuo']
