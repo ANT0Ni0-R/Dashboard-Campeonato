@@ -8,7 +8,8 @@ version: 2
 sources:
   - name: google_sheets
     database: grupo-primo-crm-prd
-    schema: staging
+    schema: grupo_primo_crm   # este projeto materializa tudo num dataset so;
+                              # sources apontam pra dataset fixo (nao usam generate_schema_name)
     description: Planilhas mantidas a mao, conectadas ao BQ via tabela externa (de-paras).
     tables:
       - name: map_clint_produto

@@ -12,13 +12,16 @@
 -- sheet_range (nome da aba). Troque <URL_DA_SUA_PLANILHA> pela URL real.
 -- ============================================================================
 
-CREATE OR REPLACE EXTERNAL TABLE `grupo-primo-crm-prd.staging.map_clint_produto`
+-- OBS: este projeto materializa tudo no dataset grupo_primo_crm (nao existe um
+-- dataset 'staging' no BQ). A tabela externa precisa viver num dataset real.
+
+CREATE OR REPLACE EXTERNAL TABLE `grupo-primo-crm-prd.grupo_primo_crm.map_clint_produto`
 OPTIONS (
   format = 'GOOGLE_SHEETS',
-  uris = ['<URL_DA_SUA_PLANILHA>'],
+  uris = ['https://docs.google.com/spreadsheets/d/125iM8WQ9ze5UQlyDE-paFWKVP5lrQzsAnfrYOprl84E/edit'],
   sheet_range = 'clint_produto',   -- nome EXATO da aba
   skip_leading_rows = 1            -- pula a linha de cabecalho
 );
 
 -- Teste rapido de leitura (deve devolver as 19 regras):
--- SELECT * FROM `grupo-primo-crm-prd.staging.map_clint_produto`;
+-- SELECT * FROM `grupo-primo-crm-prd.grupo_primo_crm.map_clint_produto`;
