@@ -51,7 +51,7 @@ models:
           Telefone normalizado = DDD + ultimos 8 digitos (DDI 55 removido, robusto
           ao 9o digito). NULL quando o nacional nao tem 10/11 digitos.
 
-  - name: int_sales_team__transactions_with_person_id
+  - name: int_sales_team__transactions_with_sales_request_with_person_id
     description: >
       Transactions (fonte de verdade de GMV) + person_id. Grao 1:1 com
       int_sales_team__transactions_with_sales_request (so anexa a coluna, nao

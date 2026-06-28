@@ -6,7 +6,7 @@
 }}
 
 /*
-  int_sales_team__transactions_with_person_id
+  int_sales_team__transactions_with_sales_request_with_person_id
   --------------------------------------------------------------------------
   Transactions (fonte de verdade de GMV) + person_id. SO anexa a coluna:
   grao 1:1 com int_sales_team__transactions_with_sales_request (nao deduplica
