@@ -63,3 +63,54 @@ models:
           - relationships:
               to: ref('int_sales_team__person_keys')
               field: person_id
+
+  - name: int_sales_team__pesquisas_compiladas_with_person_id
+    description: >
+      Pesquisas + person_id + flag de dedup por pessoa/campanha. Grao 1:1 com a
+      fonte (nao filtra). is_primary_person_campaign marca a primeira resposta de
+      cada (person_id, campaign).
+    columns:
+      - name: person_id
+        description: person_id canonico (NULL se sem email/telefone usavel).
+        data_tests:
+          - relationships:
+              to: ref('int_sales_team__person_keys')
+              field: person_id
+      - name: is_primary_person_campaign
+        description: TRUE na primeira resposta de cada (person_id, campaign) por createddate.
+        data_tests:
+          - not_null
+
+  - name: int_sales_team__leads_with_person_id
+    description: >
+      Leads + person_id + flag de dedup por pessoa/campanha. Grao 1:1 com a fonte
+      (nao filtra). is_primary_person_campaign e por PESSOA (diferente do
+      is_first_lead_campaign nativo, que e por email).
+    columns:
+      - name: person_id
+        description: person_id canonico (NULL se sem email/telefone usavel).
+        data_tests:
+          - relationships:
+              to: ref('int_sales_team__person_keys')
+              field: person_id
+      - name: is_primary_person_campaign
+        description: TRUE no primeiro lead de cada (person_id, campanha) por lead_created_at.
+        data_tests:
+          - not_null
+
+  - name: int_sales_team__clint_deals_cleaned_with_person_id
+    description: >
+      Deals + person_id + flag de dedup por pessoa/origem. Grao 1:1 (1 linha por
+      deal_id, nao filtra). is_primary_person_origin marca o primeiro deal de cada
+      (person_id, origin_name).
+    columns:
+      - name: person_id
+        description: person_id canonico (NULL se sem email/telefone usavel).
+        data_tests:
+          - relationships:
+              to: ref('int_sales_team__person_keys')
+              field: person_id
+      - name: is_primary_person_origin
+        description: TRUE no primeiro deal de cada (person_id, origin_name) por created_at.
+        data_tests:
+          - not_null
