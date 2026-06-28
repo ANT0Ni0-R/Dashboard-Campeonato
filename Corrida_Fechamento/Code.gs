@@ -138,7 +138,7 @@ function lerParcelamento_() {
     if (!slug || slug.toLowerCase().indexOf('slug') === 0) continue; // pula cabecalho/vazio
     var min = values[i][1], max = values[i][2], meses = values[i][3], fator = values[i][4];
     out.push({
-      slug:  slug.replace(/%/g, '').toLowerCase(),  // casa por "contem" (case-insensitive)
+      slug:  normSlug_(slug),  // normalizado: casa por "contem" ignorando acento/espaco/hifen
       min:   (min === '' || min == null) ? 0 : (Number(min) || 0),
       max:   (max === '' || max == null) ? Infinity : (Number(max) || 0),
       meses: Number(meses) || 1,
@@ -154,12 +154,17 @@ function getDashboard() {
   var participantes = lerParticipantes_();
   var regras = lerParcelamento_();
 
-  var rows = fetchTransactions_(cfg);
-  return montaDashboard_(rows, cfg, participantes, regras);
+  // Duas consultas direcionadas (paginadas) para nao bater no teto de linhas do PostgREST:
+  //  - mes/time: so vendas TVD na janela do mes -> KPIs gerais (realizado, GMV hoje, hora-a-hora)
+  //  - hoje/corrida: todos os canais, so o dia de hoje -> corrida/podio por PMP
+  var rowsTvdMes = fetchPaginado_(cfg, '&pmp=ilike.*TVD*', cfg.inicio, cfg.fim);
+  var rowsHoje   = fetchPaginado_(cfg, '', hojeInicioISO_(), cfg.fim);
+  return montaDashboard_(rowsTvdMes, rowsHoje, cfg, participantes, regras);
 }
 
 // Transforma as linhas do Supabase no shape consumido pelo front.
-function montaDashboard_(rows, cfg, participantes, regras) {
+// rowsTvdMes = vendas TVD do mes; rowsHoje = vendas de hoje (qualquer canal).
+function montaDashboard_(rowsTvdMes, rowsHoje, cfg, participantes, regras) {
   var hoje = hojeSP_();
   var geral = { realizadoMes: 0, gmvHoje: 0 };
   var horas = {};
@@ -168,11 +173,13 @@ function montaDashboard_(rows, cfg, participantes, regras) {
     porPmp[s.code] = { code: s.code, nome: s.nome, falta: s.falta, gmvHoje: 0 };
   });
 
-  (rows || []).forEach(function (t) {
+  (rowsTvdMes || []).forEach(function (t) {
     var gmv = gmvAjustado_(Number(t.price) || 0, t.slug, regras);
-    var ehHoje = diaSP_(t.created_at) === hoje;
-    acumulaGeralTvd_(geral, horas, gmv, t.pmp, ehHoje, t.created_at);
-    acumulaPorPmp_(porPmp, gmv, t.pmp, cfg.aliasPmp, ehHoje);
+    acumulaGeralTvd_(geral, horas, gmv, t.pmp, diaSP_(t.created_at) === hoje, t.created_at);
+  });
+  (rowsHoje || []).forEach(function (t) {
+    var gmv = gmvAjustado_(Number(t.price) || 0, t.slug, regras);
+    acumulaPorPmp_(porPmp, gmv, t.pmp, cfg.aliasPmp);
   });
 
   var meta = montaMeta_(cfg, geral);
@@ -200,8 +207,8 @@ function acumulaGeralTvd_(geral, horas, gmv, pmp, ehHoje, createdAt) {
 }
 
 // Corrida/podio = atribuicao por PMP cadastrado (independente de canal).
-function acumulaPorPmp_(porPmp, gmv, pmp, aliasPmp, ehHoje) {
-  if (!ehHoje) return;
+// Recebe apenas linhas de hoje (rowsHoje), entao nao filtra data aqui.
+function acumulaPorPmp_(porPmp, gmv, pmp, aliasPmp) {
   var code = canonCode_(sellerCode_(pmp), aliasPmp);
   if (code && porPmp[code]) porPmp[code].gmvHoje += gmv;
 }
@@ -254,17 +261,24 @@ function montaPorHora_(horas) {
 }
 
 // ===== GMV Ajustado por produto =====
-// A 1a parcela (price) casa por slug (contem) + faixa de preco numa regra de Parcelamento
-// e vira price*meses*fator (contrato cheio). Sem match -> price inalterado.
+// A 1a parcela (price) casa por slug (contem, normalizado) + faixa de preco numa regra de
+// Parcelamento e vira price*meses*fator (contrato cheio). Sem match -> price inalterado.
 function gmvAjustado_(price, slug, regras) {
   price = Number(price) || 0;
   if (!regras || !regras.length || !slug) return price;
-  var s = String(slug).toLowerCase();
+  var s = normSlug_(slug);
   for (var i = 0; i < regras.length; i++) {
     var r = regras[i];
-    if (s.indexOf(r.slug) >= 0 && price >= r.min && price <= r.max) return price * r.meses * r.fator;
+    if (r.slug && s.indexOf(r.slug) >= 0 && price >= r.min && price <= r.max) return price * r.meses * r.fator;
   }
   return price;
+}
+
+// Normaliza slug para casar planilha ("Formação Consultor de IA") x banco
+// ("formacao-consultor-de-ia"): tira acentos, minusculas, remove tudo que nao e [a-z0-9].
+function normSlug_(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 // ===== HELPERS de tempo/atribuicao =====
@@ -322,34 +336,51 @@ function semEmailTeste_(rows, cfg) {
   });
 }
 
-// ===== CONSULTA O SUPABASE (janela) =====
-function fetchTransactions_(cfg) {
-  var path = '/rest/v1/' + cfg.tabela +
+// ===== CONSULTA O SUPABASE (paginada) =====
+// O PostgREST tem teto de linhas por resposta (db-max-rows, ~1000) que o `limit` nao ultrapassa.
+// Para a janela de um mes inteiro isso truncava o resultado (so vinham as ~1000 mais antigas).
+// Aqui paginamos por offset com order=created_at.asc ate exaurir. `filtroExtra` = filtros PostgREST
+// adicionais (ex.: '&pmp=ilike.*TVD*'); `inicioISO`/`fimISO` = janela de created_at.
+function fetchPaginado_(cfg, filtroExtra, inicioISO, fimISO) {
+  var PAGE = 1000, MAX = 300000;   // MAX = guarda de seguranca contra loop infinito
+  var base = '/rest/v1/' + cfg.tabela +
              '?type=eq.order_success' +
-             '&select=price,pmp,created_at,slug,id,email';
-  if (cfg.inicio) path += '&created_at=gte.' + encodeURIComponent(cfg.inicio);
-  if (cfg.fim)    path += '&created_at=lte.' + encodeURIComponent(cfg.fim);
-  path += '&limit=100000';
+             '&select=price,pmp,created_at,slug,id,email' +
+             (filtroExtra || '');
+  if (inicioISO) base += '&created_at=gte.' + encodeURIComponent(inicioISO);
+  if (fimISO)    base += '&created_at=lte.' + encodeURIComponent(fimISO);
+  base += '&order=created_at.asc';
 
-  var h = resolveAuthHeaders_(cfg, false);
-  var resp = restGet_(cfg.url, path, h);
-  if (resp.getResponseCode() === 401) {              // token expirado -> re-assina
-    h = resolveAuthHeaders_(cfg, true);
-    resp = restGet_(cfg.url, path, h);
+  var todas = [], offset = 0;
+  while (offset < MAX) {
+    var rows = parseRows_(restGetAuth_(cfg, base + '&limit=' + PAGE + '&offset=' + offset));
+    todas = todas.concat(rows);
+    // Avanca pelo tamanho real da pagina (robusto a qualquer teto do servidor); para quando vazia.
+    if (!rows.length) break;
+    offset += rows.length;
   }
-  // Exclusao de slugs no servidor (Apps Script): not.ilike no PostgREST descartaria
-  // vendas com slug NULL/vazio (que NAO sao legado/trilogia) — aqui sao mantidas.
-  return semSlugExcluido_(semEmailTeste_(parseRows_(resp), cfg), cfg);
+  // Exclusao de slugs no Apps Script: not.ilike no PostgREST descartaria vendas com slug NULL/vazio
+  // (que NAO sao legado/trilogia) — aqui sao mantidas.
+  return semSlugExcluido_(semEmailTeste_(todas, cfg), cfg);
 }
 
-// Remove vendas cujo slug contem algum termo de cfg.excluirSlugs (case-insensitive).
-// Slug vazio/ausente = mantida (nao casa nenhum termo de exclusao).
+// GET autenticado com retry de 401 (re-assina o JWT).
+function restGetAuth_(cfg, path) {
+  var resp = restGet_(cfg.url, path, resolveAuthHeaders_(cfg, false));
+  if (resp.getResponseCode() === 401) resp = restGet_(cfg.url, path, resolveAuthHeaders_(cfg, true));
+  return resp;
+}
+
+// Inicio do dia de hoje (BRT) em ISO, para a janela da corrida (so hoje).
+function hojeInicioISO_() { return hojeSP_() + 'T00:00:00-03:00'; }
+
+// Remove vendas cujo slug contem algum termo de cfg.excluirSlugs (normalizado: ignora
+// acento/espaco/hifen). Slug vazio/ausente = mantida (nao casa nenhum termo de exclusao).
 function semSlugExcluido_(rows, cfg) {
-  var termos = (cfg && cfg.excluirSlugs || []).map(function (t) { return t.replace(/%/g, '').toLowerCase(); })
-    .filter(function (t) { return t.length; });
+  var termos = (cfg && cfg.excluirSlugs || []).map(normSlug_).filter(function (t) { return t.length; });
   if (!termos.length) return rows || [];
   return (rows || []).filter(function (t) {
-    var slug = String(t.slug || '').toLowerCase();
+    var slug = normSlug_(t.slug);
     return !termos.some(function (term) { return slug.indexOf(term) >= 0; });
   });
 }
