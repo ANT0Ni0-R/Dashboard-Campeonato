@@ -6,7 +6,7 @@ seeds:
       De-para Clint -> produto (regra+excecao), mantido a mao. Grao = regra:
       origin_name PREENCHIDO = excecao de origem (vence o grupo); origin_name
       VAZIO = default do grupo. Resolvido no
-      int_sales_team__clint_deals_with_product_id.
+      int_sales_team__clint_deals_cleaned_with_person_id.
     columns:
       - name: group_name
         description: group_name da Clint (chave da regra). Nunca vazio.
@@ -15,7 +15,9 @@ seeds:
       - name: product_id
         description: product_id canonico de destino (ref ao seed dim_produto).
         data_tests:
-          - not_null
+          # "Nao usar" e um nao-mapeamento proposital (product_id vazio) -> excluido do not_null.
+          - not_null:
+              where: "group_name != 'Não usar'"
           - relationships:
               to: ref('dim_produto')
               field: product_id
