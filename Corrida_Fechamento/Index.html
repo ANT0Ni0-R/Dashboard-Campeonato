@@ -280,7 +280,9 @@
     animNum('meta-falta', meta.faltaMes || 0, brl);
     var metaFrac = clamp01((meta.pctMes || 0));
     document.getElementById('meta-fill').style.transform = 'scaleX(' + metaFrac + ')';
-    document.getElementById('meta-car').style.transform =
+    var metaCar = document.getElementById('meta-car');
+    if (!metaCar.firstChild) metaCar.innerHTML = f1Car('#2bd4a0');  // carro verde na ponta da barra
+    metaCar.style.transform =
       'translate(50%,-50%) scale(' + (metaFrac > 0.02 ? 0.95 / metaFrac : 0.95) + ',0.95)';
 
     // GMV HOJE - velocimetro
