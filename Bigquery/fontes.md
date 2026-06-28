@@ -91,7 +91,7 @@ Topo de funil (denominador de Leads) e reforço do person_id. Particionada por m
 
 | coluna | uso |
 |---|---|
-| `lead_email`, `lead_phone` | person_id + contagem de Leads |
+| `lead_email`, `lead_phone_number` (+ `lead_phone_ddi`) | person_id + contagem de Leads. **Nao existe `lead_phone`** (confirmado 2026-06-28). |
 | `lead_created_date` | partição (filtrar direto, sem `DATE()`) + data de criação |
 | `campanha` (cluster) | chave de produto p/ leads |
 | `origem_do_lead`, `tier` | quebra no topo |
