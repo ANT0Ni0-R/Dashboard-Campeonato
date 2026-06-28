@@ -60,6 +60,7 @@ não casam). Antes do build, validar via `SELECT` as colunas de: transactions (C
 
 ## Índice de referência
 
+- `ERROS.md` — erros já cometidos e resolvidos neste subprojeto (dbt/BigQuery). **Ler antes de codar.**
 - `docs/ai/arquitetura.md` — DAG, modelos, grão, atribuição.
 - `docs/ai/fontes.md` — tabelas, colunas (✓ validado / ⚠ confirmar), partições, gotchas por tabela.
 - `docs/ai/identidade.md` — `dim_person` (resolução já testada em campo) + régua de ativação + seed `dim_produto`.
