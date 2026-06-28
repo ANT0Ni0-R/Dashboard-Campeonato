@@ -2,6 +2,8 @@
 
 > Contexto especifico da pasta `copa/`. Leia `../CLAUDE.md` para principios gerais,
 > git, times e visao geral do repositorio.
+>
+> **Erros:** registre/consulte em `ERROS.md` (este subprojeto) e `../ERROS.md` (global).
 
 ---
 

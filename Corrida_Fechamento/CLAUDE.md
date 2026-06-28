@@ -2,6 +2,8 @@
 
 > Contexto especifico da pasta `Corrida_Fechamento/`. Leia `../CLAUDE.md` para principios gerais,
 > git, vendedores e visao geral do repositorio.
+>
+> **Erros:** registre/consulte em `ERROS.md` (este subprojeto) e `../ERROS.md` (global).
 
 ---
 
