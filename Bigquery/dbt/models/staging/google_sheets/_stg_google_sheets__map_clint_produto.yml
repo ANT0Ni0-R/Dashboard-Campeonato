@@ -1,12 +1,15 @@
 version: 2
 
-# ATENCAO: confirme se o nome da source 'google_sheets' e o mesmo usado pelos
-# outros stg_google_sheets__map_* no seu sources.yml. Se for outro (ex. um nome
-# de conector Fivetran), troque aqui e no ref do stg model. O ideal e copiar a
-# declaracao da map_clint_deal_entry, que ja roda.
+# A source aponta para uma TABELA EXTERNA sobre Google Sheets, criada a mao no
+# projeto do CRM (que voce controla). DDL em Bigquery/sheets_external_tables.sql.
+# Compartilhe a planilha (Leitor) com:
+#   - dbt-user-access@grupo-primo-prd.iam.gserviceaccount.com  (SA do prod/ci)
+#   - sua conta Google                                          (dev / oauth)
 sources:
   - name: google_sheets
-    description: Planilhas mantidas a mao, conectadas ao BQ (de-paras e catalogos).
+    database: grupo-primo-crm-prd
+    schema: staging
+    description: Planilhas mantidas a mao, conectadas ao BQ via tabela externa (de-paras).
     tables:
       - name: map_clint_produto
         description: >
