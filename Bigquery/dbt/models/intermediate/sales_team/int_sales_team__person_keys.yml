@@ -50,3 +50,16 @@ models:
         description: >
           Telefone normalizado = DDD + ultimos 8 digitos (DDI 55 removido, robusto
           ao 9o digito). NULL quando o nacional nao tem 10/11 digitos.
+
+  - name: int_sales_team__transactions_with_person_id
+    description: >
+      Transactions (fonte de verdade de GMV) + person_id. Grao 1:1 com
+      int_sales_team__transactions_with_sales_request (so anexa a coluna, nao
+      deduplica). person_id NULL apenas em linhas sem email/telefone usavel.
+    columns:
+      - name: person_id
+        description: person_id canonico (ref ao int_sales_team__person_keys).
+        data_tests:
+          - relationships:
+              to: ref('int_sales_team__person_keys')
+              field: person_id
