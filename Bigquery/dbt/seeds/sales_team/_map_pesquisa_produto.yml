@@ -1,0 +1,25 @@
+version: 2
+
+seeds:
+  - name: map_pesquisa_produto
+    description: >
+      De-para campanha da pesquisa -> produto, mantido a mao. Grao = 1 linha por
+      campaign (codigo). Enumerado por codigo (sem prefixo), pra resistir a mudanca
+      de fluxo de lancamento. product_id vazio = campanha ainda nao mapeada
+      (revisar=sim) -> deal/pesquisa fica com product_id NULL. Resolvido no
+      int_sales_team__pesquisas_compiladas_with_person_id.
+    columns:
+      - name: campaign
+        description: Codigo da campanha (chave). Casa com pesquisas_compiladas.campaign.
+        data_tests:
+          - not_null
+          - unique
+      - name: product_id
+        description: product_id canonico (ref ao seed dim_produto). Vazio = nao mapeado.
+        data_tests:
+          # valida so os preenchidos (robusto a como o seed carrega celula vazia)
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
+              config:
+                where: "product_id is not null and product_id != ''"
