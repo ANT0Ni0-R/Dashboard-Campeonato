@@ -1,0 +1,25 @@
+version: 2
+
+seeds:
+  - name: map_transactions_produto
+    description: >
+      De-para product_name (transactions) -> produto, mantido a mao. Grao = 1 linha
+      por product_name EXATO (enumerado, sem prefixo; cada variante de titulo do
+      mesmo produto = sua linha). Cobre as variantes dos produtos do FUNIL; titulos
+      de outras BUs/promocoes (TopInvest, Joel, Spiti, bundles) ficam SEM linha ->
+      product_id NULL (extender conforme necessario). Resolvido no
+      int_sales_team__transactions_with_sales_request_with_person_id.
+    columns:
+      - name: product_name
+        description: Titulo exato do produto na transactions (chave).
+        data_tests:
+          - not_null
+          - unique
+      - name: product_id
+        description: product_id canonico (ref ao seed dim_produto). Vazio = a decidir.
+        data_tests:
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
+              config:
+                where: "product_id is not null and product_id != ''"

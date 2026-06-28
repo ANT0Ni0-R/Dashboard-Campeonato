@@ -53,9 +53,8 @@ models:
 
   - name: int_sales_team__transactions_with_sales_request_with_person_id
     description: >
-      Transactions (fonte de verdade de GMV) + person_id. Grao 1:1 com
-      int_sales_team__transactions_with_sales_request (so anexa a coluna, nao
-      deduplica). person_id NULL apenas em linhas sem email/telefone usavel.
+      Transactions (fonte de verdade de GMV) enriquecida com as duas chaves
+      canonicas (person_id + product_id). Grao 1:1 com a fonte (nao deduplica).
     columns:
       - name: person_id
         description: person_id canonico (ref ao int_sales_team__person_keys).
@@ -63,6 +62,14 @@ models:
           - relationships:
               to: ref('int_sales_team__person_keys')
               field: person_id
+      - name: product_id
+        description: >
+          product_id canonico via de-para map_transactions_produto (join em
+          product_name). NULL quando o titulo nao esta mapeado. Ignora NULL.
+        data_tests:
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
 
   - name: int_sales_team__pesquisas_compiladas_with_person_id
     description: >
