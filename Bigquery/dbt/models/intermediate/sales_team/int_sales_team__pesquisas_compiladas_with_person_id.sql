@@ -12,8 +12,8 @@
   Grao 1:1 com a fonte.
 
   - person_id : left join em person_keys pela match_key (email/telefone norm.).
-  - product_id: join exato campaign -> map_pesquisa_produto (codigo enumerado).
-                NULL quando a campanha nao tem mapeamento (revisar pendente).
+  - product_id: join exato campaign -> map_campanha_produto (codigo enumerado;
+                mesmo seed dos leads). NULL quando a campanha nao tem mapeamento.
   - is_primary_person_campaign: primeira resposta de cada (person_id, campaign)
                 por createddate (desempate por email). person_id NULL -> true.
                 Impacto medido: ~0,88% nao-primaria.
@@ -32,7 +32,7 @@ mapa as (
     select
         nullif(trim(campaign), '')   as campaign,
         nullif(trim(product_id), '') as product_id
-    from {{ ref('map_pesquisa_produto') }}
+    from {{ ref('map_campanha_produto') }}
     where nullif(trim(product_id), '') is not null
 ),
 

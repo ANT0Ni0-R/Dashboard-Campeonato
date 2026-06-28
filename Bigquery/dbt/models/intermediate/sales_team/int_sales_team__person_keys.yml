@@ -84,7 +84,7 @@ models:
               field: person_id
       - name: product_id
         description: >
-          product_id canonico via de-para map_pesquisa_produto (join em campaign).
+          product_id canonico via de-para map_campanha_produto (join em campaign).
           NULL quando a campanha nao tem mapeamento. Relationships ignora NULL.
         data_tests:
           - relationships:
@@ -97,9 +97,9 @@ models:
 
   - name: int_sales_team__leads_with_person_id
     description: >
-      Leads + person_id + flag de dedup por pessoa/campanha. Grao 1:1 com a fonte
-      (nao filtra). is_primary_person_campaign e por PESSOA (diferente do
-      is_first_lead_campaign nativo, que e por email).
+      Leads enriquecido com as duas chaves canonicas (person_id + product_id) +
+      flag de dedup por pessoa/campanha. Grao 1:1 com a fonte (nao filtra).
+      is_primary_person_campaign e por PESSOA (o nativo e por email).
     columns:
       - name: person_id
         description: person_id canonico (NULL se sem email/telefone usavel).
@@ -107,6 +107,14 @@ models:
           - relationships:
               to: ref('int_sales_team__person_keys')
               field: person_id
+      - name: product_id
+        description: >
+          product_id canonico via de-para map_campanha_produto (join em campanha).
+          NULL quando a campanha nao tem mapeamento. Relationships ignora NULL.
+        data_tests:
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
       - name: is_primary_person_campaign
         description: TRUE no primeiro lead de cada (person_id, campanha) por lead_created_at.
         data_tests:
