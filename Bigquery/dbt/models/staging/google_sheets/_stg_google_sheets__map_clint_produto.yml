@@ -1,0 +1,39 @@
+version: 2
+
+# ATENCAO: confirme se o nome da source 'google_sheets' e o mesmo usado pelos
+# outros stg_google_sheets__map_* no seu sources.yml. Se for outro (ex. um nome
+# de conector Fivetran), troque aqui e no ref do stg model. O ideal e copiar a
+# declaracao da map_clint_deal_entry, que ja roda.
+sources:
+  - name: google_sheets
+    description: Planilhas mantidas a mao, conectadas ao BQ (de-paras e catalogos).
+    tables:
+      - name: map_clint_produto
+        description: >
+          De-para Clint -> produto (regra+excecao). Colunas: group_name,
+          origin_name (vazio = regra de grupo), product_id, match_level, revisar.
+
+models:
+  - name: stg_google_sheets__map_clint_produto
+    description: >
+      Limpeza 1:1 do de-para Clint -> produto. Grao = regra de mapeamento
+      (origem PREENCHIDA = excecao; origem VAZIA = default do grupo).
+    columns:
+      - name: product_id
+        description: product_id canonico de destino (ref ao seed dim_produto).
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
+      - name: group_name
+        description: group_name da Clint (chave da regra). Nunca nulo.
+        data_tests:
+          - not_null
+    # Garante no maximo 1 regra por (group_name, origin_name) -- origin_name NULL
+    # (regra de grupo) tambem precisa ser unica por grupo.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - group_name
+            - origin_name
