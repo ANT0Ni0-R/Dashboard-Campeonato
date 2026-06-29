@@ -56,7 +56,7 @@ models:
       - name: tier
         description: >
           Tier do deal (tier_final da int): usa deal_tier; quando vazio, deriva das tags
-          "Tier [1-4]" do contato (product-aware via map_campanha_produto, pior tier no
+          "Tier [1-4]" do contato (product-aware via map_campanha_produto, melhor tier no
           conflito). Cobertura FPF 27%->91%.
       - name: tier_origem
         description: "Origem do tier: 'deal' (deal_tier) | 'tag' (derivado das tags) | NULL."
