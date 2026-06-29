@@ -79,6 +79,7 @@ function lerConfig_() {
     fim:          kv['fim'] || '',
     metaMes:      Number(kv['meta_mes']) || 0,
     metaDia:      Number(kv['meta_dia']) || 0,   // 0 = usa falta do mes como referencia do velocimetro
+    gmvRequisicoes: Number(kv['gmv_requisicoes']) || 0,  // aporte manual: GMV de requisicoes que nao cai no Supabase
     pollSegundos: Number(kv['poll_segundos'] || 60) || 60,
     fotosBase:    kv['fotos_base'] || DEFAULTS.FOTOS_BASE,
     tabela:       kv['tabela'] || DEFAULTS.SUPABASE_TABELA,
@@ -181,6 +182,10 @@ function montaDashboard_(rowsTvdMes, rowsHoje, cfg, participantes, regras) {
     var gmv = gmvAjustado_(Number(t.price) || 0, t.slug, regras);
     acumulaPorPmp_(porPmp, gmv, t.pmp, cfg.aliasPmp);
   });
+
+  // GMV de requisicoes: aporte manual (Config) que nunca cai no Supabase. Entra so no acumulado
+  // do mes do time -> reflete em realizado, falta e ritmo. Nao afeta hoje/hora-a-hora/corrida.
+  geral.realizadoMes += cfg.gmvRequisicoes;
 
   var meta = montaMeta_(cfg, geral);
   meta.pctDia = meta.metaDia > 0 ? geral.gmvHoje / meta.metaDia : 0;

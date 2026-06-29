@@ -15,6 +15,7 @@ Tres abas: `Config`, `Participantes`, `Parcelamento`.
 | `fim` | `2026-06-30T23:59:59-03:00` | fim da janela do mes (`created_at <=`); tambem e o alvo do countdown |
 | `meta_mes` | `2549892` | meta de GMV do mes (time, criterio TVD) |
 | `meta_dia` | `380000` | referencia do velocimetro de GMV de hoje (opcional; vazio/0 = usa o que falta no mes) |
+| `gmv_requisicoes` | `150000` | GMV de requisicoes (manual): nao cai no Supabase; soma no Realizado do mes e abate da meta (opcional; vazio/0 = ignora) |
 | `poll_segundos` | `60` | intervalo de atualizacao da TV |
 | `excluir_slugs` | `legado,trilogia do investidor` | slugs a IGNORAR (case-insensitive, "contem"); separados por virgula |
 | `expediente_inicio` | `8` | hora cheia em que comeca o expediente (base do R$/h e do grafico hora-a-hora) |
