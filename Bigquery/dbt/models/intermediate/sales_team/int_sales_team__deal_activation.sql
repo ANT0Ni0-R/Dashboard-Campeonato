@@ -26,8 +26,8 @@
   `created_at` da clint_deals_cleaned pode ser um timestamp de re-import em lote
   (visto no FPF: ~4,2k deals com created_at posterior ao historico inteiro).
 
-  Fonte: mrt_sales_team__clint_deals_history_cleaned (entered_stage_at + user_pmp
-  ja limpos). OBS: o source 'mart_sales_team' precisa existir no sources.yml.
+  Fonte: int_sales_team__clint_deals_history_cleaned (entered_stage_at + user_pmp
+  ja limpos), modelo intermediario que encapsula o history limpo.
   Resgate* fica fora da ativacao na v1 (re-engajamento) -- revisar.
 */
 
@@ -38,7 +38,7 @@ with hist_full as (
         entered_stage_at,
         user_pmp,
         user_name
-    from {{ source('mart_sales_team', 'mrt_sales_team__clint_deals_history_cleaned') }}
+    from {{ ref('int_sales_team__clint_deals_history_cleaned') }}
     where deal_id is not null
       and entered_stage_at is not null
 ),
