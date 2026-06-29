@@ -34,7 +34,8 @@ with deals as (
         d.created_at                                    as created_at_raw,
         d.group_name                                    as grupo_origem,
         d.origin_name                                   as origem,
-        d.deal_tier                                     as tier,
+        d.tier_final                                    as tier,
+        d.tier_origem,
         json_value(d.fields, '$.origem_do_lead')        as origem_do_lead,
         json_value(d.fields, '$.segmentacao_ativado')   as segmentacao_ativado,
         d.especialista,
@@ -225,6 +226,7 @@ select
     d.origem,
     d.origem_do_lead,
     d.tier,
+    d.tier_origem,
     d.segmentacao_ativado,
     d.especialista,
     d.carrinho_abandonado
