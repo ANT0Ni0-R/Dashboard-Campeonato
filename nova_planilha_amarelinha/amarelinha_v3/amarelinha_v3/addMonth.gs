@@ -100,7 +100,12 @@ function _addMonthToAmarelinha(mesStr, year, month, numDays, monthLabel, monthCo
   sh.getRange(AMAR_ROW_MES, startCol, numHeaderRows, numDays).breakApart();
 
   // ── Linha 1: rotulo do mes (1 merge + 1 setValue) ─────────────────────
+  // setNumberFormat('@') ANTES do setValue: em locale pt-BR o Sheets converte
+  // "Julho/2026" para a data 01/07/2026 (serial 46204) se o formato for automatico.
+  // getMonthMapping procura a STRING literal "Julho/2026" na linha 1; com a data
+  // gravada ele nunca acha e o Extrato da "Mes nao encontrado". Forcar texto evita.
   sh.getRange(AMAR_ROW_MES, startCol, 1, numDays).merge()
+    .setNumberFormat('@')
     .setValue(monthLabel)
     .setBackground(monthColor).setFontColor('#FFFFFF')
     .setFontWeight('bold').setFontSize(11).setFontFamily('Arial')
@@ -184,6 +189,9 @@ function _addMonthToMetas(mesStr, numDays) {
     [mesStr, tag, nome, meta, dIni, dFim, obs]
   );
 
+  // Forcar texto na coluna Mes ANTES de gravar: em pt-BR "2026-07" pode virar data,
+  // e _getMetasForMonth compara String(mes) === mesStr (falharia com a data).
+  sh.getRange(insertRow, 1, rows.length, 1).setNumberFormat('@');
   sh.getRange(insertRow, 1, rows.length, 7).setValues(rows);
 
   // Formata: fundo amarelo (input) em meta + datas
@@ -301,6 +309,9 @@ function _updateExtratoDropdown(mesStr) {
   const sh = SH(ABA_EXT);
   if (!sh) return;
   const meses = _getMonthList();
+  // Forcar texto: senao o Sheets (pt-BR) converte "2026-07" para a data 46204, e
+  // tanto o onEdit (regex AAAA-MM) quanto o getMonthMapping deixam de reconhecer o mes.
+  sh.getRange('B2').setNumberFormat('@');
   const val = SpreadsheetApp.newDataValidation()
     .requireValueInList(meses, true).build();
   sh.getRange('B2').setDataValidation(val);

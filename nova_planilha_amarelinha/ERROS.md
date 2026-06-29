@@ -98,3 +98,36 @@ mesclado so ate a coluna Z e o valor repetido celula a celula em AA..AG).
 > fim (o bloco fica fora da ordem cronologica visual). Os dados nao se perdem — `getMonthMapping`
 > acha o mes pelo rotulo — e o Extrato continua correto. Recriar o ULTIMO mes (caso comum) mantem
 > a ordem. Inserir colunas na posicao certa nao compensa a complexidade.
+
+---
+
+## Apps Script: "Mes nao encontrado" no Extrato — rotulo do mes gravado como DATA (locale pt-BR)
+
+**Sintoma:**
+```
+Extrato C2: "Mes nao encontrado na Amarelinha."
+```
+Acontecia logo apos "Adicionar mes": a Amarelinha era criada, mas o Extrato nao reconhecia o mes.
+
+**Causa:** em planilha com locale **pt-BR**, `Range.setValue("Julho/2026")` e `setValue("2026-07")`
+sao **auto-convertidos para DATA** pelo Sheets quando a celula esta em formato automatico
+(ex.: "Julho/2026" -> serial 46204 = 01/07/2026). Tres lugares eram afetados:
+- Amarelinha **C1** (rotulo do mes) virava `46204` em vez de `"Julho/2026"`.
+- Extrato **B2** (dropdown) virava `46204` em vez de `"2026-07"`.
+- Metas **coluna A** (Mes) — risco do mesmo (na pratica `setValues` em lote escapou, mas nao e garantido).
+
+Como `getMonthMapping` procura a **STRING literal** `"Julho/2026"` na linha 1 (`row1.indexOf(label)`),
+o onEdit valida `B2` contra a regex `AAAA-MM` e `_getMetasForMonth` compara `String(mes) === mesStr`,
+qualquer um desses gravado como Date quebra silenciosamente -> "Mes nao encontrado".
+
+**Solucao:** chamar `setNumberFormat('@')` (texto simples) **ANTES** de cada `setValue`/`setValues`
+de identificador de mes, em `addMonth.gs`:
+- rotulo do mes em `_addMonthToAmarelinha`,
+- `B2` em `_updateExtratoDropdown`,
+- coluna Mes em `_addMonthToMetas`.
+
+> Regra geral (Sheets pt-BR): qualquer string que "pareca data/numero" e que precise ser comparada
+> como TEXTO deve ter a celula formatada como `'@'` ANTES da escrita. Nao confie no formato automatico.
+
+> **Conserto manual de uma planilha ja quebrada:** formatar C1 (Amarelinha) e B2 (Extrato) como
+> Texto simples e redigitar `Julho/2026` e `2026-07` respectivamente; depois recalcular o Extrato.
