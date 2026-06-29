@@ -40,7 +40,9 @@ gerencial (aqui casa por **slug + faixa**, em `gmvAjustado_`).
 - **`getDashboard()`** -> `montaDashboard_(rows, cfg, participantes, regras)` e a unica entrada do front.
 - **Atribuicao DUPLA** (decisao de produto):
   - **Geral do time** (Realizado no mes, GMV hoje, hora-a-hora, ritmo) = criterio **TVD**
-    (`acumulaGeralTvd_`, so `pmp` contem "TVD").
+    (`acumulaGeralTvd_`, so `pmp` contem "TVD"). O **Realizado no mes** = TVD do Supabase **+**
+    `gmv_requisicoes` (aporte manual da Config, somado em `montaDashboard_`; nao cai no Supabase,
+    so entra no acumulado/falta/ritmo do mes, nunca em hoje/hora-a-hora/corrida).
   - **Corrida/podio por pessoa** = soma por **PMP** da aba `Participantes` (`acumulaPorPmp_`,
     qualquer canal, so o dia de hoje).
 - **GMV Ajustado por produto** (`gmvAjustado_`): 1a regra de `Parcelamento` cujo slug casa (contem,
