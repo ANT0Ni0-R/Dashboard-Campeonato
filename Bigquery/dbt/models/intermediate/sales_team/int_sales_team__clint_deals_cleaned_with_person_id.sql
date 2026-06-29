@@ -21,10 +21,11 @@
   - tier_final / tier_origem: tier do deal com fallback nas tags. Usa deal_tier;
                 quando vazio, deriva de tags "Tier [1-4]" do contato, casando o
                 produto do prefixo da tag (via map_campanha_produto; "Tier N" puro
-                e agnostico) com o product_id do deal, e pega o PIOR tier (maior
+                e agnostico) com o product_id do deal, e pega o MELHOR tier (menor
                 numero) em caso de conflito. tier_origem = 'deal' | 'tag' | NULL.
-                (deal_history nao tem timestamp por tag, entao "mais recente" nao
-                e possivel -- regra de desempate = pior numero.) Cobertura FPF: 27%->~91%.
+                (Sem timestamp por tag, "mais recente" nao e possivel -- desempate
+                = melhor tier: se o contato qualificou pro Tier 1 em algum momento,
+                vale.) Cobertura FPF: 27%->~91%.
 */
 
 with deals as (
@@ -89,11 +90,11 @@ tag_tiers as (
     where regexp_contains(lower(tag), r'tier\s*[1-4]')
 ),
 
--- mantem so tags de tier do produto do deal (bare = agnostico); pior tier (maior numero)
+-- mantem so tags de tier do produto do deal (bare = agnostico); melhor tier (menor numero)
 tag_tier_por_deal as (
     select
         t.deal_id,
-        max(t.tier_num) as tag_tier_num
+        min(t.tier_num) as tag_tier_num
     from tag_tiers t
     left join mapa_camp m on t.prefixo = m.campaign
     where t.prefixo is null            -- "Tier N" puro: aplica ao produto do deal
