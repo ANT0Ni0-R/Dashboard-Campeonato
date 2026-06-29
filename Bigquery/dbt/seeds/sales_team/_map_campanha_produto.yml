@@ -6,7 +6,7 @@ seeds:
       De-para codigo de campanha -> produto, mantido a mao. Serve LEADS (campanha)
       e PESQUISA (campaign) -- mesmo universo de codigos. Grao = 1 linha por codigo,
       enumerado (sem prefixo), pra resistir a mudanca de fluxo de lancamento.
-      product_id vazio = campanha ainda nao mapeada (revisar=sim) -> fica NULL.
+      product_id vazio = campanha ainda nao mapeada -> fica NULL.
       Resolvido nos modelos *_with_person_id de leads e pesquisas.
     columns:
       - name: campaign

@@ -21,8 +21,8 @@
   fase 'Ativado' literal. O vendedor da ativacao e quem estava no deal nessa
   1a fase de ativacao.
 
-  Fonte: mrt_sales_team__clint_deals_history_cleaned (entered_stage_at + user_pmp
-  ja limpos). OBS: o source 'mart_sales_team' precisa existir no sources.yml.
+  Fonte: int_sales_team__clint_deals_history_cleaned (entered_stage_at + user_pmp
+  ja limpos), modelo intermediario que encapsula o history limpo.
   Resgate* fica fora da ativacao na v1 (re-engajamento) -- revisar.
 */
 
@@ -33,7 +33,7 @@ with hist as (
         entered_stage_at,
         user_pmp,
         user_name
-    from {{ source('mart_sales_team', 'mrt_sales_team__clint_deals_history_cleaned') }}
+    from {{ ref('int_sales_team__clint_deals_history_cleaned') }}
     where deal_id is not null
       and entered_stage_at is not null
       and lower(trim(deal_stage)) not in (
