@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: int_sales_team__person_attributes
+    description: >
+      Atributos de contato por pessoa canonica (1 linha por person_id). De-para
+      reutilizavel: melhor_email / melhor_telefone = valor mais frequente nas 4
+      fontes, desempate por recencia. PII interna ao BigQuery.
+    columns:
+      - name: person_id
+        description: Pessoa canonica (ref ao int_sales_team__person_keys).
+        data_tests:
+          - unique
+          - not_null
+      - name: melhor_email
+        description: Email normalizado mais frequente da pessoa (NULL se nenhuma fonte tem email).
+      - name: melhor_telefone
+        description: Telefone normalizado (DDD + 8 digitos) mais frequente da pessoa.
+      - name: n_emails
+        description: Quantidade de emails distintos vistos para a pessoa.
+      - name: n_telefones
+        description: Quantidade de telefones distintos vistos para a pessoa.
+      - name: ultimo_contato
+        description: Timestamp mais recente entre todas as fontes (proxy de atividade).

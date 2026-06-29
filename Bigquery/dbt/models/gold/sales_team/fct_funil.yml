@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: fct_funil
+    description: >
+      GOLD do funil de vendas. Grao = 1 linha por deal_id (deal enriquecido) +
+      linhas de venda TVD orfas (deal_id NULL, vendas do time de vendas sem deal
+      casavel). Carrega person_id + product_id canonicos, datas e atribuicao de
+      ativacao e venda (dupla), flags/campos de pesquisa, midia do lead e atributos
+      da Clint. Fonte de verdade da venda = transactions sales_channel='TVD'.
+    columns:
+      - name: deal_id
+        description: >
+          Grao. NULL apenas nas linhas de venda TVD orfa (sem deal casavel). Unico
+          entre as linhas com deal.
+        data_tests:
+          - unique:
+              config:
+                where: "deal_id is not null"
+      - name: person_id
+        description: Pessoa canonica.
+        data_tests:
+          - relationships:
+              to: ref('int_sales_team__person_keys')
+              field: person_id
+              config:
+                where: "person_id is not null"
+      - name: product_id
+        description: Produto canonico (de-para). NULL quando a fonte nao mapeou.
+        data_tests:
+          - relationships:
+              to: ref('dim_produto')
+              field: product_id
+              config:
+                where: "product_id is not null"
+      - name: gmv
+        description: GMV TVD atribuido ao deal (0 quando sem venda). Nao duplica entre deals.
+      - name: has_venda
+        description: TRUE se ha venda TVD atribuida a esta linha.
+      - name: is_ativado
+        description: TRUE se o deal alcancou a ativacao (activated_at nao nulo).
+      - name: data_ativado
+        description: Data da 1a fase de ativacao (de int_sales_team__deal_activation).
+      - name: data_venda
+        description: Data da 1a venda TVD atribuida (NULL se sem venda).
+      - name: has_pesquisa
+        description: TRUE se a pessoa respondeu pesquisa daquele produto.
