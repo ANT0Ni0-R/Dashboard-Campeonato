@@ -60,6 +60,8 @@ resolved as (
 
 select
     r.*,
+    json_value(fields, '$.falar_com_especialis') as especialista,
+    json_value(fields, '$.carrinho_abandonado')  as carrinho_abandonado,
     case
         when person_id is null then true
         when row_number() over (

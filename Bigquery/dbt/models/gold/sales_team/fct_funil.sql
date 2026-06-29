@@ -31,21 +31,32 @@ with deals as (
         d.deal_id,
         d.person_id,
         d.product_id,
-        d.created_at                                    as data_criacao,
+        d.created_at                                    as created_at_raw,
         d.group_name                                    as grupo_origem,
         d.origin_name                                   as origem,
         d.deal_tier                                     as tier,
         json_value(d.fields, '$.origem_do_lead')        as origem_do_lead,
-        json_value(d.fields, '$.segmentacao_ativado')   as segmentacao_ativado
+        json_value(d.fields, '$.segmentacao_ativado')   as segmentacao_ativado,
+        d.especialista,
+        d.carrinho_abandonado
     from {{ ref('int_sales_team__clint_deals_cleaned_with_person_id') }} d
 ),
 
 deals_com_ativacao as (
     select
         d.*,
+        a.first_stage_at,
         a.activated_at,
         a.seller_ativado_pmp,
-        a.seller_ativado_nome
+        a.seller_ativado_nome,
+        -- data_criacao corrigida: usa o 1o toque do historico quando anterior ao
+        -- created_at (re-import em lote tem created_at posterior ao historico real).
+        least(d.created_at_raw, ifnull(a.first_stage_at, d.created_at_raw)) as data_criacao,
+        case
+            when a.first_stage_at is not null and a.first_stage_at < d.created_at_raw
+                then 'historico'
+            else 'created_at'
+        end as data_criacao_origem
     from deals d
     left join {{ ref('int_sales_team__deal_activation') }} a using (deal_id)
 ),
@@ -184,6 +195,7 @@ select
     pa.melhor_email,
     pa.melhor_telefone,
     d.data_criacao,
+    d.data_criacao_origem,
     d.activated_at                          as data_ativado,
     b.data_venda,
     d.seller_ativado_pmp,
@@ -213,7 +225,9 @@ select
     d.origem,
     d.origem_do_lead,
     d.tier,
-    d.segmentacao_ativado
+    d.segmentacao_ativado,
+    d.especialista,
+    d.carrinho_abandonado
 from base_rows b
 left join deals_com_ativacao                  d    on d.deal_id    = b.deal_id
 left join {{ ref('int_sales_team__person_attributes') }} pa on pa.person_id = b.person_id

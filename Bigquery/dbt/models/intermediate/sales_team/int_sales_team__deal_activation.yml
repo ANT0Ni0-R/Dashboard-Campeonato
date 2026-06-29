@@ -13,6 +13,11 @@ models:
         data_tests:
           - unique
           - not_null
+      - name: first_stage_at
+        description: >
+          MIN(entered_stage_at) sobre TODAS as etapas (incl. Base/Novo) = primeiro toque
+          real do deal no Clint. Usado para corrigir data_criacao quando o created_at e um
+          re-import em lote posterior ao historico.
       - name: activated_at
         description: MIN(entered_stage_at) entre as fases de ativacao (teto da ativacao real).
       - name: seller_ativado_pmp

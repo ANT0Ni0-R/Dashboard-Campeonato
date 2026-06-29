@@ -21,12 +21,17 @@
   fase 'Ativado' literal. O vendedor da ativacao e quem estava no deal nessa
   1a fase de ativacao.
 
+  Tambem expoe `first_stage_at` = MIN(entered_stage_at) sobre TODAS as etapas
+  (incl. Base/Novo). Serve de "primeiro toque" real do deal -- util porque o
+  `created_at` da clint_deals_cleaned pode ser um timestamp de re-import em lote
+  (visto no FPF: ~4,2k deals com created_at posterior ao historico inteiro).
+
   Fonte: int_sales_team__clint_deals_history_cleaned (entered_stage_at + user_pmp
   ja limpos), modelo intermediario que encapsula o history limpo.
   Resgate* fica fora da ativacao na v1 (re-engajamento) -- revisar.
 */
 
-with hist as (
+with hist_full as (
     select
         deal_id,
         deal_stage,
@@ -36,7 +41,22 @@ with hist as (
     from {{ ref('int_sales_team__clint_deals_history_cleaned') }}
     where deal_id is not null
       and entered_stage_at is not null
-      and lower(trim(deal_stage)) not in (
+),
+
+-- primeiro toque do deal (qualquer etapa, incl. Base/Novo)
+primeiro_toque as (
+    select
+        deal_id,
+        min(entered_stage_at) as first_stage_at
+    from hist_full
+    group by deal_id
+),
+
+-- so as fases que contam como ativacao (exclusao)
+ativacao_hist as (
+    select *
+    from hist_full
+    where lower(trim(deal_stage)) not in (
             'base', 'novo', 'engajado',
             'perdido', 'contato invalido', 'contato inválido',
             'geladeira', 'fechamento'
@@ -54,13 +74,24 @@ ranked as (
             partition by deal_id
             order by entered_stage_at asc, deal_stage asc
         ) as rn
-    from hist
+    from ativacao_hist
+),
+
+ativacao as (
+    select
+        deal_id,
+        min(entered_stage_at)              as activated_at,
+        max(if(rn = 1, user_pmp,  null))   as seller_ativado_pmp,
+        max(if(rn = 1, user_name, null))   as seller_ativado_nome
+    from ranked
+    group by deal_id
 )
 
 select
-    deal_id,
-    min(entered_stage_at)                  as activated_at,
-    max(if(rn = 1, user_pmp,  null))       as seller_ativado_pmp,
-    max(if(rn = 1, user_name, null))       as seller_ativado_nome
-from ranked
-group by deal_id
+    pt.deal_id,
+    pt.first_stage_at,
+    a.activated_at,
+    a.seller_ativado_pmp,
+    a.seller_ativado_nome
+from primeiro_toque pt
+left join ativacao a using (deal_id)
