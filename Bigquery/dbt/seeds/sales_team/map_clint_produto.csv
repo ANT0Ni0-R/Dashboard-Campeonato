@@ -1,20 +1,20 @@
-group_name,origin_name,product_id,match_level,revisar
-FPF [TDV 4],,fpf,grupo,
-O Legado,,legado,grupo,
-Viver de Renda [TVD7],,viver_de_renda,grupo,
-Portfel [TVD 6],,portfel,grupo,
-MBA IA [TDV 2],,mba_ia,grupo,
-MBA IA [TDV 2],Formação Consultor de IA,consultor_ia,origem,
-TOP INVEST [TDV 3],,top_invest,grupo,sim
-TOP INVEST [TDV 3],Grão: SDR,grao,origem,
-TOP INVEST [TDV 3],Formação Consultor de Seguros - FCS,consultor_seguros,origem,
-TOP INVEST [TDV 3],Profissão bancário - Lançamentos,profissao_bancario,origem,
-TOP INVEST [TDV 3],Profissão bancário - SDR,profissao_bancario,origem,
-Finclass [TVD8],,finclass,grupo,
-Finclass [TVD8],Leilão Granville,leilao,origem,sim
-Finclass [TVD8],Mentoria Thiago Nigro,mentoria_tn,origem,sim
-Finclass [TDV4],,finclass,grupo,
-ADM [TVD 2],,adm,grupo,
-FCE [TDV 5],,fce,grupo,
-Underblock,,underblock,grupo,
-Não usar,,,grupo,sim
+group_name,origin_name,product_id,match_level
+FPF [TDV 4],,fpf,grupo
+O Legado,,legado,grupo
+Viver de Renda [TVD7],,viver_de_renda,grupo
+Portfel [TVD 6],,portfel,grupo
+MBA IA [TDV 2],,mba_ia,grupo
+MBA IA [TDV 2],Formação Consultor de IA,consultor_ia,origem
+TOP INVEST [TDV 3],,top_invest,grupo
+TOP INVEST [TDV 3],Grão: SDR,grao,origem
+TOP INVEST [TDV 3],Formação Consultor de Seguros - FCS,consultor_seguros,origem
+TOP INVEST [TDV 3],Profissão bancário - Lançamentos,profissao_bancario,origem
+TOP INVEST [TDV 3],Profissão bancário - SDR,profissao_bancario,origem
+Finclass [TVD8],,finclass,grupo
+Finclass [TVD8],Leilão Granville,leilao,origem
+Finclass [TVD8],Mentoria Thiago Nigro,mentoria_tn,origem
+Finclass [TDV4],,finclass,grupo
+ADM [TVD 2],,adm,grupo
+FCE [TDV 5],,fce,grupo
+Underblock,,underblock,grupo
+Não usar,,,grupo
