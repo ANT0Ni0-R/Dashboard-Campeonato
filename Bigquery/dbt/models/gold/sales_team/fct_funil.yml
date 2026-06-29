@@ -39,6 +39,14 @@ models:
         description: TRUE se ha venda TVD atribuida a esta linha.
       - name: is_ativado
         description: TRUE se o deal alcancou a ativacao (activated_at nao nulo).
+      - name: data_criacao
+        description: >
+          Criacao do deal = LEAST(created_at, 1a etapa do historico). Usa o historico como
+          1o toque real quando o created_at e um re-import em lote posterior.
+      - name: data_criacao_origem
+        description: >
+          Flag de monitoramento: 'historico' quando o 1o toque do historico foi usado (e mais
+          antigo que o created_at, tipico de re-import em lote); 'created_at' caso contrario.
       - name: data_ativado
         description: Data da 1a fase de ativacao (de int_sales_team__deal_activation).
       - name: data_venda
