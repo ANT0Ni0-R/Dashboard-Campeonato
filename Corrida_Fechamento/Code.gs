@@ -84,6 +84,7 @@ function lerConfig_() {
     fotosBase:    kv['fotos_base'] || DEFAULTS.FOTOS_BASE,
     tabela:       kv['tabela'] || DEFAULTS.SUPABASE_TABELA,
     excluirSlugs: lista_(kv['excluir_slugs'] || DEFAULTS.EXCLUIR_SLUGS),
+    excluirPmps:  lista_(kv['excluir_pmps']).map(function (s) { return s.toUpperCase(); }),
     expedienteIni: kv['expediente_inicio'] !== undefined && kv['expediente_inicio'] !== ''
                      ? Number(kv['expediente_inicio']) : DEFAULTS.EXPEDIENTE_INI,
     expedienteFim: kv['expediente_fim'] !== undefined && kv['expediente_fim'] !== ''
@@ -365,8 +366,9 @@ function fetchPaginado_(cfg, filtroExtra, inicioISO, fimISO) {
     offset += rows.length;
   }
   // Exclusao de slugs no Apps Script: not.ilike no PostgREST descartaria vendas com slug NULL/vazio
-  // (que NAO sao legado/trilogia) — aqui sao mantidas.
-  return semSlugExcluido_(semEmailTeste_(todas, cfg), cfg);
+  // (que NAO sao legado/trilogia) — aqui sao mantidas. A exclusao por PMP roda no mesmo nivel para
+  // tirar o GMV do vendedor de TODOS os indicadores (geral/TVD, hora-a-hora e corrida/podio).
+  return semPmpExcluido_(semSlugExcluido_(semEmailTeste_(todas, cfg), cfg), cfg);
 }
 
 // GET autenticado com retry de 401 (re-assina o JWT).
@@ -387,6 +389,23 @@ function semSlugExcluido_(rows, cfg) {
   return (rows || []).filter(function (t) {
     var slug = normSlug_(t.slug);
     return !termos.some(function (term) { return slug.indexOf(term) >= 0; });
+  });
+}
+
+// Remove vendas atribuidas a PMPs excluidos (config excluir_pmps). Resolve o codigo do vendedor
+// igual a corrida (ultimo segmento do pmp + alias) e descarta se estiver na lista. Sem codigo de
+// 3 letras (ex.: PMP so "TVD") = mantida, pois nao casa nenhum PMP excluido.
+function semPmpExcluido_(rows, cfg) {
+  var codigos = (cfg && cfg.excluirPmps) || [];
+  if (!codigos.length) return rows || [];
+  var excluidos = {};
+  codigos.forEach(function (c) {
+    var code = canonCode_(c, cfg.aliasPmp);
+    if (code) excluidos[code] = true;
+  });
+  return (rows || []).filter(function (t) {
+    var code = canonCode_(sellerCode_(t.pmp), cfg.aliasPmp);
+    return !(code && excluidos[code]);
   });
 }
 
@@ -450,6 +469,7 @@ function diag() {
   Logger.log('JANELA: %s -> %s', cfg.inicio || '(vazio)', cfg.fim || '(vazio)');
   Logger.log('META MES: %s | META DIA: %s', cfg.metaMes, cfg.metaDia);
   Logger.log('EXCLUIR SLUGS: %s', JSON.stringify(cfg.excluirSlugs));
+  Logger.log('EXCLUIR PMPS: %s', JSON.stringify(cfg.excluirPmps));
   Logger.log('EXPEDIENTE: %s -> %s', cfg.expedienteIni, cfg.expedienteFim);
   Logger.log('URL: %s | TABELA: %s', cfg.url, cfg.tabela);
   Logger.log('JWT_SECRET: %s (role=%s, sub=%s)', mask(cfg.jwtSecret), cfg.jwtRole, cfg.jwtSub || '(nenhum)');
