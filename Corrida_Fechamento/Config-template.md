@@ -18,6 +18,7 @@ Tres abas: `Config`, `Participantes`, `Parcelamento`.
 | `gmv_requisicoes` | `150000` | GMV de requisicoes (manual): nao cai no Supabase; soma no Realizado do mes e abate da meta (opcional; vazio/0 = ignora) |
 | `poll_segundos` | `60` | intervalo de atualizacao da TV |
 | `excluir_slugs` | `legado,trilogia do investidor` | slugs a IGNORAR (case-insensitive, "contem"); separados por virgula |
+| `excluir_pmps` | `HUM,JKC` | PMPs a IGNORAR: zera o GMV desses vendedores em TODO o dash (geral/TVD, hora-a-hora e corrida); 3 letras, separados por virgula (opcional; vazio = nenhum) |
 | `expediente_inicio` | `8` | hora cheia em que comeca o expediente (base do R$/h e do grafico hora-a-hora) |
 | `expediente_fim` | `24` | hora cheia em que termina o expediente (24 = meia-noite) |
 | `pmp_aliases` | `JCK:JKC` | correcoes de PMP `DE:PARA` (opcional; default `JCK:JKC`) |

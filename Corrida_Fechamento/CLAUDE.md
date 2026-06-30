@@ -47,8 +47,11 @@ gerencial (aqui casa por **slug + faixa**, em `gmvAjustado_`).
     qualquer canal, so o dia de hoje).
 - **GMV Ajustado por produto** (`gmvAjustado_`): 1a regra de `Parcelamento` cujo slug casa (contem,
   case-insensitive) **e** price na faixa -> `price*meses*fator`; sem match -> price.
-- **Escopo:** `fetchTransactions_` busca todos os `order_success` na janela e **exclui** os slugs de
-  `excluir_slugs` via filtros `slug=not.ilike.*termo*` repetidos (AND no PostgREST). `limit=100000`.
+- **Escopo:** `fetchPaginado_` busca todos os `order_success` na janela (paginado) e, no Apps Script,
+  **exclui**: e-mails de teste (`semEmailTeste_`), slugs de `excluir_slugs` (`semSlugExcluido_`) e
+  PMPs de `excluir_pmps` (`semPmpExcluido_`). A exclusao de PMP resolve o codigo do vendedor igual a
+  corrida (ultimo segmento do pmp + alias) e roda no fetch -> zera o GMV daquele vendedor em TODOS os
+  indicadores (geral/TVD, hora-a-hora e corrida/podio). Vazio = nenhum.
 - **Badge % por vendedor** = `gmvHoje / falta` (coluna `Falta` da aba Participantes; input manual).
 - **Ritmo R$/h:** `realHora = gmvHoje / horasDecorridas`, `necHora = faltaMes / horasRestantes`,
   janela de expediente `expediente_inicio`..`expediente_fim` em BRT (`horaAgoraSP_`).
