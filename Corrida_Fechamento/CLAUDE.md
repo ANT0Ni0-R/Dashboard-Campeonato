@@ -64,6 +64,11 @@ gerencial (aqui casa por **slug + faixa**, em `gmvAjustado_`).
   do design original.
 - `f1Car(color)` = porte do componente `F1Car.dc.html` (HTML/CSS) com a cor injetada. Usado na
   barra de progresso da corrida (carro counter-scaled na ponta) e no podio (carro rotacionado).
+- **Barra da corrida (`renderRace`) = META INDIVIDUAL:** o preenchimento e `metaPct` (= `gmvHoje/Falta`,
+  clampado em 0..1); linha de chegada = bater a meta do vendedor (`Falta` da aba Participantes).
+  A **ordem/ranking** (1o, 2o...) e o **podio** continuam por **GMV de hoje** (vem ordenado do backend),
+  entao um vendedor mais abaixo no ranking pode ter a barra mais cheia (esta mais perto da meta dele).
+  `Falta = 0` -> barra vazia (sem meta a perseguir). Antes a barra era relativa ao lider do dia.
 - **Fotos:** avatares da corrida usam foto + fallback de iniciais (`<img onload="this.className='loaded'">`
   + CSS `.avatar img.loaded + .initials{display:none}`), padrao dos outros dashboards.
 - **Countdown** client-side ate `config.fim` (no ultimo dia = fim de hoje); fallback = 23:59:59.

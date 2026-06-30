@@ -163,7 +163,7 @@
     <div style="flex:2.4;border-radius:22px;padding:24px 28px 18px;background:linear-gradient(160deg,#101826,#0b1018);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;min-height:0;position:relative;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <span style="font-size:18px;font-weight:900;letter-spacing:.4px;">Corrida dos vendedores - GMV de hoje</span>
-        <span style="font-size:13px;font-weight:700;color:#7c8aa3;letter-spacing:.6px;text-transform:uppercase;">Linha de chegada = lider</span>
+        <span style="font-size:13px;font-weight:700;color:#7c8aa3;letter-spacing:.6px;text-transform:uppercase;">Linha de chegada = meta</span>
       </div>
       <div id="race" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:14px;"></div>
       <div style="position:absolute;top:60px;bottom:20px;right:30px;width:8px;background-image:linear-gradient(0deg,#fff 50%,#1a2230 50%);background-size:8px 14px;opacity:.18;border-radius:4px;pointer-events:none;"></div>
@@ -314,9 +314,10 @@
 
   // ---- corrida ----
   function renderRace(sellers) {
-    var maxGmv = Math.max(1, Math.max.apply(null, sellers.map(function (s) { return s.gmvHoje || 0; })));
     document.getElementById('race').innerHTML = sellers.map(function (s, i) {
-      var frac = clamp01((s.gmvHoje || 0) / maxGmv);
+      // Barra/linha de chegada = META INDIVIDUAL: GMV de hoje / Falta (metaPct). Linha cheia =
+      // bater a meta do vendedor. (Ranking/ordem segue o GMV de hoje, vindo do backend.)
+      var frac = clamp01(s.metaPct || 0);
       var csx = frac > 0.02 ? 0.8 / frac : 0.8;
       var hit = (s.metaPct || 0) >= 1;
       var badgeBg = hit ? 'rgba(43,212,160,.16)' : 'rgba(255,255,255,.06)';
