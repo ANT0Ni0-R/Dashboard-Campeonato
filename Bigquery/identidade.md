@@ -48,30 +48,33 @@ materializados num `cluster_id`. A chave pública continua sendo `person_id` —
 
 ---
 
-## 2. Régua de ativação (para `activated_at` no `fct_deals`)
+## 2. Régua de ativação e engajamento (para `activated_at`/`engaged_at`)
 
-O history é snapshot de 30 min, então um deal pode pular `Ativado`. Regra (por **exclusão**):
+O history é snapshot de 30 min, então um deal pode pular a fase-marco. Ambos os marcos são
+definidos por **exclusão** (a partir da família do nome da etapa):
 
-> **Ativado** = o deal alcançou **qualquer fase que não seja `Base*` nem `Novo*`**.
-
-As únicas fases **pré-ativação** são a família `Base*` (incl. `Base carrinho abandonado`,
-`Base qualificado`, etc.) e `Novo*` (incl. `Novo - engajado`). Todo o resto conta como
-ativação — inclusive `Engajado` e até as fases de **saída/lateral** (`Perdido`,
-`Contato inválido`, `Geladeira`, `Fechamento`, `Resgate*`), pois um deal só chega nelas
-**depois de ter sido trabalhado**.
+> **Ativado** = alcançou **qualquer fase que não seja `Base*` nem `Novo*`**.
+>
+> **Engajado** = alcançou **qualquer fase que não seja `Base*`, `Novo*`, `Ativado*` nem `Aquece*`**.
 
 ```
-Base*/Novo*  → [ativação] → Engajado / Aquece* / Fup* / Ativado* / Venda / ... → Perdido / Geladeira / ...
-   (pré)                              (tudo isto conta como ativado)
+Base*/Novo*  →  Ativado* / Aquece*  →  Engajado / Fup* / Venda / Perdido / Geladeira / ...
+  (pré-ativ.)     (ativado, não eng.)   (ativado E engajado)
 ```
 
-- **Não contam** (única exceção, pré-ativação): família `Base*` e `Novo*`.
-- **Contam** como ativação: **todo o resto**, incluindo `Engajado`, `Perdido`,
-  `Contato inválido`, `Geladeira`, `Fechamento`, `Resgate*`.
-- `FUP` conta só como sinal de **ativação**, não de engajamento.
+- **Pré-ativação** (não conta para nada): família `Base*` e `Novo*` (incl. `Base carrinho
+  abandonado`, `Novo - engajado`, etc.).
+- **Ativado mas ainda não engajado**: `Ativado*` e `Aquece*`.
+- **Ativado E engajado**: todo o resto — `Engajado`, `Fup*`, `Venda`, e até as fases de
+  **saída/lateral** (`Perdido`, `Contato inválido`, `Geladeira`, `Fechamento`, `Resgate*`),
+  pois um deal só chega nelas **depois de ter sido trabalhado**.
+- Engajamento é **subconjunto** da ativação → todo deal engajado é também ativado
+  (`engaged_at >= activated_at`).
 
-`activated_at` = `MIN(updated_stage_at)` entre as etapas de ativação do deal. Quando vem de
-etapa posterior, é um **teto** (ativação real foi naquele instante ou pouco antes).
+`activated_at`/`engaged_at` = `MIN(entered_stage_at)` entre as etapas que qualificam para cada
+marco. Quando vem de etapa posterior, é um **teto** (o marco real foi naquele instante ou pouco antes).
+O vendedor de cada marco (`seller_ativado_*` / `seller_engajado_*`) é quem estava no deal na 1a
+fase qualificante.
 
 Sugestão de modelagem: um seed `dim_stage_order` (etapa, ordem, flag_ativacao, flag_engajamento)
 por produto, para não hardcodar a régua em cada modelo.
