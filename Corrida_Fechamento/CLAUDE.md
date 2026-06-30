@@ -67,6 +67,11 @@ gerencial (aqui casa por **slug + faixa**, em `gmvAjustado_`).
 - **Barra da corrida (`renderRace`) = META INDIVIDUAL:** o preenchimento e `metaPct` (= `gmvHoje/Falta`,
   clampado em 0..1); linha de chegada = bater a meta do vendedor (`Falta` da aba Participantes).
   `Falta = 0` -> barra vazia (sem meta a perseguir). Antes a barra era relativa ao lider do dia.
+- **Rotulos da linha (sem overlap):** o **realizado** (`gmvHoje`) e um label absoluto que acompanha o
+  carro/ponteiro — fica a DIREITA do carro ate `frac<=0.5` e a ESQUERDA dele dai em diante (folga de
+  46px), entao nunca cola no carro nem estoura a pista (`left:calc(% +/- 46px)`, robusto a largura).
+  A **meta do dia** (`brl(falta)`) fica no topo-direita da linha (acima da chegada), em linha separada
+  do realizado -> nunca sobrepoe. Validado via screenshot headless (Chromium) antes do commit.
 - **Ordem/ranking e podio = % da meta:** `montaSellers_` (backend) ordena por `metaPct` (desempate por
   GMV de hoje, depois nome), entao 1o lugar = quem esta mais perto da propria meta, nao quem vendeu mais.
   Antes era por GMV de hoje. (O titulo do painel ainda exibe o valor "GMV de hoje" por vendedor.)

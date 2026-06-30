@@ -322,6 +322,16 @@
       var hit = (s.metaPct || 0) >= 1;
       var badgeBg = hit ? 'rgba(43,212,160,.16)' : 'rgba(255,255,255,.06)';
       var badgeColor = hit ? '#2bd4a0' : '#8fa0bb';
+      // Realizado (GMV de hoje) acompanha o carro/ponteiro; a META vai na linha de chegada (topo-dir).
+      // Para nao colar no carro nem estourar a pista, o numero fica do lado com espaco: a DIREITA do
+      // carro ate 50% e a ESQUERDA dele dai em diante. Sempre em linha diferente da meta -> sem overlap.
+      var FOLGA = 46;
+      var realStyle = 'position:absolute;top:50%;white-space:nowrap;font-size:13px;font-weight:900;' +
+        'font-variant-numeric:tabular-nums;color:#f3f7ff;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.85);' +
+        'z-index:4;pointer-events:none;transition:left 1.5s cubic-bezier(.2,.8,.2,1);' +
+        (frac <= 0.5
+          ? 'left:calc(' + (frac * 100).toFixed(2) + '% + ' + FOLGA + 'px);transform:translateY(-50%);text-align:left;'
+          : 'left:calc(' + (frac * 100).toFixed(2) + '% - ' + FOLGA + 'px);transform:translate(-100%,-50%);text-align:right;');
       return '<div style="display:flex;align-items:center;gap:16px;padding:4px 0;flex:0 0 auto;">' +
         '<span style="width:26px;text-align:center;font-size:20px;font-weight:900;color:#5b6880;font-variant-numeric:tabular-nums;">' + (i + 1) + '</span>' +
         avatarCircle(s, 46) +
@@ -331,13 +341,17 @@
               '<span style="font-size:16px;font-weight:800;color:#e8edf5;">' + esc(s.nome) + '</span>' +
               '<span style="font-size:11px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:6px;background:' + badgeBg + ';color:' + badgeColor + ';">' + Math.round((s.metaPct || 0) * 100) + '%</span>' +
             '</div>' +
-            '<span style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;color:#cdd6e6;">' + brl(s.gmvHoje) + '</span>' +
+            '<div style="display:flex;align-items:baseline;gap:7px;">' +
+              '<span style="font-size:11px;font-weight:700;color:#7c8aa3;letter-spacing:.5px;text-transform:uppercase;">Meta do dia</span>' +
+              '<span style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;color:#cdd6e6;">' + brl(s.falta) + '</span>' +
+            '</div>' +
           '</div>' +
           '<div style="height:14px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:visible;">' +
             '<div style="position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(' + frac + ');transform-origin:left center;background:linear-gradient(90deg,' + s.cor + '88,' + s.cor + ');box-shadow:0 0 14px ' + s.cor + '66;border-radius:999px;transition:transform 1.5s cubic-bezier(.2,.8,.2,1);">' +
               '<div style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;border-radius:999px;background-image:repeating-linear-gradient(120deg,rgba(255,255,255,.28) 0 12px,rgba(255,255,255,0) 12px 24px);background-size:48px 100%;animation:om-stripes .5s linear infinite;"></div>' +
               '<div style="position:absolute;top:50%;right:0;transform:translate(50%,-50%) scale(' + csx + ',0.8);transform-origin:center;z-index:3;">' + f1Car(s.cor) + '</div>' +
             '</div>' +
+            '<div style="' + realStyle + '">' + brl(s.gmvHoje) + '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
