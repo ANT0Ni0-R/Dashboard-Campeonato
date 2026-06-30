@@ -17,8 +17,8 @@ Tres abas: `Config`, `Participantes`, `Parcelamento`.
 | `meta_dia` | `380000` | referencia do velocimetro de GMV de hoje (opcional; vazio/0 = usa o que falta no mes) |
 | `gmv_requisicoes` | `150000` | GMV de requisicoes (manual): nao cai no Supabase; soma no Realizado do mes e abate da meta (opcional; vazio/0 = ignora) |
 | `poll_segundos` | `60` | intervalo de atualizacao da TV |
-| `excluir_slugs` | `legado,trilogia do investidor` | slugs a IGNORAR (case-insensitive, "contem"); separados por virgula |
-| `excluir_pmps` | `HUM,JKC` | PMPs a IGNORAR: zera o GMV desses vendedores em TODO o dash (geral/TVD, hora-a-hora e corrida); 3 letras, separados por virgula (opcional; vazio = nenhum) |
+| `excluir_slugs` | `legado,trilogia do investidor` | slugs a IGNORAR **so nos KPIs do time** (Realizado no mes, GMV de hoje, Ritmo). A corrida e o grafico hora-a-hora consideram QUALQUER slug. Case-insensitive, "contem"; separados por virgula |
+| `excluir_pmps` | `HUM,JKC` | PMPs a IGNORAR: zera o GMV desses vendedores em TODO o dash (KPIs do time, hora-a-hora e corrida); 3 letras, separados por virgula (opcional; vazio = nenhum) |
 | `expediente_inicio` | `8` | hora cheia em que comeca o expediente (base do R$/h e do grafico hora-a-hora) |
 | `expediente_fim` | `24` | hora cheia em que termina o expediente (24 = meia-noite) |
 | `pmp_aliases` | `JCK:JKC` | correcoes de PMP `DE:PARA` (opcional; default `JCK:JKC`) |
@@ -30,10 +30,13 @@ Tres abas: `Config`, `Participantes`, `Parcelamento`.
 A primeira linha pode ser um cabecalho `chave | valor` — ele e ignorado.
 Datas em ISO 8601 com fuso `-03:00` (America/Sao_Paulo).
 
-**Importante (atribuicao dupla):**
-- Os KPIs **gerais do time** (Realizado no mes, GMV de hoje, Ritmo, grafico hora-a-hora) somam
-  apenas vendas do **canal TVD** (`pmp` contem "TVD").
-- A **corrida / podio por pessoa** soma por **PMP cadastrado** na aba `Participantes` (qualquer canal).
+**Importante (atribuicao e escopo de slug):**
+- **Realizado no mes / GMV de hoje / Ritmo** somam apenas vendas do **canal TVD** (`pmp` contem "TVD")
+  e **aplicam `excluir_slugs`**.
+- O **grafico hora-a-hora** tambem e TVD, mas **ignora `excluir_slugs`** (pega qualquer slug) — por isso
+  o "Total hoje" do grafico pode ser maior que o card "GMV de hoje".
+- A **corrida por pessoa** soma por **PMP cadastrado** na aba `Participantes` (qualquer canal e
+  qualquer slug).
 
 ## Aba `Participantes` (tres colunas: `PMP` | `Nome` | `Falta`)
 

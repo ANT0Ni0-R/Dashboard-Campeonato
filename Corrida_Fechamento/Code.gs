@@ -2,7 +2,7 @@
  * Code.gs — Dashboard "Corrida de Fechamento" servido pelo Apps Script
  *
  * Painel de TV para estimular o fechamento das metas do mes (foco no ultimo dia):
- * velocimetro de GMV de hoje, corrida dos vendedores, podio do dia, countdown e
+ * velocimetro de GMV de hoje, corrida dos vendedores, GMV geral hora-a-hora, countdown e
  * ritmo necessario para bater a meta.
  *
  * Fonte unica de dados: Supabase (tabela db_transactions_events), consultada no
@@ -157,10 +157,12 @@ function getDashboard() {
   var regras = lerParcelamento_();
 
   // Duas consultas direcionadas (paginadas) para nao bater no teto de linhas do PostgREST:
-  //  - mes/time: so vendas TVD na janela do mes -> KPIs gerais (realizado, GMV hoje, hora-a-hora)
-  //  - hoje/corrida: todos os canais, so o dia de hoje -> corrida/podio por PMP
-  var rowsTvdMes = fetchPaginado_(cfg, '&pmp=ilike.*TVD*', cfg.inicio, cfg.fim);
-  var rowsHoje   = fetchPaginado_(cfg, '', hojeInicioISO_(), cfg.fim);
+  //  - mes/time: so vendas TVD na janela do mes -> KPIs gerais (realizado, GMV hoje, ritmo)
+  //  - hoje: todos os canais, so o dia de hoje -> corrida (por PMP) e hora-a-hora (TVD)
+  // rowsTvdMes alimenta os KPIs do time (Realizado, GMV hoje, Ritmo) -> EXCLUI slugs de excluir_slugs.
+  // rowsHoje alimenta a corrida e o hora-a-hora (TVD) -> considera QUALQUER slug.
+  var rowsTvdMes = fetchPaginado_(cfg, '&pmp=ilike.*TVD*', cfg.inicio, cfg.fim, true);
+  var rowsHoje   = fetchPaginado_(cfg, '', hojeInicioISO_(), cfg.fim, false);
   return montaDashboard_(rowsTvdMes, rowsHoje, cfg, participantes, regras);
 }
 
@@ -175,13 +177,16 @@ function montaDashboard_(rowsTvdMes, rowsHoje, cfg, participantes, regras) {
     porPmp[s.code] = { code: s.code, nome: s.nome, falta: s.falta, gmvHoje: 0 };
   });
 
+  // KPIs do time (Realizado no mes, GMV de hoje): TVD do mes, slug-excluido.
   (rowsTvdMes || []).forEach(function (t) {
     var gmv = gmvAjustado_(Number(t.price) || 0, t.slug, regras);
-    acumulaGeralTvd_(geral, horas, gmv, t.pmp, diaSP_(t.created_at) === hoje, t.created_at);
+    acumulaGeralTvd_(geral, gmv, t.pmp, diaSP_(t.created_at) === hoje);
   });
+  // Corrida (por PMP, qualquer canal) e hora-a-hora (TVD), ambos de hoje e com QUALQUER slug.
   (rowsHoje || []).forEach(function (t) {
     var gmv = gmvAjustado_(Number(t.price) || 0, t.slug, regras);
     acumulaPorPmp_(porPmp, gmv, t.pmp, cfg.aliasPmp);
+    acumulaHoraTvd_(horas, gmv, t.pmp, t.created_at);
   });
 
   // GMV de requisicoes: aporte manual (Config) que nunca cai no Supabase. Entra so no acumulado
@@ -201,18 +206,23 @@ function montaDashboard_(rowsTvdMes, rowsHoje, cfg, participantes, regras) {
   };
 }
 
-// Geral do time = criterio TVD (pmp contem "TVD"). Alimenta meta do mes, GMV de hoje e hora-a-hora.
-function acumulaGeralTvd_(geral, horas, gmv, pmp, ehHoje, createdAt) {
+// Geral do time = criterio TVD (pmp contem "TVD"). Alimenta o Realizado no mes e o GMV de hoje
+// (estes vem de rowsTvdMes, com exclusao de slug). O hora-a-hora NAO entra aqui (ver acumulaHoraTvd_).
+function acumulaGeralTvd_(geral, gmv, pmp, ehHoje) {
   if (!isTvd_(pmp)) return;
   geral.realizadoMes += gmv;
-  if (ehHoje) {
-    geral.gmvHoje += gmv;
-    var h = horaSP_(createdAt);
-    horas[h] = (horas[h] || 0) + gmv;
-  }
+  if (ehHoje) geral.gmvHoje += gmv;
 }
 
-// Corrida/podio = atribuicao por PMP cadastrado (independente de canal).
+// Hora-a-hora do time (TVD), de hoje, com QUALQUER slug (vem de rowsHoje, sem exclusao de slug).
+// Por isso o "Total hoje" do grafico pode superar o card "GMV de hoje" (slug-excluido) — intencional.
+function acumulaHoraTvd_(horas, gmv, pmp, createdAt) {
+  if (!isTvd_(pmp)) return;
+  var h = horaSP_(createdAt);
+  horas[h] = (horas[h] || 0) + gmv;
+}
+
+// Corrida = atribuicao por PMP cadastrado (independente de canal).
 // Recebe apenas linhas de hoje (rowsHoje), entao nao filtra data aqui.
 function acumulaPorPmp_(porPmp, gmv, pmp, aliasPmp) {
   var code = canonCode_(sellerCode_(pmp), aliasPmp);
@@ -245,6 +255,7 @@ function montaHoje_(cfg, geral, faltaMes) {
 
 function montaSellers_(porPmp, cfg) {
   var arr = Object.keys(porPmp).map(function (k) { return porPmp[k]; });
+  // Ordena por GMV de hoje (maior -> menor); desempate por nome. Define o ranking e o lider da corrida.
   arr.sort(function (a, b) { return b.gmvHoje - a.gmvHoje || a.nome.localeCompare(b.nome); });
   return arr.map(function (s, i) {
     return {
@@ -347,7 +358,7 @@ function semEmailTeste_(rows, cfg) {
 // Para a janela de um mes inteiro isso truncava o resultado (so vinham as ~1000 mais antigas).
 // Aqui paginamos por offset com order=created_at.asc ate exaurir. `filtroExtra` = filtros PostgREST
 // adicionais (ex.: '&pmp=ilike.*TVD*'); `inicioISO`/`fimISO` = janela de created_at.
-function fetchPaginado_(cfg, filtroExtra, inicioISO, fimISO) {
+function fetchPaginado_(cfg, filtroExtra, inicioISO, fimISO, aplicaExclusaoSlug) {
   var PAGE = 1000, MAX = 300000;   // MAX = guarda de seguranca contra loop infinito
   var base = '/rest/v1/' + cfg.tabela +
              '?type=eq.order_success' +
@@ -365,10 +376,12 @@ function fetchPaginado_(cfg, filtroExtra, inicioISO, fimISO) {
     if (!rows.length) break;
     offset += rows.length;
   }
-  // Exclusao de slugs no Apps Script: not.ilike no PostgREST descartaria vendas com slug NULL/vazio
-  // (que NAO sao legado/trilogia) — aqui sao mantidas. A exclusao por PMP roda no mesmo nivel para
-  // tirar o GMV do vendedor de TODOS os indicadores (geral/TVD, hora-a-hora e corrida/podio).
-  return semPmpExcluido_(semSlugExcluido_(semEmailTeste_(todas, cfg), cfg), cfg);
+  // E-mail de teste e PMP excluido saem SEMPRE. A exclusao por slug e opcional (aplicaExclusaoSlug):
+  // so vale para os KPIs do time (rowsTvdMes); a corrida e o hora-a-hora (rowsHoje) pegam qualquer slug.
+  // not.ilike no PostgREST descartaria vendas com slug NULL/vazio — por isso filtramos aqui no Apps Script.
+  var out = semEmailTeste_(todas, cfg);
+  if (aplicaExclusaoSlug) out = semSlugExcluido_(out, cfg);
+  return semPmpExcluido_(out, cfg);
 }
 
 // GET autenticado com retry de 401 (re-assina o JWT).

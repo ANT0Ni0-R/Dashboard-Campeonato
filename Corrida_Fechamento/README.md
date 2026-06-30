@@ -1,8 +1,9 @@
 # Corrida de Fechamento — setup e deploy
 
 Painel de TV para o fechamento das metas do mes (foco no ultimo dia): velocimetro de GMV de hoje,
-corrida dos vendedores, podio do dia, countdown e ritmo necessario para bater a meta. Fonte unica
-de dados: **Supabase** (tabela `db_transactions_events`), consultada no servidor (sem login na TV).
+corrida dos vendedores, grafico GMV geral hora-a-hora, countdown e ritmo necessario para bater a
+meta. Fonte unica de dados: **Supabase** (tabela `db_transactions_events`), consultada no servidor
+(sem login na TV).
 
 ## Arquivos
 
@@ -37,12 +38,13 @@ de dados: **Supabase** (tabela `db_transactions_events`), consultada no servidor
 
 - **Geral do time (criterio TVD):** Realizado no mes, GMV de hoje, grafico hora-a-hora e o ritmo
   R$/h somam apenas vendas cujo `pmp` contem "TVD".
-- **Por pessoa (PMP):** a corrida e o podio somam o GMV de hoje por PMP cadastrado em
-  `Participantes`. O badge % = `GMV de hoje / Falta` (coluna `Falta`).
+- **Por pessoa (PMP):** a corrida soma o GMV de hoje por PMP cadastrado em `Participantes` e ranqueia
+  do maior para o menor GMV (1o colocado define a linha de chegada; os demais ficam proporcionais a ele).
 - **GMV Ajustado:** cada venda parcelada e projetada para o contrato cheio pela aba `Parcelamento`
   (match por slug + faixa de preco -> `price * meses * fator`).
-- **Escopo:** todos os produtos (`order_success`) na janela `inicio..fim`, exceto os slugs em
-  `excluir_slugs` (default `legado` e `trilogia do investidor`).
+- **Escopo de `excluir_slugs`:** vale **so** para os KPIs do time (Realizado no mes, GMV de hoje,
+  Ritmo). A **corrida** e o **grafico hora-a-hora** consideram **qualquer slug** (default excluido:
+  `legado` e `trilogia do investidor`).
 
 ## Manutencao mensal
 

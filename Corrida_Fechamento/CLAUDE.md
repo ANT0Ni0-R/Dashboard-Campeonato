@@ -38,21 +38,23 @@ gerencial (aqui casa por **slug + faixa**, em `gmvAjustado_`).
 ## `Code.gs` — pontos-chave
 
 - **`getDashboard()`** -> `montaDashboard_(rows, cfg, participantes, regras)` e a unica entrada do front.
-- **Atribuicao DUPLA** (decisao de produto):
-  - **Geral do time** (Realizado no mes, GMV hoje, hora-a-hora, ritmo) = criterio **TVD**
-    (`acumulaGeralTvd_`, so `pmp` contem "TVD"). O **Realizado no mes** = TVD do Supabase **+**
-    `gmv_requisicoes` (aporte manual da Config, somado em `montaDashboard_`; nao cai no Supabase,
-    so entra no acumulado/falta/ritmo do mes, nunca em hoje/hora-a-hora/corrida).
-  - **Corrida/podio por pessoa** = soma por **PMP** da aba `Participantes` (`acumulaPorPmp_`,
-    qualquer canal, so o dia de hoje).
+- **Atribuicao TRIPLA** (decisao de produto):
+  - **Realizado no mes + GMV hoje (card) + Ritmo** = criterio **TVD** do **mes** (`rowsTvdMes`,
+    `acumulaGeralTvd_`, so `pmp` contem "TVD"), **com exclusao de slug** (`excluir_slugs`). O Realizado
+    no mes = TVD do Supabase **+** `gmv_requisicoes` (aporte manual da Config; nao cai no Supabase, so
+    entra no acumulado/falta/ritmo do mes, nunca em hoje/hora-a-hora/corrida).
+  - **Corrida por pessoa** = soma por **PMP** da aba `Participantes` (`acumulaPorPmp_`, qualquer canal,
+    so hoje), de `rowsHoje` -> **qualquer slug** (sem `excluir_slugs`).
+  - **Hora-a-hora** = TVD de **hoje** (`acumulaHoraTvd_`), tambem de `rowsHoje` -> **qualquer slug**.
+    Logo o "Total hoje"/pico do grafico pode **superar** o card "GMV de hoje" (slug-excluido) — intencional.
 - **GMV Ajustado por produto** (`gmvAjustado_`): 1a regra de `Parcelamento` cujo slug casa (contem,
   case-insensitive) **e** price na faixa -> `price*meses*fator`; sem match -> price.
-- **Escopo:** `fetchPaginado_` busca todos os `order_success` na janela (paginado) e, no Apps Script,
-  **exclui**: e-mails de teste (`semEmailTeste_`), slugs de `excluir_slugs` (`semSlugExcluido_`) e
-  PMPs de `excluir_pmps` (`semPmpExcluido_`). A exclusao de PMP resolve o codigo do vendedor igual a
-  corrida (ultimo segmento do pmp + alias) e roda no fetch -> zera o GMV daquele vendedor em TODOS os
-  indicadores (geral/TVD, hora-a-hora e corrida/podio). Vazio = nenhum.
-- **Badge % por vendedor** = `gmvHoje / falta` (coluna `Falta` da aba Participantes; input manual).
+- **Escopo / filtros:** `fetchPaginado_(cfg, filtroExtra, ini, fim, aplicaExclusaoSlug)` busca os
+  `order_success` na janela (paginado) e, no Apps Script, **sempre** remove e-mails de teste
+  (`semEmailTeste_`) e PMPs de `excluir_pmps` (`semPmpExcluido_`). A exclusao de **slug**
+  (`semSlugExcluido_`) e **opcional** (`aplicaExclusaoSlug`): `true` so para `rowsTvdMes` (os KPIs do
+  time). `rowsHoje` (corrida + hora-a-hora) passa `false` -> qualquer slug. A exclusao de PMP resolve o
+  codigo igual a corrida (ultimo segmento do pmp + alias) e zera o vendedor em TODOS os indicadores.
 - **Ritmo R$/h:** `realHora = gmvHoje / horasDecorridas`, `necHora = faltaMes / horasRestantes`,
   janela de expediente `expediente_inicio`..`expediente_fim` em BRT (`horaAgoraSP_`).
 - **Cores dos vendedores:** paleta `SELLER_COLORS` atribuida por ordem de ranking (nao por PMP fixo).
@@ -63,7 +65,15 @@ gerencial (aqui casa por **slug + faixa**, em `gmvAjustado_`).
 - **Sem framework.** O layout 1920x1080 e ajustado via `zoom` (`fit()`); estilos inline preservados
   do design original.
 - `f1Car(color)` = porte do componente `F1Car.dc.html` (HTML/CSS) com a cor injetada. Usado na
-  barra de progresso da corrida (carro counter-scaled na ponta) e no podio (carro rotacionado).
+  barra de progresso da corrida (carro counter-scaled na ponta) e no meta-fill do topo.
+- **Layout (ROW B) = 2 colunas:** corrida (esquerda, `flex:2.4`) + GMV geral hora-a-hora (direita,
+  `flex:1.15`), ambos altura cheia. (O "Podio do dia" foi removido; o hora-a-hora ocupava a largura toda
+  embaixo e agora e a coluna direita, com barras verticais ate o fim.)
+- **Barra da corrida (`renderRace`) = proporcional ao LIDER:** `frac = gmvHoje / maxGmv` (maior GMV do
+  dia). O 1o colocado chega na linha de chegada; os demais relativos a ele. Ranking por **GMV de hoje**
+  (`montaSellers_` ordena por `gmvHoje` desc, desempate por nome). Cada linha mostra **so o GMV a direita**
+  (sem badge de % e sem rotulo no ponteiro). Linhas compactas (avatar 38, `space-between`) p/ caber os 11.
+- Validacao visual via **screenshot headless (Chromium)** com `google.script.run` stubado antes do commit.
 - **Fotos:** avatares da corrida usam foto + fallback de iniciais (`<img onload="this.className='loaded'">`
   + CSS `.avatar img.loaded + .initials{display:none}`), padrao dos outros dashboards.
 - **Countdown** client-side ate `config.fim` (no ultimo dia = fim de hoje); fallback = 23:59:59.

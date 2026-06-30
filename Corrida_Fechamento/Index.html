@@ -154,10 +154,8 @@
     </div>
   </div>
 
-  <!-- ROW B : por vendedor -->
-  <div style="display:flex;flex-direction:column;gap:20px;flex:1 1 auto;min-height:0;">
-
-    <div style="display:flex;gap:20px;flex:1.5;min-height:0;">
+  <!-- ROW B : corrida (esquerda) + hora-a-hora (direita), ambos altura cheia -->
+  <div style="display:flex;flex-direction:row;gap:20px;flex:1 1 auto;min-height:0;">
 
     <!-- RACE TRACK -->
     <div style="flex:2.4;border-radius:22px;padding:24px 28px 18px;background:linear-gradient(160deg,#101826,#0b1018);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;min-height:0;position:relative;">
@@ -165,23 +163,12 @@
         <span style="font-size:18px;font-weight:900;letter-spacing:.4px;">Corrida dos vendedores - GMV de hoje</span>
         <span style="font-size:13px;font-weight:700;color:#7c8aa3;letter-spacing:.6px;text-transform:uppercase;">Linha de chegada = lider</span>
       </div>
-      <div id="race" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:14px;"></div>
+      <div id="race" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:2px;padding-right:14px;"></div>
       <div style="position:absolute;top:60px;bottom:20px;right:30px;width:8px;background-image:linear-gradient(0deg,#fff 50%,#1a2230 50%);background-size:8px 14px;opacity:.18;border-radius:4px;pointer-events:none;"></div>
     </div>
 
-    <!-- PODIO -->
-      <div style="flex:1;border-radius:22px;padding:22px 24px;background:linear-gradient(160deg,#141026,#0e0b18);border:1px solid rgba(255,211,92,.16);display:flex;flex-direction:column;">
-        <span style="font-size:16px;font-weight:900;letter-spacing:.4px;margin-bottom:10px;">Podio do dia</span>
-        <div style="position:relative;flex:1;display:flex;align-items:flex-start;justify-content:center;gap:12px;padding-top:4px;overflow:hidden;">
-          <div style="position:absolute;top:22px;left:-8px;right:-8px;height:16px;background-color:#fff;background-image:linear-gradient(45deg,#15171c 25%,transparent 25%,transparent 75%,#15171c 75%,#15171c),linear-gradient(45deg,#15171c 25%,transparent 25%,transparent 75%,#15171c 75%,#15171c);background-size:16px 16px;background-position:0 0,8px 8px;z-index:1;box-shadow:0 6px 14px rgba(0,0,0,.45);"></div>
-          <div id="podium" style="display:contents;"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- GMV GERAL HORA A HORA -->
-    <div style="flex:1;border-radius:22px;padding:18px 28px 16px;background:linear-gradient(160deg,#101826,#0b1018);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;min-height:0;">
+    <!-- GMV GERAL HORA A HORA (coluna direita, altura cheia) -->
+    <div style="flex:1.15;border-radius:22px;padding:18px 28px 16px;background:linear-gradient(160deg,#101826,#0b1018);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;min-height:0;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex:0 0 auto;">
         <span style="font-size:18px;font-weight:900;letter-spacing:.4px;">GMV geral - hora a hora</span>
         <div style="display:flex;align-items:center;gap:22px;">
@@ -189,8 +176,8 @@
           <div style="font-size:13px;font-weight:700;color:#7c8aa3;letter-spacing:.4px;">Total hoje <span id="hoje-total" style="color:#e8edf5;font-weight:900;">R$ 0</span></div>
         </div>
       </div>
-      <div id="hourly-bars" style="flex:1;display:flex;align-items:stretch;gap:10px;min-height:0;border-bottom:2px solid rgba(255,255,255,.08);padding-bottom:0;"></div>
-      <div id="hourly-labels" style="display:flex;gap:10px;margin-top:7px;flex:0 0 auto;"></div>
+      <div id="hourly-bars" style="flex:1;display:flex;align-items:stretch;gap:6px;min-height:0;border-bottom:2px solid rgba(255,255,255,.08);padding-bottom:0;"></div>
+      <div id="hourly-labels" style="display:flex;gap:6px;margin-top:7px;flex:0 0 auto;"></div>
     </div>
   </div>
 </div>
@@ -301,7 +288,6 @@
     document.getElementById('ritmo-inline').textContent = ritmo + 'x mais rapido';
 
     renderRace(data.sellers || []);
-    renderPodium(data.sellers || []);
     renderHourly(data.hourly || []);
   }
 
@@ -314,25 +300,21 @@
 
   // ---- corrida ----
   function renderRace(sellers) {
+    // Barra proporcional ao LIDER do dia: 1o colocado chega na linha de chegada, os demais relativos
+    // a ele. Ranking por GMV de hoje (vem ordenado do backend). Cada linha mostra so o GMV a direita.
     var maxGmv = Math.max(1, Math.max.apply(null, sellers.map(function (s) { return s.gmvHoje || 0; })));
     document.getElementById('race').innerHTML = sellers.map(function (s, i) {
       var frac = clamp01((s.gmvHoje || 0) / maxGmv);
       var csx = frac > 0.02 ? 0.8 / frac : 0.8;
-      var hit = (s.metaPct || 0) >= 1;
-      var badgeBg = hit ? 'rgba(43,212,160,.16)' : 'rgba(255,255,255,.06)';
-      var badgeColor = hit ? '#2bd4a0' : '#8fa0bb';
-      return '<div style="display:flex;align-items:center;gap:16px;padding:4px 0;flex:0 0 auto;">' +
-        '<span style="width:26px;text-align:center;font-size:20px;font-weight:900;color:#5b6880;font-variant-numeric:tabular-nums;">' + (i + 1) + '</span>' +
-        avatarCircle(s, 46) +
+      return '<div style="display:flex;align-items:center;gap:14px;padding:2px 0;flex:0 0 auto;">' +
+        '<span style="width:24px;text-align:center;font-size:18px;font-weight:900;color:#5b6880;font-variant-numeric:tabular-nums;">' + (i + 1) + '</span>' +
+        avatarCircle(s, 38) +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">' +
-            '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<span style="font-size:16px;font-weight:800;color:#e8edf5;">' + esc(s.nome) + '</span>' +
-              '<span style="font-size:11px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:6px;background:' + badgeBg + ';color:' + badgeColor + ';">' + Math.round((s.metaPct || 0) * 100) + '%</span>' +
-            '</div>' +
-            '<span style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;color:#cdd6e6;">' + brl(s.gmvHoje) + '</span>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+            '<span style="font-size:15px;font-weight:800;color:#e8edf5;">' + esc(s.nome) + '</span>' +
+            '<span style="font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;color:#cdd6e6;">' + brl(s.gmvHoje) + '</span>' +
           '</div>' +
-          '<div style="height:14px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:visible;">' +
+          '<div style="height:13px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:visible;">' +
             '<div style="position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(' + frac + ');transform-origin:left center;background:linear-gradient(90deg,' + s.cor + '88,' + s.cor + ');box-shadow:0 0 14px ' + s.cor + '66;border-radius:999px;transition:transform 1.5s cubic-bezier(.2,.8,.2,1);">' +
               '<div style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;border-radius:999px;background-image:repeating-linear-gradient(120deg,rgba(255,255,255,.28) 0 12px,rgba(255,255,255,0) 12px 24px);background-size:48px 100%;animation:om-stripes .5s linear infinite;"></div>' +
               '<div style="position:absolute;top:50%;right:0;transform:translate(50%,-50%) scale(' + csx + ',0.8);transform-origin:center;z-index:3;">' + f1Car(s.cor) + '</div>' +
@@ -341,28 +323,6 @@
         '</div>' +
       '</div>';
     }).join('') || '<div style="color:#7c8aa3;font-size:15px;padding:20px;">Sem vendedores configurados.</div>';
-  }
-
-  // ---- podio (ordem 2-1-3) ----
-  function renderPodium(sellers) {
-    var top3 = sellers.slice(0, 3);
-    var ordem = [
-      { s: top3[1], place: '2.', ring: '#c8d2e0', lane: '36px', scale: 1.25 },
-      { s: top3[0], place: '1.', ring: '#ffd35c', lane: '0px',  scale: 1.55 },
-      { s: top3[2], place: '3.', ring: '#e08a4a', lane: '20px', scale: 1.15 }
-    ];
-    document.getElementById('podium').innerHTML = ordem.map(function (o) {
-      if (!o.s) return '<div style="width:92px;"></div>';
-      var s = o.s;
-      return '<div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:92px;padding-top:' + o.lane + ';">' +
-        '<div style="width:62px;height:104px;display:flex;align-items:center;justify-content:center;">' +
-          '<div style="transform:rotate(-90deg) scale(' + o.scale + ');transform-origin:center;">' + f1Car(s.cor) + '</div>' +
-        '</div>' +
-        '<div style="margin-top:2px;font-size:13px;font-weight:900;letter-spacing:.4px;color:#06121b;background:' + o.ring + ';padding:2px 13px;border-radius:999px;box-shadow:0 0 14px ' + o.ring + '66;">' + o.place + '</div>' +
-        '<div style="font-size:13px;font-weight:700;color:#e8edf5;text-align:center;line-height:1.2;margin-top:7px;">' + esc(s.nome) + '</div>' +
-        '<div style="font-size:14px;font-weight:900;color:#9aa6bd;font-variant-numeric:tabular-nums;margin-top:2px;">' + brl(s.gmvHoje) + '</div>' +
-      '</div>';
-    }).join('');
   }
 
   // ---- hora a hora (janela expediente_inicio? mostramos 08h-EXPEDIENTE_FIM) ----
