@@ -50,22 +50,24 @@ materializados num `cluster_id`. A chave pública continua sendo `person_id` —
 
 ## 2. Régua de ativação (para `activated_at` no `fct_deals`)
 
-O history é snapshot de 30 min, então um deal pode pular `Ativado`. Regra:
+O history é snapshot de 30 min, então um deal pode pular `Ativado`. Regra (por **exclusão**):
 
-> **Ativado** = o deal alcançou `Ativado` **ou qualquer etapa de progressão posterior**.
+> **Ativado** = o deal alcançou **qualquer fase que não seja `Base*` nem `Novo*`**.
 
-Ordem do funil (referência Legado; **confirmar por produto**, FPF é mais rico):
+As únicas fases **pré-ativação** são a família `Base*` (incl. `Base carrinho abandonado`,
+`Base qualificado`, etc.) e `Novo*` (incl. `Novo - engajado`). Todo o resto conta como
+ativação — inclusive `Engajado` e até as fases de **saída/lateral** (`Perdido`,
+`Contato inválido`, `Geladeira`, `Fechamento`, `Resgate*`), pois um deal só chega nelas
+**depois de ter sido trabalhado**.
 
 ```
-Base → Ativado → Aquece 1..5 → Ativado 2 → Aquece 1..5 (2) → Não Engajou → Engajou →
-Fup 1..7 → Aguardando pagamento → Fup link 1..3 → Pagamento agendado →
-Pagamento recorrente → Geladeira → Venda → Contato inválido → Perdido
+Base*/Novo*  → [ativação] → Engajado / Aquece* / Fup* / Ativado* / Venda / ... → Perdido / Geladeira / ...
+   (pré)                              (tudo isto conta como ativado)
 ```
 
-- **Contam** como ativação: `Ativado`, `Ativado 2`, `Aquece*`, `Engajou`, `Não Engajou`,
-  `Fup*`, `Aguardando pagamento`, `Fup link*`, `Pagamento agendado`, `Pagamento recorrente`, `Venda`.
-- **Não contam** (saída/lateral): `Base`, `Perdido`, `Contato inválido`, `Geladeira`.
-- `Fechamento` fica **fora** (movimentação em massa de pipeline).
+- **Não contam** (única exceção, pré-ativação): família `Base*` e `Novo*`.
+- **Contam** como ativação: **todo o resto**, incluindo `Engajado`, `Perdido`,
+  `Contato inválido`, `Geladeira`, `Fechamento`, `Resgate*`.
 - `FUP` conta só como sinal de **ativação**, não de engajamento.
 
 `activated_at` = `MIN(updated_stage_at)` entre as etapas de ativação do deal. Quando vem de

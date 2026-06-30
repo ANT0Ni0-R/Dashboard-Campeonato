@@ -11,11 +11,12 @@
   Data de ativacao e vendedor-na-ativacao por deal, a partir do historico de
   etapas (snapshot de 30 min). Grao = 1 linha por deal_id.
 
-  Regua de ativacao (por EXCLUSAO, validada na ordem das fases do Legado, onde
-  `Base` e a unica fase real antes de `Ativado` e `Ativado` e a 2a fase):
-    ATIVADO = atingiu qualquer fase que NAO seja
-      - pre-ativacao : Base, Novo, Engajado
-      - saida/lateral: Perdido, Contato invalido, Geladeira, Fechamento, Resgate*
+  Regua de ativacao (por EXCLUSAO). As UNICAS fases pre-ativacao sao `Base` e
+  `Novo` (e suas variantes, ex. `Base carrinho abandonado`, `Novo - engajado`);
+  TODO o resto conta como ativacao -- inclusive `Engajado` e ate as fases de
+  saida/lateral (`Perdido`, `Contato invalido`, `Geladeira`, `Fechamento`,
+  `Resgate*`), pois um deal so chega nelas depois de ter sido trabalhado.
+    ATIVADO = atingiu qualquer fase que NAO seja `Base*` nem `Novo*`.
   Como o snapshot e de 30 min, o deal pode "pular" a fase Ativado; por isso
   pegamos a 1a fase de ativacao alcancada (MIN(entered_stage_at)) -- e nao a
   fase 'Ativado' literal. O vendedor da ativacao e quem estava no deal nessa
@@ -52,16 +53,13 @@ primeiro_toque as (
     group by deal_id
 ),
 
--- so as fases que contam como ativacao (exclusao)
+-- so as fases que contam como ativacao (exclusao):
+-- pre-ativacao = apenas a familia Base* e Novo*; todo o resto ativa.
 ativacao_hist as (
     select *
     from hist_full
-    where lower(trim(deal_stage)) not in (
-            'base', 'novo', 'engajado',
-            'perdido', 'contato invalido', 'contato inválido',
-            'geladeira', 'fechamento'
-      )
-      and lower(trim(deal_stage)) not like 'resgate%'
+    where lower(trim(deal_stage)) not like 'base%'
+      and lower(trim(deal_stage)) not like 'novo%'
 ),
 
 ranked as (
