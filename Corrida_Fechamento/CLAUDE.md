@@ -66,9 +66,10 @@ gerencial (aqui casa por **slug + faixa**, em `gmvAjustado_`).
   barra de progresso da corrida (carro counter-scaled na ponta) e no podio (carro rotacionado).
 - **Barra da corrida (`renderRace`) = META INDIVIDUAL:** o preenchimento e `metaPct` (= `gmvHoje/Falta`,
   clampado em 0..1); linha de chegada = bater a meta do vendedor (`Falta` da aba Participantes).
-  A **ordem/ranking** (1o, 2o...) e o **podio** continuam por **GMV de hoje** (vem ordenado do backend),
-  entao um vendedor mais abaixo no ranking pode ter a barra mais cheia (esta mais perto da meta dele).
   `Falta = 0` -> barra vazia (sem meta a perseguir). Antes a barra era relativa ao lider do dia.
+- **Ordem/ranking e podio = % da meta:** `montaSellers_` (backend) ordena por `metaPct` (desempate por
+  GMV de hoje, depois nome), entao 1o lugar = quem esta mais perto da propria meta, nao quem vendeu mais.
+  Antes era por GMV de hoje. (O titulo do painel ainda exibe o valor "GMV de hoje" por vendedor.)
 - **Fotos:** avatares da corrida usam foto + fallback de iniciais (`<img onload="this.className='loaded'">`
   + CSS `.avatar img.loaded + .initials{display:none}`), padrao dos outros dashboards.
 - **Countdown** client-side ate `config.fim` (no ultimo dia = fim de hoje); fallback = 23:59:59.

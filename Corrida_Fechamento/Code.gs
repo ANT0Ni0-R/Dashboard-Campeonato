@@ -245,7 +245,10 @@ function montaHoje_(cfg, geral, faltaMes) {
 
 function montaSellers_(porPmp, cfg) {
   var arr = Object.keys(porPmp).map(function (k) { return porPmp[k]; });
-  arr.sort(function (a, b) { return b.gmvHoje - a.gmvHoje || a.nome.localeCompare(b.nome); });
+  var pct = function (s) { return s.falta > 0 ? s.gmvHoje / s.falta : 0; };
+  // Ordena pelo % da meta individual (= barra/linha de chegada da corrida); desempata por
+  // GMV de hoje e depois por nome. Ranking e podio seguem essa ordem.
+  arr.sort(function (a, b) { return pct(b) - pct(a) || b.gmvHoje - a.gmvHoje || a.nome.localeCompare(b.nome); });
   return arr.map(function (s, i) {
     return {
       code: s.code,
@@ -254,7 +257,7 @@ function montaSellers_(porPmp, cfg) {
       cor: SELLER_COLORS[i % SELLER_COLORS.length],
       gmvHoje: s.gmvHoje,
       falta: s.falta,
-      metaPct: s.falta > 0 ? s.gmvHoje / s.falta : 0
+      metaPct: pct(s)
     };
   });
 }
