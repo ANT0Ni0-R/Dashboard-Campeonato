@@ -39,6 +39,8 @@ models:
         description: TRUE se ha venda TVD atribuida a esta linha.
       - name: is_ativado
         description: TRUE se o deal alcancou a ativacao (activated_at nao nulo).
+      - name: has_engajado
+        description: TRUE se o deal alcancou o engajamento (engaged_at nao nulo). Subconjunto de is_ativado.
       - name: data_criacao
         description: >
           Criacao do deal = LEAST(created_at, 1a etapa do historico). Usa o historico como
@@ -49,6 +51,12 @@ models:
           antigo que o created_at, tipico de re-import em lote); 'created_at' caso contrario.
       - name: data_ativado
         description: Data da 1a fase de ativacao (de int_sales_team__deal_activation).
+      - name: data_engajado
+        description: Data da 1a fase de engajamento (de int_sales_team__deal_activation).
+      - name: seller_engajado_pmp
+        description: PMP do vendedor que estava no deal na 1a fase de engajamento.
+      - name: seller_engajado_nome
+        description: Nome do vendedor que estava no deal na 1a fase de engajamento.
       - name: data_venda
         description: Data da 1a venda TVD atribuida (NULL se sem venda).
       - name: has_pesquisa

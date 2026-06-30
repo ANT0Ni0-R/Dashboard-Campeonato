@@ -3,10 +3,13 @@ version: 2
 models:
   - name: int_sales_team__deal_activation
     description: >
-      Data de ativacao e vendedor-na-ativacao por deal, derivados do historico de
-      etapas (snapshot de 30 min). Grao = 1 linha por deal_id. Ativacao = 1a fase
-      alcancada que nao seja pre-ativacao (Base/Novo/Engajado) nem saida/lateral
-      (Perdido/Contato invalido/Geladeira/Fechamento/Resgate*).
+      Data + vendedor de dois marcos do deal (ATIVACAO e ENGAJAMENTO), derivados do
+      historico de etapas (snapshot de 30 min). Grao = 1 linha por deal_id.
+      Ativacao = 1a fase alcancada que nao seja pre-ativacao; as UNICAS fases
+      pre-ativacao sao a familia Base* e Novo* (todo o resto ativa, inclusive Engajado
+      e as fases de saida/lateral Perdido/Contato invalido/Geladeira/Fechamento/Resgate*).
+      Engajamento = 1a fase que nao seja Base*, Novo*, Ativado* nem Aquece* (marco mais
+      profundo; todo engajado e tambem ativado).
     columns:
       - name: deal_id
         description: PK / grao. Liga ao fct_funil e ao clint_deals_cleaned.
@@ -24,3 +27,9 @@ models:
         description: PMP do vendedor que estava no deal na 1a fase de ativacao.
       - name: seller_ativado_nome
         description: Nome do vendedor que estava no deal na 1a fase de ativacao.
+      - name: engaged_at
+        description: MIN(entered_stage_at) entre as fases de engajamento (teto do engajamento real).
+      - name: seller_engajado_pmp
+        description: PMP do vendedor que estava no deal na 1a fase de engajamento.
+      - name: seller_engajado_nome
+        description: Nome do vendedor que estava no deal na 1a fase de engajamento.

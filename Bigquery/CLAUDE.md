@@ -45,8 +45,9 @@ gold/         fct_funil
 2. **`get_table_info` no projeto CRM falha** por permissão — confira o schema da transactions
    via `SELECT` cross-project, não pelo metadata.
 3. **Ativação "pula" linhas**: o history é snapshot de 30 min; um deal pode passar de `Base`
-   direto a uma etapa adiante sem registrar `Ativado`. Logo, "ativado" = chegou a `Ativado`
-   **ou qualquer etapa de progressão posterior**. Ver `docs/ai/identidade.md`.
+   direto a uma etapa adiante sem registrar `Ativado`. Régua por **exclusão**: "ativado" =
+   chegou a **qualquer fase que não seja `Base*` nem `Novo*`** (todo o resto conta, inclusive
+   `Engajado` e as fases de saída/lateral). Ver `docs/ai/identidade.md`.
 4. **Fan-out do JKC**: Jackson Araujo tem dois `seller_name` → duplica linha só pra JKC.
 5. **`rows` é palavra reservada**; `GROUP BY` usa a expressão inteira, não o alias do SELECT;
    filtro em alias do SELECT precisa de CTE antes.
