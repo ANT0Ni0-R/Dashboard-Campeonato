@@ -1,0 +1,205 @@
+version: 2
+
+models:
+
+  - name: int_sales_team__clint_deals_cleaned
+    description: "Modelo intermediário que centraliza as informações dos deals do Clint. Ele realiza o join da tabela base de deals com os domínios de contatos (agregando tags em array), origens (group_name e origin_name) e motivos de perda (lost_status). Retorna uma linha por deal_id com os dados de funil consolidados."
+    columns:
+      - name: deal_id
+        description: "Identificador único do negócio (deal) no Clint (Chave Primária)."
+        tests:
+          - unique
+          - not_null
+      - name: contact_id
+        description: "Identificador único do contato associado ao deal."
+      - name: group_name
+        description: "Nome do grupo da origem do deal (ex: FCE [TDV 5], MBA IA [TDV 2])."
+      - name: origin_name
+        description: "Nome específico da origem daquele grupo (ex: SDR: Qualificado, Carrinho abandonado)."
+      - name: created_at
+        description: "Timestamp de criação do deal."
+      - name: updated_at
+        description: "Timestamp da última atualização geral do deal."
+      - name: won_at
+        description: "Timestamp de quando o deal foi ganho (se aplicável)."
+      - name: lost_at
+        description: "Timestamp de quando o deal foi perdido (se aplicável)."
+      - name: user_email
+        description: "Email do proprietário (owner) atual do deal no CRM."
+      - name: user_name
+        description: "Nome do proprietário (owner) atual do deal."
+      - name: closer_email
+        description: "Email do closer responsável pelo fechamento da venda."
+      - name: sdr_email
+        description: "Email do SDR responsável pela qualificação."
+      - name: contact_email
+        description: "Email principal do cliente/contato."
+      - name: contact_name
+        description: "Nome completo do cliente/contato."
+      - name: contact_phone
+        description: "Telefone ou celular do cliente/contato."
+      - name: deal_stage
+        description: "Etapa atual do funil em que o deal se encontra."
+      - name: stage_order
+        description: "Número ordinal da etapa no funil, vindo da tabela de origins. Quanto maior, mais avançada a etapa."
+      - name: deal_status
+        description: "Status macro do negócio (OPEN, WON, LOST)."
+      - name: lost_status_name
+        description: "Descrição do motivo da perda (lost reason) mapeada através do lost_status_id."
+      - name: tag_names
+        description: "Array (lista) contendo todas as tags de marketing/produto associadas ao contato deste deal."
+      - name: _python_synced
+        description: "Timestamp interno de sincronização da ingestão de dados."
+
+  - name: int_sales_team__clint_deals_history_cleaned
+    description: "Modelo analítico focado no histórico e na jornada do negócio (deal) através do funil de vendas. Ele calcula o tempo de permanência em cada etapa (Lead Time) em minutos, horas e dias, utilizando a tabela base de deals. Retorna uma linha por alteração de etapa de cada deal."
+    columns:
+      - name: deal_id
+        description: "Identificador único do negócio (deal) no Clint. Herança da tabela base."
+        tests:
+          - not_null
+      - name: deal_stage
+        description: "Etapa do funil em que o deal esteve ou se encontra atualmente."
+      - name: created_at
+        description: "Timestamp de criação do deal original."
+      - name: entered_stage_at
+        description: "Timestamp exato de quando o deal entrou nesta etapa específica."
+      - name: left_stage_at
+        description: "Timestamp de quando o deal saiu desta etapa. Será nulo caso o deal ainda esteja ativo nesta etapa."
+      - name: prev_stage
+        description: "Nome da etapa imediatamente anterior no histórico deste deal. Nulo se for a primeira etapa."
+      - name: next_stage
+        description: "Nome da etapa seguinte para a qual o deal avançou. Nulo se for a etapa atual/última."
+      - name: stage_seq_asc
+        description: "Ordem cronológica crescente das etapas deste deal (1 = primeira etapa que o deal entrou)."
+      - name: stage_seq_desc
+        description: "Ordem cronológica decrescente das etapas deste deal (1 = etapa mais recente/atual)."
+      - name: minutes_in_stage
+        description: "Tempo total de permanência na etapa, medido em minutos. Se o deal ainda estiver na etapa (left_stage_at é nulo), o cálculo é feito até o momento atual (CURRENT_DATETIME)."
+      - name: hours_in_stage
+        description: "Tempo total de permanência na etapa, medido em horas inteiras."
+      - name: days_in_stage
+        description: "Tempo total de permanência na etapa, medido em dias inteiros."
+      - name: user_email
+        description: "Email do proprietário (owner) do deal."
+      - name: user_pmp
+        description: "Identificador PMP associado ao usuário/owner do deal nesta etapa."
+      - name: _python_synced
+        description: "Timestamp interno de sincronização da ingestão de dados."
+
+  - name: int_sales_team__sdr_booking_cleaned
+    description: "Modelo de limpeza e consolidação de agendamentos (bookings) das fontes Grão e Portfel. Ele padroniza timestamps para o fuso de São Paulo, extrai identificadores de deals de perguntas customizadas, categoriza os produtos alvo (FCE, FPF, Grão, Portfel) e aplica funções de janela para mapear o histórico cronológico de reuniões por cliente (ordem, próxima reunião, reunião anterior, etc)."
+    columns:
+      - name: uid
+        description: "Identificador único do agendamento (Chave Primária)."
+        tests:
+          - unique
+          - not_null
+      - name: booking_id
+        description: "Identificador original do agendamento na fonte (Booking ID)."
+      - name: deal_id
+        description: "Identificador do negócio (deal) no Clint, extraído via Regex da resposta de 'ID Clint'."
+      - name: service_name
+        description: "Nome do serviço selecionado no momento do agendamento (ex: Reunião com Especialista Grupo Primo)."
+      - name: target_product
+        description: "Classificação do produto ou frente de negócio (FCE, FPF, Grão, Portfel) derivada do nome do serviço."
+      - name: customer_email
+        description: "Email do lead/cliente que marcou a reunião."
+      - name: staff_email
+        description: "Email do consultor, planejador ou SDR que vai conduzir a reunião."
+      - name: booked_dt
+        description: "Data em que o agendamento foi criado no sistema."
+      - name: booked_at
+        description: "Timestamp (fuso America/Sao_Paulo) exato em que o agendamento foi criado."
+      - name: meeting_dt
+        description: "Data agendada para a ocorrência da reunião."
+      - name: meeting_at
+        description: "Timestamp (fuso America/Sao_Paulo) exato do início da reunião."
+      - name: meeting_time
+        description: "String formatada com a janela de horário da reunião (ex: 14:00 - 15:00)."
+      - name: meeting_len
+        description: "Duração total prevista para a reunião, calculada em minutos."
+      - name: days_in_advance
+        description: "Quantidade de dias de antecedência entre a data de criação do agendamento e a data da reunião."
+      - name: is_past_meeting
+        description: "Flag booleana (1 ou 0) que indica se o horário de início da reunião já passou do momento atual."
+      - name: meeting_rn
+        description: "Ordem cronológica crescente da reunião agrupada pelo deal (1 = primeira reunião marcada para o deal)."
+      - name: meeting_rn_desc
+        description: "Ordem cronológica decrescente da reunião agrupada pelo deal (1 = última reunião marcada para o deal)."
+      - name: meeting_count
+        description: "Quantidade total de reuniões agendadas para aquele deal específico."
+      - name: next_booked_at
+        description: "Timestamp de criação do PRÓXIMO agendamento atrelado a este deal."
+      - name: prev_booked_at
+        description: "Timestamp de criação do agendamento ANTERIOR atrelado a este deal."
+      - name: next_meeting_at
+        description: "Timestamp de início da PRÓXIMA reunião atrelada a este deal."
+      - name: prev_meeting_at
+        description: "Timestamp de início da reunião ANTERIOR atrelada a este deal."
+      - name: deal_url
+        description: "URL original e completa do deal no Clint extraída das respostas do questionário."
+
+  - name: int_sales_team__sdr_booking_consolidated
+    description: "Modelo intermediário que agrega o histórico de agendamentos na granularidade de deal (1 linha por deal_id). Cruza dados do Booking System com o histórico de estágios do CRM (Clint) para calcular o outcome de cada reunião (incluindo detecção de no-show via janela temporal entre bookings consecutivos) e agrega métricas de jornada (primeira/última reunião, contagens de no show, reagendamento e reuniões realizadas)."
+    columns:
+      - name: deal_id
+        description: "Identificador único do negócio (deal) no Clint (Chave Primária)."
+        tests:
+          - unique
+          - not_null
+      - name: customer_email
+        description: "Email do cliente/lead, extraído do último agendamento."
+      - name: service_name
+        description: "Nome do serviço ou tipo de reunião do último agendamento."
+      - name: target_product
+        description: "Produto alvo de interesse vinculado ao último agendamento do deal."
+      - name: first_booked_dt
+        description: "Data em que a PRIMEIRA reunião deste deal foi registrada/criada no sistema."
+      - name: first_meeting_dt
+        description: "Data em que a PRIMEIRA reunião estava marcada para acontecer no calendário."
+      - name: first_meeting_time
+        description: "Horário (janela de horas) em que a PRIMEIRA reunião estava marcada."
+      - name: first_meeting_outcome
+        description: "Resultado definitivo da PRIMEIRA reunião do deal (Agendado, Reagendado, No Show ou Realizado)."
+      - name: last_booked_dt
+        description: "Data em que a ÚLTIMA reunião deste deal foi registrada/criada no sistema."
+      - name: last_meeting_dt
+        description: "Data em que a ÚLTIMA reunião estava marcada para acontecer no calendário."
+      - name: last_meeting_time
+        description: "Horário (janela de horas) em que a ÚLTIMA reunião estava marcada."
+      - name: last_meeting_outcome
+        description: "Resultado definitivo da ÚLTIMA reunião do deal."
+      - name: booking_lead_time
+        description: "Quantidade de dias de antecedência com que a PRIMEIRA reunião foi marcada."
+      - name: scheduled_count
+        description: "Quantidade total de reuniões agendadas para o deal."
+      - name: rescheduled_count
+        description: "Quantidade total de vezes que as reuniões sofreram reagendamento."
+      - name: no_show_count
+        description: "Quantidade total de reuniões em que o lead não compareceu."
+      - name: completed_meeting_count
+        description: "Quantidade total de reuniões efetivamente realizadas."
+      - name: is_first_past_meeting
+        description: "Flag (1 ou 0) indicando se o horário da primeira reunião já passou."
+      - name: is_last_past_meeting
+        description: "Flag (1 ou 0) indicando se o horário da última reunião já passou."
+
+  - name: int_sales_team__transactions_with_sales_request
+    description: "Base transacional intermediária. Filtra transações com status 'Confirmed' ou 'Refunded' e enriquece com lookups de produto (product_group, campaign_acronym), portfólio TVD (is_in_tvd_portfolio) e identificação de vendedor via PMP (matched_seller_name, matched_seller_pmp). Não aplica filtros de negócio — esses ficam nos marts consumidores. Grain: 1 linha por transação (incluindo parcelas individuais)."
+    meta:
+      owner: 'arthur.haro'
+
+    columns:
+      - name: transaction_created_at
+        description: "Timestamp exato da criação da transação."
+      - name: transaction_created_date
+        description: "Data de criação da transação."
+      - name: refund_date
+        description: "Data do reembolso, quando aplicável."
+      - name: transaction_status_grouped
+        description: "Status agrupado da transação. Neste modelo, apenas 'Confirmed' ou 'Refunded'."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Confirmed', 'Refunded']
