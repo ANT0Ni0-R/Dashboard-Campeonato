@@ -171,4 +171,9 @@ SELECT
     , is_refunded
     , is_manual_claim
     , is_in_tvd_portfolio
+    -- venda duplicada: 'Consultor de Elite #FINCLASS' (BU TopInvest) e uma
+    -- reetiquetagem errada da venda Finclass 'Consultor de Elite' -- o mesmo
+    -- transaction_id carrega os dois nomes, inflando o GMV. Marcamos a linha
+    -- errada; o fct_funil ja filtra NOT is_venda_duplicada.
+    , (UPPER(TRIM(product_name)) = 'CONSULTOR DE ELITE #FINCLASS') AS is_venda_duplicada
 FROM sales_consolidated
