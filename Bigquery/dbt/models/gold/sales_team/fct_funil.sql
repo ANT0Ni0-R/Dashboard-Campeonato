@@ -81,7 +81,8 @@ vendas as (
         seller_name             as seller_venda_nome
     from {{ ref('int_sales_team__transactions_with_sales_request_with_person_id') }}
     where sales_channel = 'TVD'
-      and not coalesce(is_refunded, false)   -- venda liquida (exclui reembolso), igual a int net
+      and not coalesce(is_refunded, false)         -- venda liquida (exclui reembolso), igual a int net
+      and not coalesce(is_venda_duplicada, false)  -- exclui 'Consultor de Elite #FINCLASS' (dup do mrt)
       and person_id is not null
       and product_id is not null
 ),
