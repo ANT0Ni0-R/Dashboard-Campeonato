@@ -17,7 +17,8 @@ base AS ( SELECT * FROM {{ ref('int_sales_team__transactions_with_sales_request'
 
 , sales_detail AS (
     SELECT
-        transaction_created_at
+        transaction_id
+        , transaction_created_at
         , transaction_created_date
         , refund_date
         , transaction_week
@@ -136,8 +137,32 @@ base AS ( SELECT * FROM {{ ref('int_sales_team__transactions_with_sales_request'
     FROM sales_detail
 )
 
+-- dedup: 1 linha "boa" por transaction_id. As demais linhas do mesmo
+-- transaction_id (ex.: mesma venda reetiquetada com outro product_name, como
+-- 'Consultor de Elite #FINCLASS') sao marcadas is_venda_duplicada = TRUE.
+-- Desempate para escolher o KEEPER (rn = 1):
+--   1) PMP do vendedor conhecido (seller_pmp NOT NULL)
+--   2) maior receita (gmv)
+--   3) hash estavel do (product_name, user_email) -- pseudo-aleatorio reproduzivel.
+, dedup AS (
+    SELECT
+        *
+        , CASE
+            WHEN transaction_id IS NULL THEN FALSE
+            ELSE ROW_NUMBER() OVER (
+                PARTITION BY transaction_id
+                ORDER BY
+                    (seller_pmp IS NOT NULL) DESC
+                    , gmv DESC
+                    , FARM_FINGERPRINT(CONCAT(COALESCE(product_name, ''), '|', COALESCE(user_email, '')))
+            ) > 1
+        END AS is_venda_duplicada
+    FROM sales_consolidated
+)
+
 SELECT
-    transaction_created_at
+    transaction_id
+    , transaction_created_at
     , transaction_created_date
     , transaction_week
     , transaction_month
@@ -171,9 +196,5 @@ SELECT
     , is_refunded
     , is_manual_claim
     , is_in_tvd_portfolio
-    -- venda duplicada: 'Consultor de Elite #FINCLASS' (BU TopInvest) e uma
-    -- reetiquetagem errada da venda Finclass 'Consultor de Elite' -- o mesmo
-    -- transaction_id carrega os dois nomes, inflando o GMV. Marcamos a linha
-    -- errada; o fct_funil ja filtra NOT is_venda_duplicada.
-    , (UPPER(TRIM(product_name)) = 'CONSULTOR DE ELITE #FINCLASS') AS is_venda_duplicada
-FROM sales_consolidated
+    , is_venda_duplicada
+FROM dedup
