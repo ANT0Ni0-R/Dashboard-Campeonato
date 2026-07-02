@@ -7,6 +7,9 @@ let transactions = [];
 // Seletor de dia: null = Ao Vivo (relógio real). "YYYY-MM-DD" = fechamento daquele
 // dia (total cheio do dia, para premiações diárias).
 let viewDay = null;
+// Modo de exibição do dia selecionado: "fechamento" (pódio + melhor por grupo) ou
+// "chaveamento" (mesmo layout de blocos em grupo da tela Ao Vivo, congelado no dia).
+let viewDayMode = "fechamento";
 let pollInterval = null;
 let activePhaseId = "grupos";
 let syncCount = 0;
@@ -43,10 +46,21 @@ function initDaySelector() {
     opt.value = d.iso;          // "YYYY-MM-DD"
     opt.textContent = d.label;  // ex: "Ter 16/06 · Fase de Grupos"
     select.appendChild(opt);
+
+    // Fase de grupos: além do Fechamento do Dia (pódio), oferece a mesma visão em
+    // formato de chaveamento (blocos por grupo) usada no Ao Vivo, congelada no dia.
+    if (d.faseId === "grupos") {
+      const optChaveamento = document.createElement("option");
+      optChaveamento.value = d.iso + "::chaveamento"; // "YYYY-MM-DD::chaveamento"
+      optChaveamento.textContent = `${d.weekdayDate} · Chaveamento`;
+      select.appendChild(optChaveamento);
+    }
   });
 
   select.addEventListener("change", () => {
-    viewDay = select.value || null;
+    const [iso, mode] = select.value.split("::");
+    viewDay = iso || null;
+    viewDayMode = mode || "fechamento";
     forcarAtualizacao();
   });
 }
@@ -69,10 +83,14 @@ function buildCompetitionDays() {
     const y = cur.getUTCFullYear(), m = cur.getUTCMonth() + 1, d = cur.getUTCDate();
     const iso = `${y}-${pad(m)}-${pad(d)}`;
     const asOfMs = parseDate(iso + "T23:59:59-03:00").getTime();
-    const faseLabel = isCopaDayMs(asOfMs) ? "Dia da Copa" : translatePhaseName(phaseForMs(asOfMs));
+    const faseId = phaseForMs(asOfMs);
+    const faseLabel = isCopaDayMs(asOfMs) ? "Dia da Copa" : translatePhaseName(faseId);
+    const weekdayDate = `${weekdays[cur.getUTCDay()]} ${pad(d)}/${pad(m)}`;
     days.push({
       iso,
-      label: `${weekdays[cur.getUTCDay()]} ${pad(d)}/${pad(m)} · ${faseLabel}`
+      faseId,
+      weekdayDate,
+      label: `${weekdayDate} · ${faseLabel}`
     });
     cur = new Date(cur.getTime() + DAY_MS);
   }
@@ -525,13 +543,18 @@ function renderDashboard(res) {
   const copaView = (activePhaseId === "grupos" && copa);
 
   // Decide a view ativa. Ordem de prioridade:
-  //  1. Seletor de dia ativo -> Fechamento do Dia (ranking só do GMV daquele dia).
-  //  2. Sexta (Dia da Copa) ao vivo -> tela dividida grupos + todos-contra-todos.
-  //  3. Semifinais ao vivo -> tela horizontal Semi 1 | cotados p/ final | Semi 2.
-  //  4. Final ao vivo -> tela dividida em duas metades (um finalista em cada lado).
-  //  5. Demais (grupos/quartas) -> chaveamento de duas linhas.
+  //  1. Seletor de dia ativo, modo chaveamento -> mesmo layout de blocos do Ao Vivo,
+  //     congelado no fim do dia selecionado (só disponível p/ dias da fase de grupos).
+  //  2. Seletor de dia ativo, modo fechamento -> Fechamento do Dia (pódio do GMV do dia).
+  //  3. Sexta (Dia da Copa) ao vivo -> tela dividida grupos + todos-contra-todos.
+  //  4. Semifinais ao vivo -> tela horizontal Semi 1 | cotados p/ final | Semi 2.
+  //  5. Final ao vivo -> tela dividida em duas metades (um finalista em cada lado).
+  //  6. Demais (grupos/quartas) -> chaveamento de duas linhas.
   let viewClass;
-  if (viewDay) {
+  if (viewDay && viewDayMode === "chaveamento") {
+    viewClass = "view-bracket";
+    renderBracket(container, res);
+  } else if (viewDay) {
     viewClass = "view-daily";
     renderDailyClosing(container, res);
   } else if (copaView) {
