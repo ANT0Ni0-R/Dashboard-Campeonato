@@ -47,9 +47,10 @@ function initDaySelector() {
     opt.textContent = d.label;  // ex: "Ter 16/06 · Fase de Grupos"
     select.appendChild(opt);
 
-    // Fase de grupos: além do Fechamento do Dia (pódio), oferece a mesma visão em
-    // formato de chaveamento (blocos por grupo) usada no Ao Vivo, congelada no dia.
-    if (d.faseId === "grupos") {
+    // Grupos, quartas, semis e final: além do Fechamento do Dia (pódio), oferece a
+    // mesma visão usada no Ao Vivo daquela fase (chaveamento/semis/final), congelada
+    // no fim do dia selecionado.
+    if (["grupos", "quartas", "semis", "final"].includes(d.faseId)) {
       const optChaveamento = document.createElement("option");
       optChaveamento.value = d.iso + "::chaveamento"; // "YYYY-MM-DD::chaveamento"
       optChaveamento.textContent = `${d.weekdayDate} · Chaveamento`;
@@ -543,8 +544,9 @@ function renderDashboard(res) {
   const copaView = (activePhaseId === "grupos" && copa);
 
   // Decide a view ativa. Ordem de prioridade:
-  //  1. Seletor de dia ativo, modo chaveamento -> mesmo layout de blocos do Ao Vivo,
-  //     congelado no fim do dia selecionado (só disponível p/ dias da fase de grupos).
+  //  1. Seletor de dia ativo, modo chaveamento -> mesma tela do Ao Vivo da fase daquele
+  //     dia (chaveamento de grupos/quartas, ou as telas dedicadas de semis/final),
+  //     congelada no fim do dia selecionado.
   //  2. Seletor de dia ativo, modo fechamento -> Fechamento do Dia (pódio do GMV do dia).
   //  3. Sexta (Dia da Copa) ao vivo -> tela dividida grupos + todos-contra-todos.
   //  4. Semifinais ao vivo -> tela horizontal Semi 1 | cotados p/ final | Semi 2.
@@ -552,8 +554,16 @@ function renderDashboard(res) {
   //  6. Demais (grupos/quartas) -> chaveamento de duas linhas.
   let viewClass;
   if (viewDay && viewDayMode === "chaveamento") {
-    viewClass = "view-bracket";
-    renderBracket(container, res);
+    if (activePhaseId === "semis") {
+      viewClass = "view-semis";
+      renderSemis(container, res);
+    } else if (activePhaseId === "final") {
+      viewClass = "view-final";
+      renderFinal(container, res);
+    } else {
+      viewClass = "view-bracket";
+      renderBracket(container, res);
+    }
   } else if (viewDay) {
     viewClass = "view-daily";
     renderDailyClosing(container, res);
