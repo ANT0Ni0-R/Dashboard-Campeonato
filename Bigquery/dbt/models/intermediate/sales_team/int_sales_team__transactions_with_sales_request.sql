@@ -26,6 +26,20 @@ transactions AS ( SELECT * FROM {{ source('mart_grupo', 'mrt_grupo__transactions
             END
             , r"[^A-Za-z0-9_]", ''
         ) AS outro_normalized
+        -- UBFI (Ultra Black Friday Infinita) foi ingerida sem installment_number/cycle_count,
+        -- entao os filtros anti-recorrencia do gold nao pegam suas cobrancas repetidas.
+        -- Aqui marcamos como recorrencia toda linha alem da 1a (por data) de cada assinatura
+        -- (user_email + offer_name). O boolean UBFI na PARTITION isola a contagem dos demais
+        -- produtos que porventura compartilhem offer_name. gmv NAO e alterado (gross ja e o
+        -- contrato cheio para UBFI; multiplicar por installments superestimaria ~10x).
+        , CASE
+            WHEN product_name LIKE '%Ultra Black Friday Infinita%' THEN
+                ROW_NUMBER() OVER (
+                    PARTITION BY (product_name LIKE '%Ultra Black Friday Infinita%'), user_email, offer_name
+                    ORDER BY transaction_created_at ASC, transaction_id ASC
+                ) > 1
+            ELSE FALSE
+        END AS is_ubfi_recorrencia
     FROM transactions
     WHERE
         transaction_status_grouped IN ('Confirmed')
