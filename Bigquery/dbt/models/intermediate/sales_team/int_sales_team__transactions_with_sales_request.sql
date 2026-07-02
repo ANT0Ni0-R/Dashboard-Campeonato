@@ -57,6 +57,7 @@ transactions AS ( SELECT * FROM {{ source('mart_grupo', 'mrt_grupo__transactions
         , CASE
             WHEN t.product_name = 'Profissão Bancário' AND t.cycle_count = 1 AND t.transaction_gross_amount = 249.75 AND t.installments IS NULL
                 THEN t.transaction_gross_amount * 12
+            WHEN t.product_name LIKE '%Formação Consultor de IA%' AND t.transaction_gross_amount < 600 THEN t.transaction_gross_amount * 12
             WHEN t.installment_number IS NULL THEN t.transaction_gross_amount
             ELSE t.transaction_gross_amount * t.installments
         END / CASE WHEN t.product_name LIKE '%Vivendo de Leilão%' THEN 0.6 ELSE 1 END AS gmv
