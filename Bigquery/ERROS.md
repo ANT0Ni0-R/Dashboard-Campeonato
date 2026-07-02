@@ -142,3 +142,28 @@ um alias no mesmo `WHERE`).
 
 **Solucao:** repetir a expressao inteira no `GROUP BY`, ou materializar o alias numa CTE
 antes de agrupar/filtrar. (Tambem listado nos gotchas transversais de `fontes.md`.)
+
+---
+
+## GMV: UBFI (Ultra Black Friday Infinita) inflada por recorrencia sem installment_number
+
+**Sintoma:** GMV da UBFI inflado (~R$65M vs ~R$59M reais). Meses de dez/25 a jul/26
+mostram GMV de R$4-5M/mes sem venda real nenhuma. Os filtros anti-recorrencia do gold
+(`installment_number = 1`, `cycle_count = 1`) e o dedup por `transaction_id`
+(`is_venda_duplicada`) nao removem nada dessas linhas.
+
+**Causa:** a UBFI foi ingerida com `installment_number` e `cycle_count` **100% NULL** —
+os campos que marcariam a parcela nao vieram. Como sao nulos, passam em
+`(installment_number IS NULL OR = 1)` e cada cobranca mensal de uma assinatura vira uma
+"venda" nova. Alem disso, um md de diagnostico sugeriu corrigir com `gross x installments`;
+**isso esta errado**: nos dados da UBFI o `transaction_gross_amount` JA e o contrato cheio
+(~R$5.050, constante mesmo com `installments = 12`), e `installments` e so o parcelamento
+do cartao. Multiplicar superestimaria ~10x (out/25: R$44M -> R$462M).
+
+**Solucao:** deduplicar por assinatura no `int_sales_team__transactions_with_sales_request`
+— flag `is_ubfi_recorrencia` = `ROW_NUMBER()` sobre `user_email + offer_name`
+(order by `transaction_created_at`, `transaction_id`) `> 1`, escopado so para UBFI
+(boolean UBFI na `PARTITION BY` isola de outros produtos). No gold, filtrar
+`AND NOT COALESCE(is_ubfi_recorrencia, FALSE)`. **Nao mexer na formula de `gmv`** (o branch
+`WHEN installment_number IS NULL THEN gross` ja retorna o contrato cheio para UBFI).
+Regra escopada a UBFI ("caso a parte") — nao mexe em ajustes manuais de outros produtos.

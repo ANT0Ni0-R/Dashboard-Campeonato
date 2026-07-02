@@ -203,3 +203,5 @@ models:
           - not_null
           - accepted_values:
               values: ['Confirmed', 'Refunded']
+      - name: is_ubfi_recorrencia
+        description: "Flag: TRUE para cobranças de recorrência/duplicadas da UBFI (Ultra Black Friday Infinita) além da 1ª venda de cada assinatura (user_email + offer_name). A UBFI foi ingerida sem installment_number/cycle_count, então a recorrência é marcada aqui e filtrada no mart consumidor. FALSE para os demais produtos."

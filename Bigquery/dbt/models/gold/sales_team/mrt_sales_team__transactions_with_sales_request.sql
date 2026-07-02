@@ -76,6 +76,9 @@ base AS ( SELECT * FROM {{ ref('int_sales_team__transactions_with_sales_request'
         (NOT is_transaction_trial OR is_transaction_trial IS NULL)
         AND (installment_number IS NULL OR installment_number = 1)
         AND (cycle_count IS NULL OR cycle_count = 1)
+        -- UBFI nao traz installment_number/cycle_count; a recorrencia e marcada no int
+        -- por assinatura (user_email + offer_name). Exclui as cobrancas alem da 1a venda.
+        AND NOT COALESCE(is_ubfi_recorrencia, FALSE)
         AND transaction_bu_adjusted NOT IN ('Grão', 'Portfel')
         AND UPPER(REGEXP_REPLACE(NORMALIZE(product_name, NFD), r'\pM', '')) NOT LIKE 'PRE%'
         AND UPPER(REGEXP_REPLACE(NORMALIZE(product_name, NFD), r'\pM', '')) NOT LIKE '%RECORRENTE%'
